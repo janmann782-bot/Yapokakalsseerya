@@ -1,0 +1,1393 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFont, ImageOps
+
+from media import battle_image_groups, image_caption, map_images, page_images
+from models import Page
+from templates import Field, Template, get_template
+from themes import Theme, get_theme
+from fonts_catalog import resolve_font_files, resolve_user_font
+
+
+PILLOW_SCALE = {"standard": 1.25, "high": 1.5, "ultra": 2.0}
+
+_ACTIVE_FONT_REG: str | None = None
+_ACTIVE_FONT_BOLD: str | None = None
+
+
+
+
+def _resolve_kind_label(tpl: Template, data: dict) -> str:
+    value = str(data.get("card_type_label") or "").strip()
+    if not value:
+        return tpl.label.upper()
+    low = value.casefold().replace("ё", "е").strip()
+    if low in {"none", "hide", "hidden", "скрыть", "убрать", "нет", "off", "-"}:
+        return ""
+    return value.upper()
+
+
+def _font(theme: Theme, size: int, bold: bool = False, heading: bool = False):
+    if _ACTIVE_FONT_REG:
+        path = _ACTIVE_FONT_BOLD if bold and _ACTIVE_FONT_BOLD else _ACTIVE_FONT_REG
+        try:
+            return ImageFont.truetype(path, size), ImageFont.truetype(path, size)
+        except Exception:
+            pass
+    here = Path(__file__).resolve().parent
+    if theme.key == "aurelia":
+        fallback_name = "LiberationMono-Bold.ttf" if bold else "LiberationMono-Regular.ttf"
+        fallback = _load_font(here, fallback_name, size)
+        isaac = here / "ISAACFONTDESCRIPTIONENGRUS-FILL_0.TTF"
+        if isaac.is_file():
+            return ImageFont.truetype(str(isaac), size), fallback
+        return fallback
+
+    if heading:
+        name = "LiberationSerif-Bold.ttf" if bold else "LiberationSerif-Regular.ttf"
+    else:
+        name = "LiberationSans-Bold.ttf" if bold else "LiberationSans-Regular.ttf"
+    return _load_font(here, name, size)
+
+
+def _load_font(here: Path, name: str, size: int):
+    paths = [
+        here / name,
+        Path("/usr/share/fonts/truetype/liberation") / name,
+        Path("/usr/local/share/fonts") / name,
+        Path("C:/Windows/Fonts") / name,
+    ]
+    for p in paths:
+        if p.is_file():
+            return ImageFont.truetype(str(p), size)
+    return ImageFont.load_default(size=size)
+
+
+def _font_runs(text: str, font):
+    if not isinstance(font, tuple):
+        return [(text, font)]
+
+    primary, fallback = font
+    out = []
+    buf = ""
+    cur = None
+    extra = "—–…«»№ "
+    for ch in text:
+        n = ord(ch)
+        use_primary = 32 <= n <= 126 or 0x0410 <= n <= 0x044F or n in {0x0401, 0x0451} or ch in extra
+        f = primary if use_primary else fallback
+        if cur is not None and f is not cur:
+            out.append((buf, cur))
+            buf = ""
+        buf += ch
+        cur = f
+    if buf:
+        out.append((buf, cur))
+    return out or [("", primary)]
+
+
+def _size(draw: ImageDraw.ImageDraw, text: str, font) -> tuple[int, int]:
+    width = 0
+    height = 0
+    for s, f in _font_runs(text or "Ag", font):
+        box = draw.textbbox((0, 0), s, font=f)
+        width += box[2] - box[0]
+        height = max(height, box[3] - box[1])
+    return width, height
+
+
+def _split_word(draw: ImageDraw.ImageDraw, word: str, font, max_w: int) -> list[str]:
+    out = []
+    s = ""
+    for ch in word:
+        x = s + ch
+        if s and _size(draw, x, font)[0] > max_w:
+            out.append(s)
+            s = ch
+        else:
+            s = x
+    if s:
+        out.append(s)
+    return out or [""]
+
+
+def _wrap(draw: ImageDraw.ImageDraw, value: object, font, max_w: int) -> list[str]:
+    text = "\n".join(str(x) for x in value) if isinstance(value, (list, tuple)) else str(value)
+    out = []
+    for raw in text.split("\n"):
+        words = raw.split()
+        if not words:
+            out.append("")
+            continue
+        line = ""
+        for word in words:
+            parts = _split_word(draw, word, font, max_w)
+            for part in parts:
+                x = part if not line else f"{line} {part}"
+                if line and _size(draw, x, font)[0] > max_w:
+                    out.append(line)
+                    line = part
+                else:
+                    line = x
+        if line:
+            out.append(line)
+    return out or [""]
+
+
+def _line_h(draw: ImageDraw.ImageDraw, font) -> int:
+    return int(_size(draw, "Аg", font)[1] * 1.42)
+
+
+def _draw_lines(
+    draw: ImageDraw.ImageDraw,
+    lines: list[str],
+    xy: tuple[int, int],
+    font,
+    fill: str,
+    line_h: int,
+    width: int | None = None,
+    align: str = "left",
+) -> None:
+    x, y = xy
+    for line in lines:
+        xx = x
+        if width and align != "left":
+            w = _size(draw, line, font)[0]
+            xx = x + (width - w if align == "right" else (width - w) // 2)
+        for s, f in _font_runs(line, font):
+            draw.text((xx, y), s, font=f, fill=fill)
+            xx += _size(draw, s, f)[0]
+        y += line_h
+
+
+def _header(w: int, s: float, tpl: Template, page: Page, theme: Theme) -> Image.Image:
+    tmp = Image.new("RGB", (w, 10), theme.panel_alt)
+    draw = ImageDraw.Draw(tmp)
+    kind_font = _font(theme, max(12, int(14 * s)), bold=True)
+    title_font = _font(theme, max(24, int(36 * s)), bold=True, heading=True)
+    sub_font = _font(theme, max(15, int(19 * s)))
+    pad = int(28 * s)
+    title = page.data.get("title") or page.title or "Без названия"
+    subtitle = page.data.get(tpl.subtitle_key, "") if tpl.subtitle_key else ""
+    kind = _resolve_kind_label(tpl, page.data)
+    kind_lines = _wrap(draw, kind, kind_font, w - pad * 2) if kind else []
+    title_lines = _wrap(draw, title, title_font, w - pad * 2)
+    sub_lines = _wrap(draw, subtitle, sub_font, w - pad * 2) if subtitle else []
+    kh = _line_h(draw, kind_font)
+    th = _line_h(draw, title_font)
+    sh = _line_h(draw, sub_font)
+    gap = int(7 * s)
+    top_gap = gap if kind_lines else 0
+    h = pad + len(kind_lines) * kh + top_gap + len(title_lines) * th + pad
+    if sub_lines:
+        h += gap + len(sub_lines) * sh
+
+    img = Image.new("RGB", (w, h), theme.panel_alt)
+    draw = ImageDraw.Draw(img)
+    y = pad
+    if kind_lines:
+        _draw_lines(draw, kind_lines, (pad, y), kind_font, theme.text, kh, w - pad * 2, "center")
+        y += len(kind_lines) * kh + gap
+    _draw_lines(draw, title_lines, (pad, y), title_font, theme.text, th, w - pad * 2, "center")
+    y += len(title_lines) * th
+    if sub_lines:
+        y += gap
+        _draw_lines(
+            draw, sub_lines, (pad, y), sub_font, theme.text_secondary, sh, w - pad * 2, "center"
+        )
+    return img
+
+
+def _media_path(value: object, root: Path) -> Path | None:
+    if not value:
+        return None
+    raw = Path(str(value))
+    p = raw.resolve() if raw.is_absolute() else (root / raw).resolve()
+    if p.parent != root or not p.name.startswith("media_") or not p.is_file():
+        return None
+    return p
+
+
+def _picture(
+    w: int,
+    s: float,
+    path: Path,
+    caption: object,
+    theme: Theme,
+) -> Image.Image | None:
+    try:
+        src = ImageOps.exif_transpose(Image.open(path))
+        src.load()
+    except Exception:
+        return None
+
+    pad = int(20 * s)
+    max_h = int(650 * s)
+    src.thumbnail((w - pad * 2, max_h), Image.Resampling.LANCZOS)
+    if src.mode in {"RGBA", "LA"}:
+        base = Image.new("RGBA", src.size, theme.panel_alt)
+        base.alpha_composite(src.convert("RGBA"))
+        src = base.convert("RGB")
+    else:
+        src = src.convert("RGB")
+
+    cap_font = _font(theme, max(13, int(16 * s)))
+    tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    lines = _wrap(tmp, caption, cap_font, w - pad * 2) if caption else []
+    lh = _line_h(tmp, cap_font)
+    cap_gap = int(8 * s) if lines else 0
+    h = pad + src.height + cap_gap + len(lines) * lh + pad
+    img = Image.new("RGB", (w, h), theme.panel)
+    draw = ImageDraw.Draw(img)
+    x = (w - src.width) // 2
+    img.paste(src, (x, pad))
+    bw = max(1, int(theme.border_width * s))
+    draw.rectangle((x, pad, x + src.width - 1, pad + src.height - 1), outline=theme.image_border, width=bw)
+    if lines:
+        _draw_lines(
+            draw,
+            lines,
+            (pad, pad + src.height + cap_gap),
+            cap_font,
+            theme.text_secondary,
+            lh,
+            w - pad * 2,
+            "center",
+        )
+    return img
+
+
+def _gallery(
+    w: int,
+    s: float,
+    items: list[tuple[Path, str]],
+    theme: Theme,
+) -> Image.Image | None:
+    pad = int(20 * s)
+    gap = int(12 * s)
+    cell_w = (w - pad * 2 - gap) // 2
+    max_h = int(360 * s)
+    pics = []
+    for path, caption in items:
+        try:
+            src = ImageOps.exif_transpose(Image.open(path))
+            src.load()
+        except Exception:
+            continue
+        src.thumbnail((cell_w, max_h), Image.Resampling.LANCZOS)
+        if src.mode in {"RGBA", "LA"}:
+            base = Image.new("RGBA", src.size, theme.panel_alt)
+            base.alpha_composite(src.convert("RGBA"))
+            src = base.convert("RGB")
+        else:
+            src = src.convert("RGB")
+        pics.append((src, caption, path))
+
+    if not pics:
+        return None
+    if len(pics) == 1:
+        _, caption, path = pics[0]
+        return _picture(w, s, path, caption, theme)
+
+    cap_font = _font(theme, max(13, int(16 * s)))
+    tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    lh = _line_h(tmp, cap_font)
+    text_pad = int(8 * s)
+    prepared = []
+    for src, caption, _ in pics:
+        lines = _wrap(tmp, caption, cap_font, cell_w - text_pad * 2) if caption else []
+        cap_gap = int(8 * s) if lines else 0
+        prepared.append((src, lines, src.height + cap_gap + len(lines) * lh))
+
+    rows = [prepared[i : i + 2] for i in range(0, len(prepared), 2)]
+    heights = [max(x[2] for x in row) for row in rows]
+    h = pad * 2 + sum(heights) + gap * (len(rows) - 1)
+    img = Image.new("RGB", (w, h), theme.panel)
+    draw = ImageDraw.Draw(img)
+    bw = max(1, int(theme.border_width * s))
+    y = pad
+    for row, row_h in zip(rows, heights):
+        for i, (src, lines, item_h) in enumerate(row):
+            if len(row) == 1:
+                cell_x = (w - cell_w) // 2
+            else:
+                cell_x = pad + i * (cell_w + gap)
+            x = cell_x + (cell_w - src.width) // 2
+            yy = y + (row_h - item_h) // 2
+            img.paste(src, (x, yy))
+            draw.rectangle(
+                (x, yy, x + src.width - 1, yy + src.height - 1),
+                outline=theme.image_border,
+                width=bw,
+            )
+            if lines:
+                cap_y = yy + src.height + int(8 * s)
+                _draw_lines(
+                    draw,
+                    lines,
+                    (cell_x + text_pad, cap_y),
+                    cap_font,
+                    theme.text_secondary,
+                    lh,
+                    cell_w - text_pad * 2,
+                    "center",
+                )
+        y += row_h + gap
+    return img
+
+
+def _battle_media_items(data: dict, root: Path):
+    main_item, side1_items, side2_items, extra_items = battle_image_groups(data)
+
+    def resolve(item):
+        if not item:
+            return None
+        path = _media_path(item[0], root)
+        if not path:
+            return None
+        return path, item[1]
+
+    def resolve_list(items):
+        out = []
+        for path, caption in items:
+            p = _media_path(path, root)
+            if p:
+                out.append((p, caption))
+        return out
+
+    return resolve(main_item), resolve_list(side1_items), resolve_list(side2_items), resolve_list(extra_items)
+
+
+def _flag_thumb(path: Path, size: tuple[int, int], bg: str):
+    try:
+        src = ImageOps.exif_transpose(Image.open(path))
+        src.load()
+    except Exception:
+        return None
+    src = src.convert('RGB')
+    src = ImageOps.fit(src, size, Image.Resampling.LANCZOS)
+    base = Image.new('RGB', size, bg)
+    base.paste(src, (0, 0))
+    return base
+
+
+def _battle_side_cells(w: int, s: float, left: object, right: object, theme: Theme, flags1: list[tuple[Path, str]], flags2: list[tuple[Path, str]]) -> Image.Image:
+    """Each side line is its own row: [flag] text — flag by index, text left-aligned."""
+    col_w = w // 2
+    pad_x = int(14 * s)
+    pad_y = int(12 * s)
+    font = _font(theme, max(16, int(20 * s)))
+    tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    lh = _line_h(tmp, font)
+    flag_size = (max(28, int(40 * s)), max(18, int(26 * s)))
+    gap = max(4, int(6 * s))
+    row_gap = max(4, int(5 * s))
+
+    def side_rows(value, flags) -> list[tuple[object | None, list[str]]]:
+        """One row per text line. Flag i goes with line i. Extra lines get no flag."""
+        raw = value if value not in (None, "", []) else "—"
+        if isinstance(raw, (list, tuple)):
+            parts = [str(x).strip() for x in raw if str(x).strip()]
+        else:
+            parts = [ln.strip() for ln in str(raw).splitlines() if ln.strip()]
+        if not parts:
+            parts = ["—"]
+
+        thumbs: list[object] = []
+        for path, _cap in flags:
+            thumb = _flag_thumb(path, flag_size, theme.panel_alt)
+            if thumb is not None:
+                thumbs.append(thumb)
+
+        # more lines than flags → title lines without flag, flags on trailing member lines
+        offset = max(0, len(parts) - len(thumbs))
+
+        rows: list[tuple[object | None, list[str]]] = []
+        for i, part in enumerate(parts):
+            fi = i - offset
+            thumb = thumbs[fi] if 0 <= fi < len(thumbs) else None
+            text_max = col_w - pad_x * 2 - ((thumb.width + gap) if thumb is not None else 0)
+            lines = _wrap(tmp, part, font, max(40, text_max))
+            rows.append((thumb, lines))
+        return rows
+
+    def rows_height(rows) -> int:
+        h = 0
+        for i, (thumb, lines) in enumerate(rows):
+            th = thumb.height if thumb is not None else 0
+            text_h = len(lines) * lh if lines else 0
+            h += max(th, text_h, lh)
+            if i + 1 < len(rows):
+                h += row_gap
+        return h
+
+    l_rows = side_rows(left, flags1)
+    r_rows = side_rows(right, flags2)
+    content_h = max(rows_height(l_rows), rows_height(r_rows))
+    h = content_h + pad_y * 2
+    img = Image.new("RGB", (w, h), theme.panel)
+    draw = ImageDraw.Draw(img)
+    bw = max(1, int(theme.border_width * s))
+    draw.line((col_w, 0, col_w, h), fill=theme.border, width=bw)
+
+    def draw_side(x0: int, rows, mirror: bool = False) -> None:
+        y = pad_y
+        for thumb, lines in rows:
+            th = thumb.height if thumb is not None else 0
+            text_h = len(lines) * lh if lines else 0
+            row_h = max(th, text_h, lh)
+            if mirror:
+                # text left, flag on the right of the row; whole row right-aligned in column
+                x_right = x0 + col_w - pad_x
+                if thumb is not None:
+                    fx = x_right - thumb.width
+                    fy = y + max(0, (row_h - thumb.height) // 2)
+                    img.paste(thumb, (fx, fy))
+                    draw.rectangle(
+                        (fx, fy, fx + thumb.width - 1, fy + thumb.height - 1),
+                        outline=theme.image_border,
+                        width=1,
+                    )
+                    x_right = fx - gap
+                if lines:
+                    ty = y + max(0, (row_h - len(lines) * lh) // 2)
+                    text_w = x_right - (x0 + pad_x)
+                    _draw_lines(draw, lines, (x0 + pad_x, ty), font, theme.text, lh, max(20, text_w), "right")
+            else:
+                x = x0 + pad_x
+                if thumb is not None:
+                    fy = y + max(0, (row_h - thumb.height) // 2)
+                    img.paste(thumb, (x, fy))
+                    draw.rectangle(
+                        (x, fy, x + thumb.width - 1, fy + thumb.height - 1),
+                        outline=theme.image_border,
+                        width=1,
+                    )
+                    x += thumb.width + gap
+                if lines:
+                    ty = y + max(0, (row_h - len(lines) * lh) // 2)
+                    text_w = col_w - (x - x0) - pad_x
+                    _draw_lines(draw, lines, (x, ty), font, theme.text, lh, max(20, text_w), "left")
+            y += row_h + row_gap
+
+    draw_side(0, l_rows, mirror=False)
+    draw_side(col_w, r_rows, mirror=True)
+    return img
+
+
+def _battle_text_cells(w: int, s: float, left: object, right: object, theme: Theme) -> Image.Image:
+    col_w = w // 2
+    pad_x = int(16 * s)
+    pad_y = int(12 * s)
+    font = _font(theme, max(16, int(20 * s)))
+    tmp = ImageDraw.Draw(Image.new('RGB', (1,1)))
+    lh = _line_h(tmp, font)
+    left_text = left if left not in (None, '', []) else '—'
+    right_text = right if right not in (None, '', []) else '—'
+    left_lines = _wrap(tmp, left_text, font, col_w - pad_x * 2)
+    right_lines = _wrap(tmp, right_text, font, col_w - pad_x * 2)
+    h = max(len(left_lines) * lh, len(right_lines) * lh) + pad_y * 2
+    img = Image.new('RGB', (w, h), theme.panel)
+    draw = ImageDraw.Draw(img)
+    bw = max(1, int(theme.border_width * s))
+    draw.line((col_w, 0, col_w, h), fill=theme.border, width=bw)
+    _draw_lines(draw, left_lines, (pad_x, pad_y), font, theme.text, lh)
+    _draw_lines(draw, right_lines, (col_w + pad_x, pad_y), font, theme.text, lh)
+    return img
+
+
+def _battle_blocks(page: Page, root: Path, inner_w: int, s: float, theme: Theme):
+    d = page.data
+    blocks = []
+    main, side1_flags, side2_flags, extras = _battle_media_items(d, root)
+    if main:
+        path, caption = main
+        pic = _picture(inner_w, s, path, caption, theme)
+        if pic:
+            blocks.append(pic)
+    for label, key in (("Дата", "date"), ("Место", "place"), ("Результат", "result")):
+        if d.get(key) not in (None, '', []):
+            blocks.append(_row(inner_w, s, label, d[key], theme))
+    if d.get('side_1') not in (None, '', []) or d.get('side_2') not in (None, '', []):
+        blocks.append(_section_title(inner_w, s, 'Стороны конфликта', theme))
+        blocks.append(_battle_side_cells(inner_w, s, d.get('side_1'), d.get('side_2'), theme, side1_flags, side2_flags))
+    for title, left_key, right_key in [
+        ('Командующие и лидеры', 'commander_1', 'commander_2'),
+        ('Силы', 'strength_1', 'strength_2'),
+        ('Потери', 'losses_1', 'losses_2'),
+    ]:
+        if d.get(left_key) not in (None, '', []) or d.get(right_key) not in (None, '', []):
+            blocks.append(_section_title(inner_w, s, title, theme))
+            blocks.append(_battle_text_cells(inner_w, s, d.get(left_key), d.get(right_key), theme))
+    if extras:
+        gallery = _gallery(inner_w, s, extras, theme)
+        if gallery:
+            blocks.append(_section_title(inner_w, s, 'Дополнительные изображения', theme))
+            blocks.append(gallery)
+    return blocks
+
+
+def _section_title(w: int, s: float, title: str, theme: Theme) -> Image.Image:
+    font = _font(theme, max(17, int(22 * s)), bold=True, heading=True)
+    tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    pad_x = int(22 * s)
+    pad_y = int(9 * s)
+    lines = _wrap(tmp, title, font, w - pad_x * 2)
+    lh = _line_h(tmp, font)
+    img = Image.new("RGB", (w, pad_y * 2 + lh * len(lines)), theme.section_bg)
+    draw = ImageDraw.Draw(img)
+    _draw_lines(draw, lines, (pad_x, pad_y), font, theme.section_text, lh, w - pad_x * 2, "center")
+    return img
+
+
+def _row(w: int, s: float, label: object, value: object, theme: Theme, alternate: bool = False) -> Image.Image:
+    label_w = int(w * 0.36)
+    pad_x = int(15 * s)
+    pad_y = int(11 * s)
+    label_font = _font(theme, max(15, int(18 * s)), bold=True)
+    value_font = _font(theme, max(16, int(20 * s)))
+    tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    left = _wrap(tmp, label, label_font, label_w - pad_x * 2)
+    right = _wrap(tmp, value, value_font, w - label_w - pad_x * 2)
+    lh1 = _line_h(tmp, label_font)
+    lh2 = _line_h(tmp, value_font)
+    h = max(len(left) * lh1, len(right) * lh2) + pad_y * 2
+    row_bg = theme.panel
+    img = Image.new("RGB", (w, h), row_bg)
+    draw = ImageDraw.Draw(img)
+    label_bg = row_bg if theme.key == "aurelia" else theme.panel_alt
+    draw.rectangle((0, 0, label_w, h), fill=label_bg)
+    draw.line(
+        (label_w, 0, label_w, h),
+        fill=theme.border,
+        width=max(1, int(theme.border_width * s)),
+    )
+    _draw_lines(draw, left, (pad_x, pad_y), label_font, theme.text_secondary, lh1)
+    _draw_lines(draw, right, (label_w + pad_x, pad_y), value_font, theme.text, lh2)
+    return img
+
+
+def _side_rows(w: int, s: float, fields: list[Field], data: dict, theme: Theme) -> Image.Image:
+    col_w = w // 2
+    pad_x = int(16 * s)
+    pad_y = int(13 * s)
+    gap = int(10 * s)
+    label_font = _font(theme, max(12, int(15 * s)), bold=True)
+    value_font = _font(theme, max(16, int(20 * s)))
+    tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    lh1 = _line_h(tmp, label_font)
+    lh2 = _line_h(tmp, value_font)
+    cols: list[list[tuple[list[str], list[str], int]]] = [[], []]
+    heights = [pad_y, pad_y]
+
+    for col in (1, 2):
+        for f in fields:
+            value = data.get(f.key)
+            if f.column != col or value in (None, "", []):
+                continue
+            labels = _wrap(tmp, f.label.upper(), label_font, col_w - pad_x * 2)
+            values = _wrap(tmp, value, value_font, col_w - pad_x * 2)
+            h = len(labels) * lh1 + int(3 * s) + len(values) * lh2
+            cols[col - 1].append((labels, values, h))
+            heights[col - 1] += h + gap
+
+    h = max(max(heights), int(52 * s)) + pad_y
+    img = Image.new("RGB", (w, h), theme.panel)
+    draw = ImageDraw.Draw(img)
+    draw.line(
+        (col_w, 0, col_w, h),
+        fill=theme.border,
+        width=max(1, int(theme.border_width * s)),
+    )
+    for i, items in enumerate(cols):
+        y = pad_y
+        x = i * col_w + pad_x
+        for n, (labels, values, item_h) in enumerate(items):
+            if n:
+                draw.line(
+                    (i * col_w + pad_x, y - gap // 2, (i + 1) * col_w - pad_x, y - gap // 2),
+                    fill=theme.border,
+                    width=max(1, int(theme.border_width * s)),
+                )
+            _draw_lines(draw, labels, (x, y), label_font, theme.text_secondary, lh1)
+            y += len(labels) * lh1 + int(3 * s)
+            _draw_lines(draw, values, (x, y), value_font, theme.text, lh2)
+            y += len(values) * lh2 + gap
+    return img
+
+
+def _description(w: int, s: float, value: object, theme: Theme) -> Image.Image:
+    font = _font(theme, max(16, int(20 * s)))
+    tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    pad_x = int(22 * s)
+    pad_y = int(18 * s)
+    lines = _wrap(tmp, value, font, w - pad_x * 2)
+    lh = _line_h(tmp, font)
+    img = Image.new("RGB", (w, pad_y * 2 + len(lines) * lh), theme.panel)
+    _draw_lines(ImageDraw.Draw(img), lines, (pad_x, pad_y), font, theme.text, lh)
+    return img
+
+
+def _footer(w: int, s: float, theme: Theme) -> Image.Image:
+    font = _font(theme, max(11, int(13 * s)), bold=True)
+    tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    pad = int(12 * s)
+    lh = _line_h(tmp, font)
+    img = Image.new("RGB", (w, pad * 2 + lh), theme.panel_alt)
+    _draw_lines(
+        ImageDraw.Draw(img),
+        ["INFOBOX BOT"],
+        (pad, pad),
+        font,
+        theme.text_secondary,
+        lh,
+        w - pad * 2,
+        "right",
+    )
+    return img
+
+
+def _standard_groups(tpl: Template, data: dict):
+    skip = {"card_type_label", "title", "description", "image_caption", "anthem_duration"}
+    if tpl.subtitle_key:
+        skip.add(tpl.subtitle_key)
+    names = []
+    for f in tpl.fields:
+        if f.key not in skip and f.section not in names:
+            names.append(f.section)
+    for name in names:
+        fields = [
+            f for f in tpl.fields if f.section == name and f.key not in skip and data.get(f.key) not in (None, "", [])
+        ]
+        if fields:
+            yield name, fields
+
+
+def _render_news_tfr(
+    page: Page,
+    work_dir: Path,
+    output: Path,
+) -> Path:
+    """News card in THE FIRE RISES browser-frame style."""
+    here = Path(__file__).resolve().parent
+    frame_path = here / "tfr_frame.png"
+    if not frame_path.exists():
+        raise FileNotFoundError("не нашёл tfr_frame.png рядом с ботом")
+
+    frame = Image.open(frame_path).convert("RGBA")
+    fw, fh = frame.size
+
+    # coordinates measured on the 1536x2048 template
+    IMG_BOX = (362, 599, 1159, 898)  # x0,y0,x1,y1 transparent hole
+    BTN_BOX = (425, 1602, 1118, 1685)
+    TITLE_AREA = (420, 580)  # y range for title between chrome and image
+    BODY_TOP = 930
+    BODY_BOTTOM = 1560
+    CONTENT_X0 = 280
+    CONTENT_X1 = 1256
+
+    d = page.data
+    title = str(d.get("title") or page.title or "Без названия").strip()
+    body = str(d.get("body") or d.get("description") or "").strip()
+    button = str(d.get("button_text") or "").strip()
+
+    # base on black so transparent hole shows black until we paste image
+    canvas = Image.new("RGBA", (fw, fh), (0, 0, 0, 255))
+
+    # paste user image into the hole
+    images = page_images(d)
+    if images:
+        media = _media_path(images[0], work_dir)
+        if media is None:
+            # allow absolute existing path (e.g. during tests / external media)
+            cand = Path(str(images[0]))
+            if cand.is_file():
+                media = cand
+        if media is not None:
+            try:
+                src = ImageOps.exif_transpose(Image.open(media))
+                src.load()
+                src = src.convert("RGB")
+                box_w = IMG_BOX[2] - IMG_BOX[0]
+                box_h = IMG_BOX[3] - IMG_BOX[1]
+                fitted = ImageOps.fit(src, (box_w, box_h), Image.Resampling.LANCZOS)
+                canvas.paste(fitted, (IMG_BOX[0], IMG_BOX[1]))
+            except Exception:
+                pass
+
+    # overlay the frame (image shows through the hole)
+    canvas = Image.alpha_composite(canvas, frame)
+    draw = ImageDraw.Draw(canvas)
+
+    def load_font(name: str, size: int):
+        p = here / name
+        try:
+            return ImageFont.truetype(str(p), size)
+        except Exception:
+            return ImageFont.load_default()
+
+    title_font = load_font("ETORO-VF-V0.8.TTF", 54)
+    # fallback if variable font fails at size
+    try:
+        title_font.getbbox("A")
+    except Exception:
+        title_font = load_font("PixeloidSans-Bold.otf", 42)
+
+    body_font = load_font("PixeloidSans.otf", 28)
+    btn_font = load_font("PixeloidSans.otf", 26)
+
+    # title centered between chrome and image
+    max_title_w = CONTENT_X1 - CONTENT_X0
+    words = title.split()
+    lines: list[str] = []
+    cur = ""
+    for w in words:
+        test = (cur + " " + w).strip()
+        try:
+            tw = draw.textlength(test, font=title_font)
+        except Exception:
+            tw = len(test) * 28
+        if tw <= max_title_w or not cur:
+            cur = test
+        else:
+            lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    lines = lines[:3] or ["Без названия"]
+    try:
+        line_h = title_font.getbbox("Ag")[3] - title_font.getbbox("Ag")[1] + 8
+    except Exception:
+        line_h = 58
+    total_h = line_h * len(lines)
+    ty = TITLE_AREA[0] + max(0, (TITLE_AREA[1] - TITLE_AREA[0] - total_h) // 2)
+    for line in lines:
+        try:
+            tw = draw.textlength(line, font=title_font)
+        except Exception:
+            tw = len(line) * 28
+        tx = (fw - int(tw)) // 2
+        draw.text((tx, ty), line, font=title_font, fill=(20, 20, 20, 255))
+        ty += line_h
+
+    # body text
+    if body:
+        max_body_w = CONTENT_X1 - CONTENT_X0
+        body_lines: list[str] = []
+        for para in body.splitlines() or [body]:
+            para = para.strip()
+            if not para:
+                body_lines.append("")
+                continue
+            words = para.split()
+            cur = ""
+            for w in words:
+                test = (cur + " " + w).strip()
+                try:
+                    tw = draw.textlength(test, font=body_font)
+                except Exception:
+                    tw = len(test) * 14
+                if tw <= max_body_w or not cur:
+                    cur = test
+                else:
+                    body_lines.append(cur)
+                    cur = w
+            if cur:
+                body_lines.append(cur)
+        try:
+            blh = body_font.getbbox("Ag")[3] - body_font.getbbox("Ag")[1] + 10
+        except Exception:
+            blh = 34
+        max_rows = max(1, (BODY_BOTTOM - BODY_TOP) // blh)
+        body_lines = body_lines[:max_rows]
+        by = BODY_TOP
+        for line in body_lines:
+            draw.text((CONTENT_X0, by), line, font=body_font, fill=(25, 25, 25, 255))
+            by += blh
+
+    # button text centered on the button
+    if button:
+        bx0, by0, bx1, by1 = BTN_BOX
+        try:
+            tw = draw.textlength(button, font=btn_font)
+            th = btn_font.getbbox("Ag")[3] - btn_font.getbbox("Ag")[1]
+        except Exception:
+            tw, th = len(button) * 12, 24
+        btx = bx0 + (bx1 - bx0 - int(tw)) // 2
+        bty = by0 + (by1 - by0 - int(th)) // 2 - 2
+        # slight glow / shadow
+        draw.text((btx + 1, bty + 1), button, font=btn_font, fill=(0, 0, 0, 180))
+        draw.text((btx, bty), button, font=btn_font, fill=(210, 230, 200, 255))
+
+    out = canvas.convert("RGB")
+    out.save(output, "PNG", compress_level=6)
+    return output
+
+
+def _render_superevent_tfr(
+    page: Page,
+    work_dir: Path,
+    output: Path,
+) -> Path:
+    """Superevent card in THE FIRE RISES style: frame + additive pink-blue gradient."""
+    here = Path(__file__).resolve().parent
+    frame_path = here / "tfr_se_frame.png"
+    grad_path = here / "tfr_se_grad.png"
+    btn_path = here / "tfr_se_btn.png"
+    if not frame_path.exists() or not grad_path.exists():
+        raise FileNotFoundError("не нашёл tfr_se_frame.png / tfr_se_grad.png рядом с ботом")
+
+    frame = Image.open(frame_path).convert("RGBA")
+    grad = Image.open(grad_path).convert("RGBA")
+    btn_panel = Image.open(btn_path).convert("RGBA") if btn_path.exists() else None
+    fw, fh = frame.size
+    if grad.size != (fw, fh):
+        grad = grad.resize((fw, fh), Image.Resampling.LANCZOS)
+    if btn_panel is not None and btn_panel.size != (fw, fh):
+        btn_panel = btn_panel.resize((fw, fh), Image.Resampling.LANCZOS)
+
+    # text regions measured on 2048x1536 template
+    TITLE_Y0, TITLE_Y1 = 155, 230
+    # панель кнопки/текста (отдельный слой tfr_se_btn.png)
+    BODY_BOX = (450, 1010, 1600, 1240)
+    BTN_BOX = (780, 1295, 1268, 1355)
+    # main image area inside the frame
+    # на всю внутреннюю область рамки, чтобы градиент лег на всё фото
+    IMG_BOX = (50, 248, 1998, 1265)
+
+    d = page.data
+    title = str(d.get("title") or page.title or "Без названия").strip()
+    body = str(d.get("body") or d.get("description") or "").strip()
+    button = str(d.get("button_text") or "").strip()
+
+    canvas = Image.new("RGBA", (fw, fh), (0, 0, 0, 255))
+
+    # user image under the gradient
+    images = page_images(d)
+    if images:
+        media = _media_path(images[0], work_dir)
+        if media is None:
+            cand = Path(str(images[0]))
+            if cand.is_file():
+                media = cand
+        if media is not None:
+            try:
+                src = ImageOps.exif_transpose(Image.open(media))
+                src.load()
+                src = src.convert("RGB")
+                box_w = IMG_BOX[2] - IMG_BOX[0]
+                box_h = IMG_BOX[3] - IMG_BOX[1]
+                fitted = ImageOps.fit(src, (box_w, box_h), Image.Resampling.LANCZOS)
+                canvas.paste(fitted, (IMG_BOX[0], IMG_BOX[1]))
+            except Exception:
+                pass
+
+    # additive blend of pink-blue gradient over everything so far
+    # result = min(255, base + grad * alpha)  — без numpy
+    from PIL import ImageChops
+
+    base = canvas.convert("RGB")
+    g_rgb = grad.convert("RGB")
+    g_a = grad.split()[-1]
+    premul = Image.new("RGB", base.size, (0, 0, 0))
+    premul.paste(g_rgb, mask=g_a)  # = grad * alpha
+    added = ImageChops.add(base, premul)  # clip 0..255
+    canvas = added.convert("RGBA")
+
+    # metal frame on top
+    canvas = Image.alpha_composite(canvas, frame)
+    # отдельная кнопка/панель поверх рамки
+    if btn_panel is not None:
+        canvas = Image.alpha_composite(canvas, btn_panel)
+    draw = ImageDraw.Draw(canvas)
+
+    def load_font(name: str, size: int):
+        p = here / name
+        try:
+            return ImageFont.truetype(str(p), size)
+        except Exception:
+            return ImageFont.load_default()
+
+    title_font = load_font("PixeloidSans.otf", 36)
+    body_font = load_font("PixeloidSans.otf", 28)
+    btn_font = load_font("PixeloidSans.otf", 26)
+
+    def wrap(text: str, font, max_w: int) -> list[str]:
+        lines: list[str] = []
+        for para in (text.splitlines() or [text]):
+            para = para.strip()
+            if not para:
+                lines.append("")
+                continue
+            words = para.split()
+            cur = ""
+            for w in words:
+                test = (cur + " " + w).strip()
+                try:
+                    tw = draw.textlength(test, font=font)
+                except Exception:
+                    tw = len(test) * 14
+                if tw <= max_w or not cur:
+                    cur = test
+                else:
+                    lines.append(cur)
+                    cur = w
+            if cur:
+                lines.append(cur)
+        return lines or [""]
+
+    # title centered in top bar (drawn AFTER gradient so it stays clean)
+    max_tw = 1600
+    t_lines = wrap(title, title_font, max_tw)[:2]
+    try:
+        lh = title_font.getbbox("Ag")[3] - title_font.getbbox("Ag")[1] + 6
+    except Exception:
+        lh = 40
+    total_h = lh * len(t_lines)
+    ty = TITLE_Y0 + max(0, (TITLE_Y1 - TITLE_Y0 - total_h) // 2)
+    for line in t_lines:
+        try:
+            tw = int(draw.textlength(line, font=title_font))
+        except Exception:
+            tw = len(line) * 18
+        tx = (fw - tw) // 2
+        draw.text((tx, ty), line, font=title_font, fill=(230, 230, 235, 255))
+        ty += lh
+
+    # body text in the lower panel
+    if body:
+        bx0, by0, bx1, by1 = BODY_BOX
+        max_bw = bx1 - bx0
+        b_lines = wrap(body, body_font, max_bw)
+        try:
+            blh = body_font.getbbox("Ag")[3] - body_font.getbbox("Ag")[1] + 8
+        except Exception:
+            blh = 34
+        max_rows = max(1, (by1 - by0) // blh)
+        b_lines = b_lines[:max_rows]
+        total_h = blh * len(b_lines)
+        by = by0 + max(0, (by1 - by0 - total_h) // 2)
+        for line in b_lines:
+            try:
+                tw = int(draw.textlength(line, font=body_font))
+            except Exception:
+                tw = len(line) * 14
+            tx = bx0 + (max_bw - tw) // 2
+            draw.text((tx, by), line, font=body_font, fill=(245, 245, 250, 255))
+            by += blh
+
+    # button label
+    if button:
+        bx0, by0, bx1, by1 = BTN_BOX
+        try:
+            tw = int(draw.textlength(button, font=btn_font))
+            th = btn_font.getbbox("Ag")[3] - btn_font.getbbox("Ag")[1]
+        except Exception:
+            tw, th = len(button) * 12, 24
+        btx = bx0 + (bx1 - bx0 - tw) // 2
+        bty = by0 + (by1 - by0 - th) // 2 - 2
+        draw.text((btx + 1, bty + 1), button, font=btn_font, fill=(0, 0, 0, 160))
+        draw.text((btx, bty), button, font=btn_font, fill=(235, 235, 240, 255))
+
+    out = canvas.convert("RGB")
+    out.save(output, "PNG", compress_level=6)
+    return output
+
+
+
+def _render_mirotorets(page: Page, root: Path, path: Path, quality: str = "high") -> Path:
+    """Карточка в стиле сайта Миротворец (Pillow, без водяных знаков)."""
+    d = page.data or {}
+    s = PILLOW_SCALE.get(quality, PILLOW_SCALE["high"])
+    W = int(780 * s)
+    pad = int(16 * s)
+    blue = (26, 95, 180)
+    border = (184, 192, 204)
+    text_c = (0, 0, 0)
+    red = (196, 30, 58)
+    gray = (102, 102, 102)
+    bg = (255, 255, 255)
+    light = (247, 248, 250)
+
+    def font(sz, bold=False):
+        here = Path(__file__).resolve().parent
+        name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
+        for cand in (here / name, Path("/usr/share/fonts/truetype/dejavu") / name):
+            if cand.is_file():
+                return ImageFont.truetype(str(cand), int(sz * s))
+        return ImageFont.load_default()
+
+    f_body = font(16.5)
+    f_lab = font(16.5, bold=True)
+    f_nd = font(22, bold=True)
+    f_foot = font(14.5)
+    f_top = font(17)
+
+    birth = str(d.get("birth_date") or "").strip()
+    country = str(d.get("country") or "Россия").strip()
+    rank = str(d.get("rank") or "").strip()
+    unit = str(d.get("unit") or "").strip()
+    position = str(d.get("position") or "").strip()
+    personal = str(d.get("personal_number") or "").strip()
+    passport = str(d.get("passport") or "").strip()
+    birth_place = str(d.get("birth_place") or "").strip()
+    source = str(d.get("source") or "").strip()
+    name_title = str(d.get("title") or page.title or "").strip()
+    desc = str(
+        d.get("description")
+        or (
+            "Российский военный преступник.\n"
+            "Участник нападения фашистской россии на Украину 24.02.2022.\n"
+            "В/служащий вооруженных сил российской федерации."
+        )
+    ).strip()
+    hashtags = str(d.get("hashtags") or "#StopRussianAggression").strip()
+    footer_text = str(
+        d.get("footer")
+        or (
+            "Центр «Миротворец» просит правоохранительные органы рассматривать данную "
+            "публикацию на сайте как заявление о совершении этим гражданином осознанных деяний "
+            "против национальной безопасности Украины, мира, безопасности человечества и "
+            "международного правопорядка, а также иных правонарушений."
+        )
+    ).strip()
+
+    # фото: фиксированный квадрат, картинка вписана целиком, рамка ровно по боксу
+    photo_side = int(112 * s)
+    bw = max(1, int(1 * s))
+    photo_img = None
+    imgs = page_images(d)
+    if imgs:
+        raw = Path(imgs[0])
+        mp = raw if raw.is_absolute() else (root / raw)
+        if mp.is_file():
+            try:
+                src = Image.open(mp).convert("RGB")
+                # cover: заполняет бокс без полей внутри рамки
+                photo_img = ImageOps.fit(
+                    src,
+                    (photo_side, photo_side),
+                    method=Image.Resampling.LANCZOS,
+                )
+            except Exception:
+                photo_img = None
+
+    def wrap(text: str, fnt, max_w: int) -> list[str]:
+        words = str(text).split()
+        if not words:
+            return [""]
+        lines, cur = [], words[0]
+        for w in words[1:]:
+            trial = cur + " " + w
+            if fnt.getlength(trial) <= max_w:
+                cur = trial
+            else:
+                lines.append(cur)
+                cur = w
+        lines.append(cur)
+        return lines
+
+    body_lines: list[tuple[str, object, tuple]] = []
+    for line in desc.split("\n"):
+        line = line.strip()
+        if line:
+            body_lines.append((line, f_body, (0, 0, 0)))
+    field_rows = []
+    if unit:
+        field_rows.append(("Подразделение:", unit))
+    if position:
+        field_rows.append(("Должность:", position))
+    if rank:
+        field_rows.append(("Звание:", rank))
+    if personal:
+        field_rows.append(("Личный номер:", personal))
+    if birth:
+        field_rows.append(("Дата рождения:", birth))
+    if passport:
+        field_rows.append(("Паспорт:", passport))
+    if birth_place:
+        field_rows.append(("Место рождения:", birth_place))
+    if source:
+        field_rows.append(("Источник:", source))
+    else:
+        field_rows.append(("", "Источник"))
+    for lab, val in field_rows:
+        if lab:
+            body_lines.append((f"{lab} {val}", f_body, (0, 0, 0)))
+        else:
+            body_lines.append((val, f_body, (0, 0, 0)))
+    for tg in hashtags.split():
+        if tg.startswith("#"):
+            body_lines.append((tg, f_body, (0, 0, 0)))
+
+    body_w = W - 2 * pad
+    line_h = int(24 * s)
+    body_h = 0
+    wrapped: list[tuple[list[str], object, tuple]] = []
+    for text, fnt, col in body_lines:
+        ls = wrap(text, fnt, body_w)
+        wrapped.append((ls, fnt, col))
+        body_h += len(ls) * line_h
+    foot_ls = wrap(footer_text, f_foot, body_w)
+    body_h += int(14 * s) + len(foot_ls) * int(21 * s)
+
+    header_h = int(36 * s)
+    # верхний блок: фото + мета; высота = фото + поля сверху/снизу
+    top_pad = int(12 * s)
+    top_h = photo_side + top_pad * 2
+    total_h = header_h + top_h + pad + body_h + pad
+
+    im = Image.new("RGB", (W, total_h), bg)
+    dr = ImageDraw.Draw(im)
+
+    # синяя шапка + имя слева
+    dr.rectangle([0, 0, W, header_h], fill=blue)
+    if name_title:
+        f_name = font(15, bold=True)
+        dr.text((int(14 * s), header_h // 2 - int(10 * s)), name_title, fill=(255, 255, 255), font=f_name)
+    # внешняя рамка карточки
+    dr.rectangle([0, 0, W - 1, total_h - 1], outline=border, width=max(1, int(s)))
+
+    # фото слева, рамка ровно по краю картинки
+    bx0 = int(12 * s)
+    by0 = header_h + top_pad
+    bx1 = bx0 + photo_side
+    by1 = by0 + photo_side
+    if photo_img is not None:
+        im.paste(photo_img, (bx0, by0))
+        dr.rectangle([bx0, by0, bx1 - 1, by1 - 1], outline=border, width=bw)
+    else:
+        dr.rectangle([bx0, by0, bx1 - 1, by1 - 1], outline=border, width=bw, fill=light)
+        nd = "N/D"
+        tw = f_nd.getlength(nd)
+        dr.text(
+            (bx0 + (photo_side - tw) / 2, by0 + (photo_side - int(28 * s)) / 2),
+            nd,
+            fill=gray,
+            font=f_nd,
+        )
+
+    # вертикальный разделитель
+    div_x = bx1 + int(10 * s)
+    dr.line([div_x, header_h, div_x, header_h + top_h], fill=border, width=max(1, int(s)))
+
+    # мета справа: дата, страна, пунктир ТОЛЬКО под строкой "Страна"
+    mx = div_x + int(14 * s)
+    my = header_h + int(18 * s)
+    row_h = int(26 * s)
+    if birth:
+        line = f"Дата рождения: {birth}"
+        dr.text((mx, my), line, fill=(0, 0, 0), font=f_top)
+        my += row_h
+    country_line = ""
+    if country:
+        country_line = f"Страна: {country}"
+        dr.text((mx, my), country_line, fill=(0, 0, 0), font=f_top)
+        # пунктир под строкой "Страна", на всю ширину правой колонки
+        dash_y = my + int(22 * s)
+        dash_end = W - pad
+        x = mx
+        dash_len = int(6 * s)
+        gap = int(5 * s)
+        while x < dash_end:
+            x2 = min(x + dash_len, dash_end)
+            dr.line([x, dash_y, x2, dash_y], fill=(154, 163, 176), width=max(1, int(s)))
+            x += dash_len + gap
+
+    # линия под верхним блоком
+    dr.line([0, header_h + top_h, W, header_h + top_h], fill=border, width=max(1, int(s)))
+
+    # тело
+    y = header_h + top_h + pad
+    for ls, fnt, col in wrapped:
+        for line in ls:
+            dr.text((pad, y), line, fill=col, font=fnt)
+            y += line_h
+    y += int(10 * s)
+    for line in foot_ls:
+        dr.text((pad, y), line, fill=red, font=f_foot)
+        y += int(21 * s)
+
+    path = Path(path)
+    im.save(path, format="PNG", optimize=True)
+    return path
+
+
+
+
+def _anthem_block(w: int, s: float, title: str, duration: str, theme: Theme) -> Image.Image:
+    pad = int(12 * s)
+    f_title = _font(theme, max(12, int(15 * s)), bold=False)
+    f_time = _font(theme, max(11, int(13 * s)), bold=False)
+    tmp = Image.new("RGB", (10, 10), theme.panel)
+    dr = ImageDraw.Draw(tmp)
+    title_lines = _wrap(dr, title, f_title, w - pad * 2)
+    th = _line_h(dr, f_title)
+    bar_h = int(36 * s)
+    h = pad // 2 + len(title_lines) * th + 6 + bar_h + pad // 2
+    im = Image.new("RGB", (w, h), theme.panel)
+    dr = ImageDraw.Draw(im)
+    y = pad // 2
+    _draw_lines(dr, title_lines, (pad, y), f_title, theme.link if hasattr(theme, "link") else theme.accent, th, w - pad * 2, "center")
+    y += len(title_lines) * th + 6
+    # player bar
+    bx0, by0 = pad, y
+    bx1, by1 = w - pad, y + bar_h
+    dr.rounded_rectangle([bx0, by0, bx1, by1], radius=int(6 * s), outline=theme.border, width=max(1, int(s)), fill=theme.panel_alt if hasattr(theme, "panel_alt") else theme.panel)
+    # play circle
+    r = int(11 * s)
+    cx, cy = bx0 + int(18 * s), (by0 + by1) // 2
+    dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=theme.text)
+    # progress
+    bar_x0 = cx + r + int(10 * s)
+    bar_x1 = bx1 - int(50 * s)
+    bar_y = cy
+    dr.line([bar_x0, bar_y, bar_x1, bar_y], fill=theme.border, width=max(2, int(3 * s)))
+    fill_x = bar_x0 + int((bar_x1 - bar_x0) * 0.18)
+    dr.line([bar_x0, bar_y, fill_x, bar_y], fill=theme.text_secondary, width=max(2, int(3 * s)))
+    dur = duration or "0:00"
+    tw = f_time.getlength(dur) if hasattr(f_time, "getlength") else len(dur) * 8
+    dr.text((bx1 - int(12 * s) - tw, cy - int(8 * s)), dur, fill=theme.text_secondary, font=f_time)
+    return im
+
+def render_pillow(
+    page: Page,
+    work_dir: str | Path,
+    quality: str,
+    output: str | Path,
+    watermark: bool = True,
+) -> Path:
+    if page.theme == "olddoc":
+        from olddoc import render_olddoc
+
+        return render_olddoc(page, work_dir, quality, output, watermark)
+
+    root = Path(work_dir).resolve()
+    path = Path(output).resolve()
+
+    if page.type == "mirotorets" or page.theme == "mirotorets":
+        return _render_mirotorets(page, root, path, quality)
+    if page.type == "news":
+        return _render_news_tfr(page, root, path)
+    if page.type == "superevent":
+        return _render_superevent_tfr(page, root, path)
+
+    theme = get_theme(page.theme)
+    tpl = get_template(page.type)
+    # пользовательский/выбранный шрифт
+    _fk = (page.data or {}).get("_font_key") or "default"
+    _uid = (page.data or {}).get("_font_user_id")
+    _reg = _bold = None
+    if _fk and _fk != "default":
+        if str(_fk).startswith("user:") and _uid is not None:
+            _reg = resolve_user_font(root, int(_uid), str(_fk))
+            _bold = _reg
+        else:
+            _reg, _bold = resolve_font_files(str(_fk))
+    if _reg and _reg.is_file():
+        page.data["_pillow_font_reg"] = str(_reg)
+        page.data["_pillow_font_bold"] = str(_bold or _reg)
+        global _ACTIVE_FONT_REG, _ACTIVE_FONT_BOLD
+        _ACTIVE_FONT_REG = str(_reg)
+        _ACTIVE_FONT_BOLD = str(_bold or _reg)
+    else:
+        global _ACTIVE_FONT_REG, _ACTIVE_FONT_BOLD
+        _ACTIVE_FONT_REG = _ACTIVE_FONT_BOLD = None
+    d = page.data
+    s = PILLOW_SCALE.get(quality, PILLOW_SCALE["high"])
+    card_w = int(820 * s)
+    bw = max(1, int(theme.border_width * s))
+    inner_w = card_w - bw * 2
+    blocks = [_header(inner_w, s, tpl, page, theme)]
+
+    row_index = 0
+    if tpl.key == "battle":
+        blocks.extend(_battle_blocks(page, root, inner_w, s, theme))
+    else:
+        media = []
+        for i, value in enumerate(page_images(d)):
+            media_path = _media_path(value, root)
+            if media_path:
+                media.append((media_path, image_caption(d, value, i)))
+        if media:
+            pic = _gallery(inner_w, s, media, theme)
+            if pic:
+                blocks.append(pic)
+
+        # гимн (полоска как в вики)
+        anthem = str(d.get("anthem") or "").strip()
+        if anthem:
+            blocks.append(_anthem_block(inner_w, s, anthem, str(d.get("anthem_duration") or "").strip(), theme))
+
+        # карты территорий
+        maps = []
+        for i, value in enumerate(map_images(d)):
+            media_path = _media_path(value, root)
+            if media_path:
+                maps.append((media_path, image_caption(d, value, i)))
+        if maps:
+            pic = _gallery(inner_w, s, maps, theme)
+            if pic:
+                blocks.append(pic)
+
+        for title, fields in _standard_groups(tpl, d):
+            blocks.append(_section_title(inner_w, s, title, theme))
+            if any(f.column for f in fields):
+                blocks.append(_side_rows(inner_w, s, fields, d, theme))
+            else:
+                for f in fields:
+                    row_index += 1
+                    blocks.append(_row(inner_w, s, f.label, d[f.key], theme, alternate=(row_index % 2 == 0)))
+
+    custom = [
+        x
+        for x in d.get("custom_fields") or []
+        if isinstance(x, dict) and x.get("value") not in (None, "")
+    ]
+    if custom:
+        blocks.append(_section_title(inner_w, s, "Дополнительные сведения", theme))
+        for x in custom:
+            row_index += 1
+            blocks.append(_row(inner_w, s, x.get("name", "Поле"), x.get("value", ""), theme, alternate=(row_index % 2 == 0)))
+
+    for sec in d.get("sections") or []:
+        if not isinstance(sec, dict):
+            continue
+        rows = [
+            x
+            for x in sec.get("fields") or []
+            if isinstance(x, dict) and x.get("value") not in (None, "")
+        ]
+        if not rows:
+            continue
+        blocks.append(_section_title(inner_w, s, str(sec.get("title") or "Раздел"), theme))
+        for x in rows:
+            row_index += 1
+            blocks.append(_row(inner_w, s, x.get("name", "Поле"), x.get("value", ""), theme, alternate=(row_index % 2 == 0)))
+
+    if d.get("description"):
+        blocks.append(_section_title(inner_w, s, "Описание", theme))
+        blocks.append(_description(inner_w, s, d["description"], theme))
+    if watermark:
+        blocks.append(_footer(inner_w, s, theme))
+
+    outer = int(26 * s)
+    content_h = sum(x.height for x in blocks) + bw * (len(blocks) - 1)
+    img = Image.new("RGB", (card_w + outer * 2, content_h + outer * 2 + bw * 2), theme.background)
+    draw = ImageDraw.Draw(img)
+    x = outer
+    y = outer
+    draw.rectangle((x, y, x + card_w - 1, y + content_h + bw * 2 - 1), fill=theme.panel, outline=theme.border, width=bw)
+    x += bw
+    y += bw
+    for i, block in enumerate(blocks):
+        img.paste(block, (x, y))
+        y += block.height
+        if i < len(blocks) - 1:
+            draw.line((x, y, x + inner_w - 1, y), fill=theme.border, width=bw)
+            y += bw
+
+    img.save(path, "PNG", compress_level=6, dpi=(144, 144))
+    return path
