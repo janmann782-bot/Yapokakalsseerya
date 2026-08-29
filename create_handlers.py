@@ -108,7 +108,6 @@ async def ask_field(msg: Message, state: FSMContext) -> None:
     s = tr("field_prompt", label=f.label, hint=hint, step=i + 1, total=len(tpl.wizard))
     current = (d.get("page_data") or {}).get(f.key)
     if current:
-        # value в current_value уже в blockquote - экранируем HTML
         from html import escape
         s += "\n\n" + tr("current_value", value=escape(str(current)[:500]))
     await state.set_state(NewPage.field)
@@ -163,8 +162,6 @@ async def show_preview(
         p.preview_path = path.name
         await state.update_data(preview_path=path.name)
 
-        # Новая карточка считается один раз при первом успешном рендере.
-        # Сохранение не требуется, а повторные предпросмотры этот счётчик не крутят.
         if not d.get("generation_counted"):
             _, _, milestone = await db.count_generation(user_id)
             await state.update_data(generation_counted=True)
@@ -179,7 +176,6 @@ async def show_preview(
             draft_kb(p.type, p.theme),
         )
 
-        # каждый успешный рендер - в лог-группу
         from log_sink import spawn_created_page_log
         spawn_created_page_log(bot, cfg, db, p, user, preview_path=path, stage="render")
         return p
@@ -214,17 +210,11 @@ async def show_quick(msg: Message, state: FSMContext) -> None:
 
 
 async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, user_id: int, kind: str, user=None) -> None:
-    from admin import is_admin
     try:
         get_template(kind)
     except ValueError:
         return
-    # миротворец только админам - жёсткий запрет на любом пути
-    if kind == "mirotorets" and not is_admin(user_id):
-        await msg.answer("Миротворец недоступен")
-        return
     s = await db.get_settings(user_id)
-    # сохраняем id текущего сообщения мастера, если оно уже есть
     prev = await state.get_data()
     flow_mid = prev.get("flow_message_id") or (msg.message_id if msg else None)
     flow_cid = prev.get("flow_chat_id") or (msg.chat.id if msg else None)
@@ -234,7 +224,6 @@ async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, u
     elif kind == "mirotorets":
         theme = "mirotorets"
     else:
-        # всем обычным - старый документ по умолчанию (кроме news/se/mirotorets)
         theme = "olddoc"
     await state.update_data(
         type=kind,
@@ -256,11 +245,7 @@ async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, u
 
 @router.callback_query(F.data.startswith("new:"))
 async def start_new(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> None:
-    from admin import is_admin
     kind = q.data.split(":", 1)[1]
-    if kind == "mirotorets" and not is_admin(q.from_user.id if q.from_user else None):
-        await q.answer("Недоступно", show_alert=True)
-        return
     try:
         label = get_template(kind).label
     except ValueError:
@@ -322,13 +307,12 @@ async def back_field(q: CallbackQuery, state: FSMContext) -> None:
     d = await state.get_data()
     i = int(d.get("i", 0))
     if i <= 0:
-        from admin import is_admin
         await state.clear()
         await flow_show(
             q,
             state,
             tr("choose_type"),
-            types_kb(admin=is_admin(q.from_user.id if q.from_user else None)),
+            types_kb(),
             as_new=True,
         )
         return
@@ -375,7 +359,6 @@ async def after_image(msg: Message, state: FSMContext, db: Db, cfg: Config, bot:
         await show_preview(msg, state, db, cfg, bot, user)
         return
     ptype = d.get("type") or ""
-    # для страны/региона - шаг с картой территорий
     if ptype in ("country", "region"):
         await ask_map_images(msg, state)
         return
@@ -447,7 +430,6 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
     images = page_images(data)
     ptype = d.get("type") or ""
     max_count = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
-    # для news/superevent при новой фотке просто заменяем, не блокируем
     if len(images) >= max_count and ptype not in ("news", "superevent", "mirotorets"):
         await msg.answer(
             tr("image_limit", max_count=max_count),
@@ -484,7 +466,6 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
         return
 
     await db.add_media(msg.from_user.id, info.path.name, info.width, info.height)
-    # news - только одна картинка, старую выкидываем
     if ptype in ("news", "superevent", "mirotorets"):
         images = [info.path.name]
     else:
@@ -955,11 +936,6 @@ async def quick_input(msg: Message, state: FSMContext, db: Db, cfg: Config) -> N
         await msg.answer(tr("quick_hint"), reply_markup=main_menu())
         return
 
-    from admin import is_admin
-    if parsed.type == "mirotorets" and not is_admin(msg.from_user.id if msg.from_user else None):
-        await msg.answer("Миротворец недоступен", reply_markup=main_menu())
-        return
-
     s = await db.get_settings(msg.from_user.id)
     data = parsed.data
     data.setdefault("title", "Без названия")
@@ -987,8 +963,6 @@ async def quick_input(msg: Message, state: FSMContext, db: Db, cfg: Config) -> N
         generation_counted=False,
     )
     await show_quick(msg, state)
-
-
 
 
 @router.callback_query(F.data == "draft:olddoc")
@@ -1107,7 +1081,6 @@ async def _draft_old_apply(q: CallbackQuery, state: FSMContext, db: Db, cfg: Con
         await show_preview(q.message, state, db, cfg, bot, q.from_user)
         return
 
-    # mutate a temp dict that mirrors pending keys for cycle helpers
     tmp = dict(pending)
     ensure_old_meta(tmp)
     if action == "reseed":
@@ -1116,134 +1089,4 @@ async def _draft_old_apply(q: CallbackQuery, state: FSMContext, db: Db, cfg: Con
     elif action in {"cups", "cups_next"}:
         pending["_old_stain_count"] = cycle_stain_count_step(tmp, 1)
     elif action == "cups_prev":
-        pending["_old_stain_count"] = cycle_stain_count_step(tmp, -1)
-    elif action in {"paper", "paper_next"}:
-        pending["_old_paper"] = cycle_paper(tmp, 1)
-    elif action == "paper_prev":
-        pending["_old_paper"] = cycle_paper(tmp, -1)
-    elif action == "text":
-        pending["_old_drunk"] = toggle_drunk(tmp)
-    elif action == "flags":
-        pending["_old_drunk_flags"] = toggle_drunk_flags(tmp)
-    elif action == "sub":
-        pending["_old_substances"] = toggle_substances(tmp)
-    elif action == "window":
-        pending["_old_window"] = toggle_window(tmp)
-    elif action == "outline":
-        pending["_old_outline"] = toggle_outline(tmp)
-    elif action == "bw":
-        pending["_old_bw"] = toggle_bw(tmp)
-    else:
-        return
-
-    await state.update_data(old_pending=pending)
-    try:
-        await q.message.edit_reply_markup(reply_markup=_kb_from_pending(pending))
-    except Exception:
-        pass
-    await q.answer("ок")
-
-
-@router.callback_query(
-    F.data.in_({
-        "old:reseed", "old:cups", "old:cups_next", "old:cups_prev",
-        "old:paper", "old:paper_next", "old:paper_prev", "old:text", "old:flags",
-        "old:sub", "old:window", "old:outline", "old:bw", "old:apply",
-    })
-)
-async def draft_old_actions(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, bot: Bot) -> None:
-    action = q.data.split(":", 1)[1]
-    if action != "apply":
-        await q.answer()
-    await _draft_old_apply(q, state, db, cfg, bot, action)
-
-
-@router.callback_query(NewPage.map_image, F.data.in_({"img:skip", "img:done"}))
-async def skip_map_image(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, bot: Bot) -> None:
-    await q.answer()
-    await go_theme_or_preview(q.message, state, db, cfg, bot, q.from_user)
-
-
-@router.callback_query(NewPage.map_image, F.data == "img:back")
-async def back_map_image(q: CallbackQuery, state: FSMContext) -> None:
-    await q.answer()
-    d = await state.get_data()
-    await state.set_state(NewPage.image)
-    tpl = get_template(d["type"])
-    count = len(page_images(d.get("page_data") or {}))
-    max_count = MAX_PAGE_IMAGES
-    text = tr(
-        "send_image",
-        label=tpl.image_label.lower(),
-        max_mb=d.get("max_image_mb", 12),
-        count=count,
-        max_count=max_count,
-    )
-    await flow_show(q.message, state, text, image_kb(count, d.get("type") or ""))
-
-
-@router.message(NewPage.map_image, F.photo | F.document)
-async def take_map_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Config) -> None:
-    d = await state.get_data()
-    data = d.get("page_data") or {}
-    images = map_images(data)
-    ptype = d.get("type") or ""
-    max_count = MAX_PAGE_IMAGES
-    if len(images) >= max_count:
-        await flow_show(msg, state, tr("image_limit", max_count=max_count), image_kb(len(images), ptype))
-        return
-    f = msg.photo[-1] if msg.photo else msg.document
-    if not f:
-        await flow_show(msg, state, tr("image_only"), image_kb(len(images), ptype))
-        return
-    size = getattr(f, "file_size", 0) or 0
-    if size > cfg.max_image_mb * 1024 * 1024:
-        await flow_show(
-            msg, state,
-            tr("image_bad", error=f"файл больше {cfg.max_image_mb} МБ"),
-            image_kb(len(images), ptype),
-        )
-        return
-    from io import BytesIO
-    buf = BytesIO()
-    try:
-        await bot.download(f, destination=buf)
-        info = await save_image(buf.getvalue(), msg.from_user.id, cfg.work_dir, cfg.max_image_mb)
-    except BadImage as e:
-        await flow_show(msg, state, tr("image_bad", error=str(e)), image_kb(len(images), ptype))
-        return
-    except Exception:
-        await flow_show(msg, state, tr("image_bad", error="не удалось скачать файл"), image_kb(len(images), ptype))
-        return
-    await db.add_media(msg.from_user.id, info.path.name, info.width, info.height)
-    images = list(images) + [info.path.name]
-    set_map_images(data, images)
-    await state.update_data(page_data=data)
-    await flow_show(
-        msg, state,
-        tr("send_map_image", max_mb=d.get("max_image_mb", 12), count=len(images), max_count=max_count),
-        image_kb(len(images), ptype),
-    )
-
-
-@router.callback_query(NewPage.map_image, F.data.startswith("img:rm:"))
-async def remove_map_image(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> None:
-    await q.answer()
-    d = await state.get_data()
-    data = d.get("page_data") or {}
-    images = map_images(data)
-    try:
-        i = int(q.data.split(":")[-1])
-    except ValueError:
-        return
-    if 0 <= i < len(images):
-        images.pop(i)
-        set_map_images(data, images)
-        await state.update_data(page_data=data)
-    await flow_show(
-        q.message,
-        state,
-        tr("send_map_image", max_mb=d.get("max_image_mb", 12), count=len(images), max_count=MAX_PAGE_IMAGES),
-        image_kb(len(images), d.get("type") or ""),
-    )
-
+        pending["

@@ -72,14 +72,11 @@ async def help_message(msg: Message) -> None:
     await msg.answer(tr("help"), reply_markup=main_menu(), parse_mode="HTML")
 
 
-
-
 @router.message(Command("create"))
 @router.message(F.text == CREATE)
 async def create(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
-    from admin import is_admin
     await clear_flow(state, msg.from_user.id, db, cfg)
-    await flow_show(msg, state, tr("choose_type"), types_kb(admin=is_admin(msg.from_user.id)), as_new=True)
+    await flow_show(msg, state, tr("choose_type"), types_kb(), as_new=True)
 
 
 @router.message(Command("cancel"))
@@ -278,7 +275,7 @@ async def font_upload_file(msg: Message, state: FSMContext, db: Db, cfg: Config)
     from states import FontUpload
     cur = await state.get_state()
     if cur != FontUpload.wait.state:
-        return  # not in upload mode - ignore
+        return
     doc = msg.document
     if not doc:
         return
@@ -294,7 +291,6 @@ async def font_upload_file(msg: Message, state: FSMContext, db: Db, cfg: Config)
     buf = BytesIO()
     await msg.bot.download(doc, destination=buf)
     folder = user_fonts_dir(cfg.work_dir, msg.from_user.id)
-    # safe name
     safe = "".join(c for c in (doc.file_name or "font.ttf") if c.isalnum() or c in "._-")[:80]
     if not safe.lower().endswith((".ttf", ".otf")):
         safe += ".ttf"
@@ -347,4 +343,3 @@ async def font_search_query(msg: Message, state: FSMContext, db: Db, cfg: Config
         f"Найдено: {len(found)}\nВыбери:",
         reply_markup=fonts_kb(choices, cur_font, 0, per_page=10),
     )
-
