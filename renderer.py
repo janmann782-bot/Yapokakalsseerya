@@ -598,8 +598,7 @@ def make_html(
             '<div class="anthem-block">'
             f'<div class="anthem-title">{value_html(anthem)}</div>'
             '<div class="anthem-player">'
-            '<span class="anthem-play">▶</span>'
-            '<span class="anthem-bar"><span class="anthem-bar-fill"></span></span>'
+            '<span class="anthem-play" aria-hidden="true"></span>'
             f'<span class="anthem-time">{dur}</span>'
             '</div></div>'
         )
@@ -719,23 +718,32 @@ section h2 {{
 
 .anthem-block {{ margin: 4px 20px 16px; text-align: center; }}
 .anthem-title {{ color: var(--link); font-size: 17px; margin-bottom: 8px; }}
+/* Wikipedia TimedMediaHandler-style player */
 .anthem-player {{
-  display: flex; align-items: center; gap: 10px;
-  background: var(--panel-alt); border: var(--border-width) solid var(--border);
-  border-radius: 6px; padding: 8px 12px; max-width: 420px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  background: #7c7c7c; border: none;
+  border-radius: 3px; padding: 0 10px; height: 38px;
+  max-width: 420px; margin: 0 auto; box-sizing: border-box;
 }}
 .anthem-play {{
-  width: 28px; height: 28px; border-radius: 50%;
-  background: #222; color: #fff; display: flex; align-items: center; justify-content: center;
-  font-size: 12px; flex: 0 0 auto;
+  width: 0; height: 0; flex: 0 0 auto;
+  border-style: solid;
+  border-width: 9px 0 9px 14px;
+  border-color: transparent transparent transparent #ffffff;
+  background: transparent; border-radius: 0;
+  margin-left: 4px;
 }}
 .sheet[data-theme="dark"] .anthem-play,
-.sheet[data-theme="aurelia"] .anthem-play {{ background: #ddd; color: #111; }}
-.anthem-bar {{
-  flex: 1; height: 6px; background: #c8c8c8; border-radius: 3px; overflow: hidden;
+.sheet[data-theme="aurelia"] .anthem-play {{
+  border-color: transparent transparent transparent #ffffff;
+  background: transparent;
 }}
-.anthem-bar-fill {{ display: block; width: 18%; height: 100%; background: #555; }}
-.anthem-time {{ font-size: 14px; color: var(--text-secondary); flex: 0 0 auto; min-width: 36px; text-align: right; }}
+.anthem-time {{
+  font-size: 13px; line-height: 1; color: #ffffff;
+  background: #000000; border-radius: 4px;
+  padding: 5px 10px; flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}}
 .gallery.map {{ margin-top: 8px; }}
 </style>
 </head>
@@ -798,8 +806,7 @@ async def render_page(
 
             async with _render_slots, async_playwright() as p:
                 browser = await p.chromium.launch(
-                    executable_path=p.chromium.executable_path,
-                    args=["--disable-dev-shm-usage"],
+                    args=["--disable-dev-shm-usage", "--no-sandbox"],
                 )
                 try:
                     markup = make_mirotorets_html(page, get_theme("mirotorets"), root, watermark=False)
@@ -830,8 +837,7 @@ async def render_page(
 
         async with _render_slots, async_playwright() as p:
             browser = await p.chromium.launch(
-                executable_path=p.chromium.executable_path,
-                args=["--disable-dev-shm-usage"],
+                args=["--disable-dev-shm-usage", "--no-sandbox"],
             )
             try:
                 markup = make_html(page, get_theme(page.theme), root, watermark, font_key=font_key, user_id=user_id)

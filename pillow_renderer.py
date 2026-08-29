@@ -1217,39 +1217,80 @@ def _render_mirotorets(page: Page, root: Path, path: Path, quality: str = "high"
 
 
 
+def _primary_font(font):
+    """Pillow text APIs need a real font, not (primary, fallback) tuple."""
+    if isinstance(font, tuple):
+        return font[0]
+    return font
+
+
 def _anthem_block(w: int, s: float, title: str, duration: str, theme: Theme) -> Image.Image:
+    """Wikipedia TimedMediaHandler-style audio bar: grey track, white ▶, black time badge."""
     pad = int(12 * s)
     f_title = _font(theme, max(12, int(15 * s)), bold=False)
-    f_time = _font(theme, max(11, int(13 * s)), bold=False)
+    f_time = _primary_font(_font(theme, max(11, int(13 * s)), bold=False))
     tmp = Image.new("RGB", (10, 10), theme.panel)
     dr = ImageDraw.Draw(tmp)
     title_lines = _wrap(dr, title, f_title, w - pad * 2)
     th = _line_h(dr, f_title)
-    bar_h = int(36 * s)
-    h = pad // 2 + len(title_lines) * th + 6 + bar_h + pad // 2
+    # Wikipedia mobile: compact grey bar ~36–40px
+    bar_h = int(38 * s)
+    h = pad // 2 + len(title_lines) * th + int(8 * s) + bar_h + pad // 2
     im = Image.new("RGB", (w, h), theme.panel)
     dr = ImageDraw.Draw(im)
     y = pad // 2
-    _draw_lines(dr, title_lines, (pad, y), f_title, theme.link if hasattr(theme, "link") else theme.accent, th, w - pad * 2, "center")
-    y += len(title_lines) * th + 6
-    # player bar
+    link_col = theme.link if hasattr(theme, "link") else theme.accent
+    _draw_lines(dr, title_lines, (pad, y), f_title, link_col, th, w - pad * 2, "center")
+    y += len(title_lines) * th + int(8 * s)
+
+    # Player bar — solid medium grey like Wikipedia (#7c7c7c)
     bx0, by0 = pad, y
     bx1, by1 = w - pad, y + bar_h
-    dr.rounded_rectangle([bx0, by0, bx1, by1], radius=int(6 * s), outline=theme.border, width=max(1, int(s)), fill=theme.panel_alt if hasattr(theme, "panel_alt") else theme.panel)
-    # play circle
-    r = int(11 * s)
-    cx, cy = bx0 + int(18 * s), (by0 + by1) // 2
-    dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=theme.text)
-    # progress
-    bar_x0 = cx + r + int(10 * s)
-    bar_x1 = bx1 - int(50 * s)
-    bar_y = cy
-    dr.line([bar_x0, bar_y, bar_x1, bar_y], fill=theme.border, width=max(2, int(3 * s)))
-    fill_x = bar_x0 + int((bar_x1 - bar_x0) * 0.18)
-    dr.line([bar_x0, bar_y, fill_x, bar_y], fill=theme.text_secondary, width=max(2, int(3 * s)))
-    dur = duration or "0:00"
-    tw = f_time.getlength(dur) if hasattr(f_time, "getlength") else len(dur) * 8
-    dr.text((bx1 - int(12 * s) - tw, cy - int(8 * s)), dur, fill=theme.text_secondary, font=f_time)
+    bar_fill = "#7c7c7c"
+    radius = max(2, int(3 * s))
+    dr.rounded_rectangle([bx0, by0, bx1, by1], radius=radius, fill=bar_fill)
+
+    cy = (by0 + by1) // 2
+
+    # White play triangle (▶) — not a filled circle
+    tri_cx = bx0 + int(22 * s)
+    tri_size = int(10 * s)
+    # triangle pointing right
+    tri = [
+        (tri_cx - tri_size // 2, cy - tri_size),
+        (tri_cx - tri_size // 2, cy + tri_size),
+        (tri_cx + tri_size, cy),
+    ]
+    dr.polygon(tri, fill="#ffffff")
+
+    # Time badge — black rounded pill, white text (right side)
+    dur = (duration or "0:00").strip() or "0:00"
+    try:
+        tw = int(f_time.getlength(dur))
+    except Exception:
+        box = dr.textbbox((0, 0), dur, font=f_time)
+        tw = box[2] - box[0]
+    badge_pad_x = int(10 * s)
+    badge_pad_y = int(5 * s)
+    badge_h = int(22 * s)
+    badge_w = tw + badge_pad_x * 2
+    badge_x1 = bx1 - int(10 * s)
+    badge_x0 = badge_x1 - badge_w
+    badge_y0 = cy - badge_h // 2
+    badge_y1 = badge_y0 + badge_h
+    dr.rounded_rectangle(
+        [badge_x0, badge_y0, badge_x1, badge_y1],
+        radius=max(2, int(4 * s)),
+        fill="#000000",
+    )
+    # vertically center text in badge
+    try:
+        tb = dr.textbbox((0, 0), dur, font=f_time)
+        th_t = tb[3] - tb[1]
+        ty = badge_y0 + (badge_h - th_t) // 2 - tb[1]
+    except Exception:
+        ty = cy - int(7 * s)
+    dr.text((badge_x0 + badge_pad_x, ty), dur, fill="#ffffff", font=f_time)
     return im
 
 def render_pillow(
