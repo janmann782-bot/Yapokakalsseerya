@@ -46,7 +46,16 @@ RU = {
         f'{FRAME}\n'
         'PNG JPEG WEBP до {max_mb} МБ\n'
         'Сейчас: {count}/{max_count}\n'
-        'Когда закончишь жми Готово'
+        'Когда закончишь жми Готово\n'
+        '(если есть картинки с территорией то они на след. Шаг)'
+    ),
+    'send_map_image': (
+        f'{FRAME}\n'
+        'Карта территорий\n'
+        f'{FRAME}\n'
+        'PNG JPEG WEBP до {max_mb} МБ\n'
+        'Сейчас: {count}/{max_count}\n'
+        'Кинь карту / схему территорий или жми Готово'
     ),
     'choose_theme': (
         f'{FRAME}\n'

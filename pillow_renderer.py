@@ -1274,6 +1274,7 @@ def render_pillow(
     if page.type == "superevent":
         return _render_superevent_tfr(page, root, path)
 
+    global _ACTIVE_FONT_REG, _ACTIVE_FONT_BOLD
     theme = get_theme(page.theme)
     tpl = get_template(page.type)
     # пользовательский/выбранный шрифт
@@ -1289,11 +1290,9 @@ def render_pillow(
     if _reg and _reg.is_file():
         page.data["_pillow_font_reg"] = str(_reg)
         page.data["_pillow_font_bold"] = str(_bold or _reg)
-        global _ACTIVE_FONT_REG, _ACTIVE_FONT_BOLD
         _ACTIVE_FONT_REG = str(_reg)
         _ACTIVE_FONT_BOLD = str(_bold or _reg)
     else:
-        global _ACTIVE_FONT_REG, _ACTIVE_FONT_BOLD
         _ACTIVE_FONT_REG = _ACTIVE_FONT_BOLD = None
     d = page.data
     s = PILLOW_SCALE.get(quality, PILLOW_SCALE["high"])
