@@ -24,6 +24,7 @@ from media import (
     save_image,
     set_image_caption,
     set_page_images,
+    split_parliament_image_role,
 )
 from models import Page
 from parser import parse_section
@@ -42,6 +43,7 @@ from ui import (
     page_actions_kb,
     olddoc_options_kb,
     page_image_kb,
+    page_parliament_assets_kb,
     pages_kb,
     progress_text,
     render_progress,
@@ -63,6 +65,61 @@ def valid_preview(path: str | None, cfg: Config) -> Path | None:
     if p.parent != root or not p.name.startswith("preview_"):
         return None
     return p if p.is_file() else None
+
+
+def _parliament_party_names(data: dict) -> list[str]:
+    raw = str((data or {}).get("parties") or "").strip()
+    names: list[str] = []
+    for line in raw.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        if "|" in s or ";" in s:
+            name = s.split("|", 1)[0].split(";", 1)[0].strip()
+        else:
+            parts = [x.strip() for x in s.split(",")]
+            name = parts[0] if parts else s
+        if name:
+            names.append(name)
+    return names
+
+
+def _parliament_assets(data: dict) -> tuple[str | None, list[tuple[str, bool]], dict[str, str], dict[str, str]]:
+    images = page_images(data or {})
+    captions = {path: image_caption(data or {}, path, i) for i, path in enumerate(images)}
+    flag_path: str | None = None
+    party_map: dict[str, str] = {}
+    fallback: list[str] = []
+    for path in images:
+        role, clean = split_parliament_image_role(captions.get(path) or "")
+        if role == "flag" and flag_path is None:
+            flag_path = path
+        elif role == "party_logo" and clean:
+            party_map[clean.casefold().replace("ё", "е")] = path
+        else:
+            fallback.append(path)
+    if flag_path is None and fallback:
+        flag_path = fallback[0]
+    names = _parliament_party_names(data or {})
+    rows = [(name, name.casefold().replace("ё", "е") in party_map) for name in names]
+    return flag_path, rows, party_map, captions
+
+
+async def _show_page_parliament_assets(msg: Message, p: Page, state: FSMContext, note: str | None = None) -> None:
+    flag_path, rows, _party_map, _captions = _parliament_assets(p.data)
+    ready = sum(1 for _, ok in rows if ok)
+    text = (
+        "Флаг и логотипы парламента\n\n"
+        "Нажми на флаг или нужную партию\n"
+        "Потом пришли новую картинку\n\n"
+        f"Флаг страны {'готов' if flag_path else 'не задан'}\n"
+        f"Логотипы партий {ready}/{len(rows)}"
+    )
+    if note:
+        text = note + "\n\n" + text
+    await state.set_state(EditPage.image)
+    await state.update_data(page_id=p.id, image_mode="parliament_assets", parliament_target=None)
+    await msg.answer(text, reply_markup=page_parliament_assets_kb(p.id, bool(flag_path), rows))
 
 
 async def render_saved(
@@ -313,6 +370,9 @@ async def page_add(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> 
             reply_markup=edit_value_kb(f"p:e:{page_id}", f"p:o:{page_id}"),
         )
     elif action == "image":
+        if p.type == "parliament":
+            await _show_page_parliament_assets(q.message, p, state)
+            return
         await state.set_state(EditPage.image)
         tpl = get_template(p.type)
         count = len(page_images(p.data))
@@ -388,6 +448,65 @@ async def page_section(msg: Message, state: FSMContext, db: Db, cfg: Config) -> 
     await save_and_render(msg, p, db, cfg)
 
 
+@router.callback_query(F.data.startswith("ppimg:"))
+async def page_parliament_asset_action(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> None:
+    await q.answer()
+    parts = q.data.split(":")
+    if len(parts) < 3:
+        return
+    page_id = int(parts[1])
+    p = await get_owned(q, db, page_id)
+    if not p or p.type != "parliament":
+        return
+    action = parts[2]
+
+    if action == "done":
+        await state.clear()
+        await render_saved(q.message, p, db, cfg)
+        return
+
+    if action == "flag":
+        await state.set_state(EditPage.image)
+        await state.update_data(page_id=page_id, image_mode="parliament_assets", parliament_target="flag")
+        await q.message.answer("Пришли новый флаг страны")
+        return
+
+    if action == "set" and len(parts) == 4:
+        names = _parliament_party_names(p.data)
+        i = int(parts[3])
+        if not 0 <= i < len(names):
+            return
+        name = names[i]
+        await state.set_state(EditPage.image)
+        await state.update_data(page_id=page_id, image_mode="parliament_assets", parliament_target=f"party:{name}")
+        await q.message.answer(f"Пришли новый логотип партии\n{name}")
+        return
+
+    if action == "rm" and len(parts) == 4:
+        flag_path, rows, party_map, captions = _parliament_assets(p.data)
+        key = parts[3]
+        target_path = None
+        if key == "flag":
+            target_path = flag_path
+        else:
+            names = _parliament_party_names(p.data)
+            i = int(key)
+            if 0 <= i < len(names):
+                target_path = party_map.get(names[i].casefold().replace("ё", "е"))
+        if target_path:
+            images = [x for x in page_images(p.data) if x != target_path]
+            set_page_images(p.data, images)
+            safe_unlink(p.preview_path, cfg.work_dir, "preview_")
+            p.preview_path = None
+            await db.update_page(p)
+            if await db.drop_media_if_unused(target_path, q.from_user.id):
+                safe_unlink(target_path, cfg.work_dir, "media_")
+            await _show_page_parliament_assets(q.message, p, state, "Удалил")
+        else:
+            await _show_page_parliament_assets(q.message, p, state)
+        return
+
+
 @router.message(EditPage.image)
 async def page_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Config) -> None:
     d = await state.get_data()
@@ -397,6 +516,60 @@ async def page_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
         await msg.answer(tr("page_not_found"))
         return
     images = page_images(p.data)
+    if p.type == "parliament" and d.get("image_mode") == "parliament_assets":
+        target = str(d.get("parliament_target") or "").strip()
+        if not target:
+            await _show_page_parliament_assets(msg, p, state, "Сначала выбери флаг страны или партию")
+            return
+
+        f = msg.photo[-1] if msg.photo else msg.document
+        if not f:
+            await _show_page_parliament_assets(msg, p, state, "Нужна картинка")
+            return
+        size = getattr(f, "file_size", 0) or 0
+        if size > cfg.max_image_mb * 1024 * 1024:
+            await _show_page_parliament_assets(msg, p, state, f"Файл больше {cfg.max_image_mb} МБ")
+            return
+
+        buf = BytesIO()
+        try:
+            await bot.download(f, destination=buf)
+            info = await save_image(buf.getvalue(), msg.from_user.id, cfg.work_dir, cfg.max_image_mb)
+        except BadImage as e:
+            await _show_page_parliament_assets(msg, p, state, str(e))
+            return
+        except Exception:
+            log.exception("parliament asset download failed for user %s", msg.from_user.id)
+            await _show_page_parliament_assets(msg, p, state, "Не удалось скачать файл")
+            return
+
+        old_flag, _rows, party_map, _captions = _parliament_assets(p.data)
+        replace_path = None
+        if target == "flag":
+            replace_path = old_flag
+            caption = "flag"
+            label = "Флаг страны"
+        else:
+            party_name = target.split(":", 1)[1].strip()
+            replace_path = party_map.get(party_name.casefold().replace("ё", "е"))
+            caption = f"party: {party_name}"
+            label = party_name
+
+        new_images = [x for x in images if x != replace_path]
+        new_images.append(info.path.name)
+        set_page_images(p.data, new_images)
+        set_image_caption(p.data, info.path.name, caption)
+        safe_unlink(p.preview_path, cfg.work_dir, "preview_")
+        p.preview_path = None
+        await db.add_media(msg.from_user.id, info.path.name, info.width, info.height, p.id)
+        await db.update_page(p)
+        if replace_path and replace_path != info.path.name:
+            if await db.drop_media_if_unused(replace_path, msg.from_user.id):
+                safe_unlink(replace_path, cfg.work_dir, "media_")
+        await state.update_data(parliament_target=None)
+        await _show_page_parliament_assets(msg, p, state, f"Сохранил\n{label}")
+        return
+
     max_c = 1 if p.type in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
     if len(images) >= max_c and p.type not in ("news", "superevent", "mirotorets"):
         await msg.answer(

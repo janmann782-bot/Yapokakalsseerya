@@ -115,6 +115,24 @@ def parliament_assets_kb(flag_set: bool, parties: list[tuple[str, bool]]) -> Inl
     rows.append([ib("⬅️ Назад", "img:back")])
     rows.append([ib("❌ Отмена", "flow:cancel")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+def page_parliament_assets_kb(page_id: int, flag_set: bool, parties: list[tuple[str, bool]]) -> InlineKeyboardMarkup:
+    rows = []
+    flag_mark = "✅" if flag_set else "▫️"
+    flag_row = [ib(f"{flag_mark} Флаг страны", f"ppimg:{page_id}:flag")]
+    if flag_set:
+        flag_row.append(ib("🗑", f"ppimg:{page_id}:rm:flag"))
+    rows.append(flag_row)
+    for i, (name, has_logo) in enumerate(parties):
+        mark = "✅" if has_logo else "▫️"
+        row = [ib(f"{mark} {name}"[:52], f"ppimg:{page_id}:set:{i}")]
+        if has_logo:
+            row.append(ib("🗑", f"ppimg:{page_id}:rm:{i}"))
+        rows.append(row)
+    rows.append([ib("✅ Готово", f"ppimg:{page_id}:done")])
+    rows.append([ib("⬅️ К полям", f"p:e:{page_id}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 def page_image_kb(page_id: int, count: int, page_type: str = "") -> InlineKeyboardMarkup:
     rows = [[ib(f"✅ Готово ({count})", f"pi:{page_id}:done")]]
     single = page_type in TFR_SIMPLE_TYPES
@@ -281,7 +299,10 @@ def fields_kb(tpl: Template, data: dict, page_id: int | None = None) -> InlineKe
         if not is_news:
             extra.append([ib("➕ Свое поле", "draft:custom"), ib("🧩 Свой раздел", "draft:section")])
         if tpl.key not in NO_IMAGE_TYPES:
-            extra.append([ib("🖼 Картинка" if is_news else "🖼 Изображения", "draft:image")])
+            if tpl.key == "parliament":
+                extra.append([ib("🏳 Флаг и логотипы", "draft:image")])
+            else:
+                extra.append([ib("🖼 Картинка" if is_news else "🖼 Изображения", "draft:image")])
         extra.append([ib("⬅️ К предпросмотру", "draft:back")])
         rows += extra
     else:
@@ -289,7 +310,10 @@ def fields_kb(tpl: Template, data: dict, page_id: int | None = None) -> InlineKe
         if not is_news:
             extra.append([ib("➕ Свое поле", f"pa:{page_id}:custom"), ib("🧩 Свой раздел", f"pa:{page_id}:section")])
         if tpl.key not in NO_IMAGE_TYPES:
-            extra.append([ib("🖼 Картинка" if is_news else "🖼 Изображения", f"pa:{page_id}:image")])
+            if tpl.key == "parliament":
+                extra.append([ib("🏳 Флаг и логотипы", f"pa:{page_id}:image")])
+            else:
+                extra.append([ib("🖼 Картинка" if is_news else "🖼 Изображения", f"pa:{page_id}:image")])
         extra.append([ib("⬅️ К странице", f"p:o:{page_id}")])
         rows += extra
     return InlineKeyboardMarkup(inline_keyboard=rows)
