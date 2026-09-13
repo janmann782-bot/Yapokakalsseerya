@@ -21,6 +21,19 @@ ROLE_MARKERS = {
 }
 
 
+PARLIAMENT_ROLE_MARKERS = {
+    "flag": (
+        "pflag", "pflag:", "parliament flag", "parliament flag:",
+        "country flag", "country flag:", "флаг страны", "флаг страны:",
+        "парламентский флаг", "парламентский флаг:"
+    ),
+    "party_logo": (
+        "party", "party:", "party logo", "party logo:", "plogo", "plogo:",
+        "logo", "logo:", "партия", "партия:", "лого", "лого:"
+    ),
+}
+
+
 def _norm_caption_marker(value: str) -> str:
     return value.casefold().replace("ё", "е").strip()
 
@@ -40,6 +53,49 @@ def split_image_role(caption: str | None) -> tuple[str | None, str]:
                 rest = text[len(marker):].lstrip(" :-—–|")
                 return role, rest
     return None, text
+
+
+def split_parliament_image_role(caption: str | None) -> tuple[str | None, str]:
+    text = str(caption or "").strip()
+    if not text:
+        return None, ""
+
+    low = _norm_caption_marker(text)
+    for role, markers in PARLIAMENT_ROLE_MARKERS.items():
+        for marker in markers:
+            m = _norm_caption_marker(marker)
+            if low == m:
+                return role, ""
+            if low.startswith(m):
+                rest = text[len(marker):].lstrip(" :-—–|")
+                return role, rest
+    return None, text
+
+
+def parliament_image_assets(data: dict) -> tuple[list[tuple[str, str]], tuple[str, str] | None, list[tuple[str, str]]]:
+    """Split regular images from parliament-specific assets.
+
+    Returns ``(gallery_items, country_flag, party_logos)`` where party logos are
+    ``(path, party_name)`` pairs. Captions are used only as role markers and are
+    stripped from the returned items.
+    """
+    gallery: list[tuple[str, str]] = []
+    country_flag: tuple[str, str] | None = None
+    party_logos: list[tuple[str, str]] = []
+
+    for i, path in enumerate(page_images(data)):
+        caption = image_caption(data, path, i)
+        role, clean = split_parliament_image_role(caption)
+        if role == "flag":
+            if country_flag is None:
+                country_flag = (path, clean)
+            else:
+                gallery.append((path, clean))
+        elif role == "party_logo":
+            party_logos.append((path, clean))
+        else:
+            gallery.append((path, caption))
+    return gallery, country_flag, party_logos
 
 
 def battle_image_groups(data: dict) -> tuple[tuple[str, str] | None, list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]]]:

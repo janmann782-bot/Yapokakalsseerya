@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from uuid import uuid4
 
-from media import battle_image_groups, image_caption, map_image_caption, map_images, page_images
+from media import battle_image_groups, image_caption, map_image_caption, map_images, page_images, parliament_image_assets
 from models import Page
 from templates import Field, Template, get_template
 from themes import Theme, get_theme
@@ -206,6 +206,180 @@ def battle_sections(data: dict, work_dir: str | Path) -> tuple[str, str]:
 
 
 
+PARLIAMENT_PALETTE = (
+    "#5B8FF9", "#61DDAA", "#65789B", "#F6BD16", "#7262FD",
+    "#78D3F8", "#9661BC", "#F6903D", "#008685", "#F08BB4",
+)
+
+
+def _norm_key(value: object) -> str:
+    return str(value or "").casefold().replace("ё", "е").strip()
+
+
+def _parse_int(value: object) -> int | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    digits = ''.join(ch for ch in text if ch.isdigit())
+    return int(digits) if digits else None
+
+
+def _safe_color(value: object, fallback: str) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return fallback
+    if raw.startswith('#') and len(raw) in {4, 7}:
+        body = raw[1:]
+        if all(ch in '0123456789abcdefABCDEF' for ch in body):
+            return raw
+    named = raw.lower()
+    allowed = {'red', 'green', 'blue', 'yellow', 'orange', 'purple', 'pink', 'gray', 'grey', 'black', 'white', 'brown'}
+    return raw if named in allowed else fallback
+
+
+def _parse_parliament_parties(value: object, total_seats: int | None = None) -> tuple[list[dict], int]:
+    parties: list[dict] = []
+    lines = []
+    if isinstance(value, (list, tuple)):
+        lines = [str(x).strip() for x in value if str(x).strip()]
+    else:
+        lines = [ln.strip() for ln in str(value or '').splitlines() if ln.strip()]
+
+    for idx, raw in enumerate(lines):
+        parts = [p.strip() for p in __import__('re').split(r'\s*[|;]\s*', raw) if p.strip()]
+        name = ''
+        seats = None
+        color = ''
+        if len(parts) >= 2:
+            name = parts[0]
+            seats = _parse_int(parts[1])
+            if len(parts) >= 3:
+                color = parts[2]
+        else:
+            m = __import__('re').match(r'^(.*?)\s+(\d+)\s*(#[0-9A-Fa-f]{3,6}|[A-Za-z]+)?\s*$', raw)
+            if m:
+                name = m.group(1).strip()
+                seats = int(m.group(2))
+                color = (m.group(3) or '').strip()
+        if not name or not seats or seats <= 0:
+            continue
+        fallback = PARLIAMENT_PALETTE[idx % len(PARLIAMENT_PALETTE)]
+        parties.append({
+            'name': name,
+            'seats': seats,
+            'color': _safe_color(color, fallback),
+        })
+    total = total_seats or sum(int(x['seats']) for x in parties)
+    return parties, total
+
+
+def _hemicycle_counts(total: int) -> list[int]:
+    if total <= 0:
+        return []
+    rows = 4 if total <= 40 else 5 if total <= 90 else 6 if total <= 160 else 7
+    weights = [1.0 + i * 0.24 for i in range(rows)]
+    raw = [total * w / sum(weights) for w in weights]
+    counts = [max(1, int(x)) for x in raw]
+    diff = total - sum(counts)
+    order = list(range(rows - 1, -1, -1))
+    i = 0
+    while diff != 0:
+        idx = order[i % len(order)]
+        if diff > 0:
+            counts[idx] += 1
+            diff -= 1
+        elif counts[idx] > 1:
+            counts[idx] -= 1
+            diff += 1
+        i += 1
+    return counts
+
+
+def _parliament_svg(parties: list[dict], total: int) -> str:
+    import math
+    if total <= 0:
+        return ''
+    colors: list[str] = []
+    for party in parties:
+        colors.extend([party['color']] * int(party['seats']))
+    if len(colors) < total:
+        colors.extend(['#C8CCD1'] * (total - len(colors)))
+    colors = colors[:total]
+    counts = _hemicycle_counts(total)
+    cx, base_y = 150.0, 126.0
+    inner_r, step = 30.0, 15.5
+    seat_r = 6.3 if total <= 60 else 5.5 if total <= 110 else 4.8 if total <= 170 else 4.2
+    circles = []
+    seat_i = 0
+    for row_i, count in enumerate(counts):
+        r = inner_r + step * row_i
+        if count == 1:
+            angles = [math.pi / 2]
+        else:
+            angles = [math.pi - (j + 0.5) * math.pi / count for j in range(count)]
+        for ang in angles:
+            x = cx + r * math.cos(ang)
+            y = base_y - r * math.sin(ang)
+            fill = colors[seat_i] if seat_i < len(colors) else '#C8CCD1'
+            seat_i += 1
+            circles.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{seat_r:.2f}" fill="{fill}" stroke="#202122" stroke-width="0.7" />')
+    return '<svg class="parliament-svg" viewBox="0 0 300 150" aria-hidden="true">' + ''.join(circles) + '</svg>'
+
+
+def parliament_block_html(data: dict, work_dir: str | Path) -> str:
+    parties, total = _parse_parliament_parties(data.get('parliament_parties'), _parse_int(data.get('legislature_seats')))
+    if not parties or total <= 0:
+        return ''
+
+    title = str(data.get('parliament_chart_title') or data.get('parliament') or data.get('legislature') or 'Парламент').strip()
+    majority = _parse_int(data.get('parliament_majority')) or (total // 2 + 1)
+    note = str(data.get('parliament_note') or '').strip()
+    country = str(data.get('title') or '').strip()
+
+    _, flag_item, logo_items = parliament_image_assets(data)
+    flag_uri = image_uri(flag_item[0], work_dir) if flag_item else None
+    logo_map = {}
+    for path, party_name in logo_items:
+        uri = image_uri(path, work_dir)
+        if uri and party_name:
+            logo_map[_norm_key(party_name)] = uri
+
+    legend_rows = []
+    for party in parties:
+        seats = int(party['seats'])
+        pct = seats / total * 100 if total else 0
+        logo_uri = logo_map.get(_norm_key(party['name']))
+        logo_html = f'<img class="party-logo" src="{logo_uri}" alt="">' if logo_uri else '<span class="party-logo party-logo-empty"></span>'
+        legend_rows.append(
+            '<div class="parliament-legend-row">'
+            f'<span class="party-swatch" style="background:{esc(party["color"])}"></span>'
+            f'{logo_html}'
+            f'<span class="party-name">{esc(party["name"])}</span>'
+            f'<span class="party-seats">{seats} · {pct:.1f}%</span>'
+            '</div>'
+        )
+
+    bottom = ''
+    if flag_uri or country:
+        flag_html = f'<img class="parliament-flag" src="{flag_uri}" alt="">' if flag_uri else ''
+        name_html = f'<div class="parliament-country">{esc(country)}</div>' if country else ''
+        bottom = f'<div class="parliament-bottom">{flag_html}{name_html}</div>'
+
+    meta = f'{total} мест · Большинство: {majority}'
+    note_html = f'<div class="parliament-note">{value_html(note)}</div>' if note else ''
+    return (
+        '<section class="parliament-section"><h2>Состав парламента</h2>'
+        '<div class="parliament-block">'
+        f'<div class="parliament-title">{esc(title)}</div>'
+        f'{_parliament_svg(parties, total)}'
+        f'<div class="parliament-meta">{esc(meta)}</div>'
+        f'<div class="parliament-legend">{"".join(legend_rows)}</div>'
+        f'{bottom}'
+        f'{note_html}'
+        '</div></section>'
+    )
+
+
 
 def resolve_kind_label(tpl: Template, data: dict) -> str:
     value = str(data.get("card_type_label") or "").strip()
@@ -283,7 +457,7 @@ def standard_sections(tpl: Template, data: dict, work_dir: str | Path = ".") -> 
     if tpl.key == "battle":
         return battle_sections(data, work_dir)
 
-    skip = {"card_type_label", "title", "description", "image_caption"}
+    skip = {"card_type_label", "title", "description", "image_caption", "parliament_chart_title", "parliament_parties", "parliament_majority", "parliament_note"}
     if tpl.subtitle_key:
         skip.add(tpl.subtitle_key)
 
@@ -580,12 +754,14 @@ def make_html(
     gallery_extra, body = standard_sections(tpl, d, work_dir)
 
     gallery = gallery_extra
+    parliament_html = ""
     if tpl.key != "battle":
+        normal_images, _parliament_flag, _parliament_logos = parliament_image_assets(d)
         images = []
-        for i, path in enumerate(page_images(d)):
+        for path, caption in normal_images:
             uri = image_uri(path, work_dir)
             if uri:
-                images.append((uri, image_caption(d, path, i)))
+                images.append((uri, caption))
         if images:
             figures = []
             for img, caption in images:
@@ -593,6 +769,7 @@ def make_html(
                 figures.append(f'<figure><img src="{img}" alt="">{cap}</figure>')
             mode = "single" if len(figures) == 1 else "multi"
             gallery = f'<div class="gallery {mode}">{"".join(figures)}</div>'
+        parliament_html = parliament_block_html(d, work_dir)
 
     # гимн под картинками (как в вики)
     anthem = str(d.get("anthem") or "").strip()
@@ -638,7 +815,7 @@ def make_html(
             f'<div class="description-text">{value_html(description)}</div></section>'
         )
 
-    body = body + custom_fields(d) + custom_sections(d) + desc_html
+    body = body + parliament_html + custom_fields(d) + custom_sections(d) + desc_html
     body = stripe_rows(body)
     vars_ = theme.css_vars()
     extra_font_css = font_css_for_family(font_key, work_dir, user_id)
@@ -735,6 +912,21 @@ section h2 {{
   padding: 4px 6px; flex: 0 0 auto; font-variant-numeric: tabular-nums;
 }}
 .gallery.map {{ margin-top: 4px; }}
+.parliament-block {{ padding: 6px 8px 8px; text-align: center; }}
+.parliament-title {{ margin-bottom: 4px; font-size: 13px; font-weight: 700; color: var(--text); }}
+.parliament-svg {{ display: block; width: 100%; max-width: 300px; height: auto; margin: 0 auto; }}
+.parliament-meta {{ margin-top: 2px; font-size: 12px; color: var(--text); }}
+.parliament-legend {{ margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }}
+.parliament-legend-row {{ display: grid; grid-template-columns: 12px 18px minmax(0,1fr) auto; gap: 6px; align-items: center; text-align: left; }}
+.party-swatch {{ width: 12px; height: 12px; border: 1px solid var(--border); display: inline-block; }}
+.party-logo {{ width: 18px; height: 18px; object-fit: contain; display: inline-block; }}
+.party-logo-empty {{ border: 1px dashed var(--border); background: transparent; }}
+.party-name {{ min-width: 0; overflow-wrap: anywhere; font-size: 12px; }}
+.party-seats {{ font-size: 11px; color: var(--text-secondary); white-space: nowrap; }}
+.parliament-bottom {{ margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; }}
+.parliament-flag {{ display: block; max-width: 84px; max-height: 50px; width: auto; height: auto; border: 1px solid var(--image-border); }}
+.parliament-country {{ font-size: 12px; font-weight: 700; color: var(--text); }}
+.parliament-note {{ margin-top: 5px; font-size: 11px; color: var(--text-secondary); }}
 </style>
 </head>
 <body>

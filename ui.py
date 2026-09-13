@@ -196,8 +196,11 @@ def olddoc_options_kb(
 
 
 def draft_kb(page_type: str | None = None, theme: str = "") -> InlineKeyboardMarkup:
+    # Главное действие редактора вынесено в отдельную широкую строку:
+    # пользователю не нужно знать внутренний термин «поля», чтобы понять,
+    # где заполняется содержимое страницы.
     rows = [
-        [ib("✅ Сохранить", "draft:save"), ib("✏️ Поля", "draft:fields")],
+        [ib("✏️ Добавить / изменить данные", "draft:fields")],
     ]
     if page_type in TFR_SIMPLE_TYPES:
         rows.append([ib("🖼 Картинка", "draft:image")])
@@ -210,6 +213,7 @@ def draft_kb(page_type: str | None = None, theme: str = "") -> InlineKeyboardMar
     if page_type not in TFR_SIMPLE_TYPES:
         rows.append([ib("➕ Свое поле", "draft:custom"), ib("🧩 Свой раздел", "draft:section")])
     rows += [
+        [ib("✅ Сохранить", "draft:save")],
         [ib("📤 Экспорт PNG", "draft:export"), ib("📋 Выслать текстом", "draft:text")],
         [ib("❌ Отмена", "draft:cancel")],
     ]

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-from media import battle_image_groups, image_caption, map_image_caption, map_images, page_images
+from media import battle_image_groups, image_caption, map_image_caption, map_images, page_images, parliament_image_assets
 from models import Page
 from templates import Field, Template, get_template
 from themes import Theme, get_theme
@@ -532,6 +532,242 @@ def _description(w: int, s: float, value: object, theme: Theme) -> Image.Image:
     return img
 
 
+PARLIAMENT_PALETTE = (
+    "#5B8FF9", "#61DDAA", "#65789B", "#F6BD16", "#7262FD",
+    "#78D3F8", "#9661BC", "#F6903D", "#008685", "#F08BB4",
+)
+
+
+def _norm_key(value: object) -> str:
+    return str(value or "").casefold().replace("ё", "е").strip()
+
+
+def _parse_int_value(value: object) -> int | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    digits = ''.join(ch for ch in text if ch.isdigit())
+    return int(digits) if digits else None
+
+
+def _safe_color(value: object, fallback: str) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return fallback
+    if raw.startswith('#') and len(raw) in {4, 7}:
+        body = raw[1:]
+        if all(ch in '0123456789abcdefABCDEF' for ch in body):
+            return raw
+    named = raw.lower()
+    return raw if named in {'red', 'green', 'blue', 'yellow', 'orange', 'purple', 'pink', 'gray', 'grey', 'black', 'white', 'brown'} else fallback
+
+
+def _parse_parliament_parties(value: object, total_seats: int | None = None) -> tuple[list[dict], int]:
+    import re
+    parties: list[dict] = []
+    lines = []
+    if isinstance(value, (list, tuple)):
+        lines = [str(x).strip() for x in value if str(x).strip()]
+    else:
+        lines = [ln.strip() for ln in str(value or '').splitlines() if ln.strip()]
+    for idx, raw in enumerate(lines):
+        parts = [p.strip() for p in re.split(r'\s*[|;]\s*', raw) if p.strip()]
+        name = ''
+        seats = None
+        color = ''
+        if len(parts) >= 2:
+            name = parts[0]
+            seats = _parse_int_value(parts[1])
+            color = parts[2] if len(parts) >= 3 else ''
+        else:
+            m = re.match(r'^(.*?)\s+(\d+)\s*(#[0-9A-Fa-f]{3,6}|[A-Za-z]+)?\s*$', raw)
+            if m:
+                name = m.group(1).strip()
+                seats = int(m.group(2))
+                color = (m.group(3) or '').strip()
+        if not name or not seats or seats <= 0:
+            continue
+        parties.append({
+            'name': name,
+            'seats': seats,
+            'color': _safe_color(color, PARLIAMENT_PALETTE[idx % len(PARLIAMENT_PALETTE)]),
+        })
+    total = total_seats or sum(int(x['seats']) for x in parties)
+    return parties, total
+
+
+def _hemicycle_counts(total: int) -> list[int]:
+    if total <= 0:
+        return []
+    rows = 4 if total <= 40 else 5 if total <= 90 else 6 if total <= 160 else 7
+    weights = [1.0 + i * 0.24 for i in range(rows)]
+    raw = [total * w / sum(weights) for w in weights]
+    counts = [max(1, int(x)) for x in raw]
+    diff = total - sum(counts)
+    order = list(range(rows - 1, -1, -1))
+    i = 0
+    while diff != 0:
+        idx = order[i % len(order)]
+        if diff > 0:
+            counts[idx] += 1
+            diff -= 1
+        elif counts[idx] > 1:
+            counts[idx] -= 1
+            diff += 1
+        i += 1
+    return counts
+
+
+def _fit_contain(src: Image.Image, max_size: tuple[int, int], bg: str) -> Image.Image:
+    img = src.copy()
+    img.thumbnail(max_size, Image.Resampling.LANCZOS)
+    out = Image.new('RGB', max_size, bg)
+    x = (max_size[0] - img.width) // 2
+    y = (max_size[1] - img.height) // 2
+    out.paste(img.convert('RGB'), (x, y))
+    return out
+
+
+def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) -> Image.Image | None:
+    parties, total = _parse_parliament_parties(data.get('parliament_parties'), _parse_int_value(data.get('legislature_seats')))
+    if not parties or total <= 0:
+        return None
+
+    title = str(data.get('parliament_chart_title') or data.get('parliament') or data.get('legislature') or 'Парламент').strip()
+    majority = _parse_int_value(data.get('parliament_majority')) or (total // 2 + 1)
+    note = str(data.get('parliament_note') or '').strip()
+    country = str(data.get('title') or '').strip()
+
+    title_font = _font(theme, max(10, int(13 * s)), bold=True)
+    meta_font = _font(theme, max(9, int(12 * s)))
+    legend_font = _font(theme, max(9, int(12 * s)))
+    legend_font_small = _font(theme, max(8, int(11 * s)))
+    country_font = _font(theme, max(9, int(12 * s)), bold=True)
+    tmp = ImageDraw.Draw(Image.new('RGB', (1, 1)))
+    pad_x = int(8 * s)
+    pad_y = int(6 * s)
+    gap = int(5 * s)
+
+    title_lines = _wrap(tmp, title, title_font, w - pad_x * 2)
+    meta_text = f'{total} мест · Большинство: {majority}'
+    meta_lines = _wrap(tmp, meta_text, meta_font, w - pad_x * 2)
+    note_lines = _wrap(tmp, note, legend_font_small, w - pad_x * 2) if note else []
+    tlh = _line_h(tmp, title_font)
+    mlh = _line_h(tmp, meta_font)
+    llh = _line_h(tmp, legend_font)
+    slh = _line_h(tmp, legend_font_small)
+
+    _, flag_item, logo_items = parliament_image_assets(data)
+    flag_path = _media_path(flag_item[0], root) if flag_item else None
+    logo_map: dict[str, Path] = {}
+    for path, party_name in logo_items:
+        media_path = _media_path(path, root)
+        if media_path and party_name:
+            logo_map[_norm_key(party_name)] = media_path
+
+    legend_rows = len(parties)
+    legend_h = legend_rows * max(int(19 * s), llh)
+    flag_h = int(0)
+    flag_box = None
+    if flag_path and flag_path.is_file():
+        try:
+            src = ImageOps.exif_transpose(Image.open(flag_path))
+            src.load()
+            flag_box = _fit_contain(src.convert('RGB'), (int(84 * s), int(50 * s)), theme.panel)
+            flag_h = flag_box.height + (slh if country else 0) + gap
+        except Exception:
+            flag_box = None
+    elif country:
+        flag_h = slh + gap
+
+    diagram_h = int(150 * s)
+    total_h = pad_y * 2 + len(title_lines) * tlh + gap + diagram_h + len(meta_lines) * mlh + gap + legend_h
+    if flag_h:
+        total_h += gap + flag_h
+    if note_lines:
+        total_h += gap + len(note_lines) * slh
+
+    img = Image.new('RGB', (w, total_h), theme.panel)
+    draw = ImageDraw.Draw(img)
+    y = pad_y
+    _draw_lines(draw, title_lines, (pad_x, y), title_font, theme.text, tlh, w - pad_x * 2, 'center')
+    y += len(title_lines) * tlh + gap
+
+    import math
+    counts = _hemicycle_counts(total)
+    cx = w / 2
+    base_y = y + int(122 * s)
+    inner_r, step = 30 * s, 15.5 * s
+    seat_r = 6.3 * s if total <= 60 else 5.5 * s if total <= 110 else 4.8 * s if total <= 170 else 4.2 * s
+    colors = []
+    for party in parties:
+        colors.extend([party['color']] * int(party['seats']))
+    if len(colors) < total:
+        colors.extend(['#C8CCD1'] * (total - len(colors)))
+    seat_i = 0
+    for row_i, count in enumerate(counts):
+        rr = inner_r + step * row_i
+        angles = [math.pi / 2] if count == 1 else [math.pi - (j + 0.5) * math.pi / count for j in range(count)]
+        for ang in angles:
+            x = cx + rr * math.cos(ang)
+            yy = base_y - rr * math.sin(ang)
+            fill = colors[seat_i] if seat_i < len(colors) else '#C8CCD1'
+            seat_i += 1
+            draw.ellipse((x - seat_r, yy - seat_r, x + seat_r, yy + seat_r), fill=fill, outline='#202122', width=max(1, int(0.8 * s)))
+    y += diagram_h
+    _draw_lines(draw, meta_lines, (pad_x, y), meta_font, theme.text, mlh, w - pad_x * 2, 'center')
+    y += len(meta_lines) * mlh + gap
+
+    sw = int(12 * s)
+    logo_size = int(18 * s)
+    right_pad = pad_x
+    name_x = pad_x + sw + int(6 * s) + logo_size + int(6 * s)
+    seats_max = 0
+    for party in parties:
+        seats = int(party['seats'])
+        txt = f'{seats} · {seats / total * 100:.1f}%'
+        seats_max = max(seats_max, _size(draw, txt, legend_font_small)[0])
+    name_w = max(10, w - name_x - seats_max - right_pad)
+
+    for party in parties:
+        row_top = y
+        cy = row_top + max(llh, logo_size, sw) // 2
+        draw.rectangle((pad_x, cy - sw // 2, pad_x + sw, cy + sw // 2), fill=party['color'], outline=theme.border, width=max(1, int(1 * s)))
+        logo_path = logo_map.get(_norm_key(party['name']))
+        if logo_path and logo_path.is_file():
+            try:
+                src = ImageOps.exif_transpose(Image.open(logo_path))
+                src.load()
+                logo = _fit_contain(src.convert('RGB'), (logo_size, logo_size), theme.panel)
+                img.paste(logo, (pad_x + sw + int(6 * s), cy - logo_size // 2))
+            except Exception:
+                draw.rectangle((pad_x + sw + int(6 * s), cy - logo_size // 2, pad_x + sw + int(6 * s) + logo_size, cy + logo_size // 2), outline=theme.border, width=max(1, int(1 * s)))
+        else:
+            draw.rectangle((pad_x + sw + int(6 * s), cy - logo_size // 2, pad_x + sw + int(6 * s) + logo_size, cy + logo_size // 2), outline=theme.border, width=max(1, int(1 * s)))
+        name_lines = _wrap(draw, party['name'], legend_font, name_w)[:2]
+        _draw_lines(draw, name_lines, (name_x, row_top), legend_font, theme.text, llh)
+        seats_text = f'{int(party["seats"])} · {int(party["seats"]) / total * 100:.1f}%'
+        seats_w = _size(draw, seats_text, legend_font_small)[0]
+        _draw_lines(draw, [seats_text], (w - right_pad - seats_w, row_top + max(0, (llh - slh) // 2)), legend_font_small, theme.text_secondary, slh)
+        y += max(llh * max(1, len(name_lines)), logo_size, sw)
+
+    if flag_h:
+        y += gap
+        if flag_box is not None:
+            fx = (w - flag_box.width) // 2
+            img.paste(flag_box, (fx, y))
+            y += flag_box.height
+        if country:
+            _draw_lines(draw, [country], (pad_x, y), country_font, theme.text, slh, w - pad_x * 2, 'center')
+            y += slh
+
+    if note_lines:
+        y += gap
+        _draw_lines(draw, note_lines, (pad_x, y), legend_font_small, theme.text_secondary, slh, w - pad_x * 2, 'center')
+
+    return img
+
+
 def _footer(w: int, s: float, theme: Theme) -> Image.Image:
     font = _font(theme, max(7, int(9 * s)), bold=False)
     tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
@@ -543,7 +779,7 @@ def _footer(w: int, s: float, theme: Theme) -> Image.Image:
 
 
 def _standard_groups(tpl: Template, data: dict):
-    skip = {"card_type_label", "title", "description", "image_caption", "anthem_duration"}
+    skip = {"card_type_label", "title", "description", "image_caption", "anthem_duration", "parliament_chart_title", "parliament_parties", "parliament_majority", "parliament_note"}
     if tpl.subtitle_key:
         skip.add(tpl.subtitle_key)
     names = []
@@ -1239,11 +1475,12 @@ def render_pillow(
     if tpl.key == "battle":
         blocks.extend(_battle_blocks(page, root, inner_w, s, theme))
     else:
+        normal_images, _parliament_flag, _parliament_logos = parliament_image_assets(d)
         media = []
-        for i, value in enumerate(page_images(d)):
+        for value, caption in normal_images:
             media_path = _media_path(value, root)
             if media_path:
-                media.append((media_path, image_caption(d, value, i)))
+                media.append((media_path, caption))
         if media:
             pic = _gallery(inner_w, s, media, theme)
             if pic:
@@ -1273,6 +1510,11 @@ def render_pillow(
                 for f in fields:
                     row_index += 1
                     blocks.append(_row(inner_w, s, f.label, d[f.key], theme, alternate=(row_index % 2 == 0)))
+
+        parliament = _parliament_block(inner_w, s, d, root, theme)
+        if parliament is not None:
+            blocks.append(_section_title(inner_w, s, "Состав парламента", theme))
+            blocks.append(parliament)
 
     custom = [
         x
