@@ -67,10 +67,6 @@ def font_css() -> str:
                 return candidate
         return None
 
-    # Для светлой/тёмной темы повторяем википедийную связку:
-    # sans-serif для интерфейсного/табличного текста и Linux Libertine-подобный
-    # serif для главного заголовка. Если Linux Libertine отсутствует в системе,
-    # спокойно откатываемся на Liberation Serif.
     libertine_regular = Path("/usr/share/fonts/opentype/linux-libertine/LinLibertine_R.otf")
     libertine_bold = Path("/usr/share/fonts/opentype/linux-libertine/LinLibertine_RB.otf")
     wiki_serif_regular = str(libertine_regular) if libertine_regular.is_file() else "LiberationSerif-Regular.ttf"
@@ -367,7 +363,7 @@ def parliament_block_html(data: dict, work_dir: str | Path) -> str:
             f'<span class="party-swatch" style="background:{esc(party["color"])}"></span>'
             f'{logo_html}'
             f'<span class="party-name">{esc(party["name"])}</span>'
-            f'<span class="party-seats">{seats} · {pct:.1f}%</span>'
+            f'<span class="party-seats">{seats} / {pct:.1f}%</span>'
             '</div>'
         )
 
@@ -377,7 +373,7 @@ def parliament_block_html(data: dict, work_dir: str | Path) -> str:
         name_html = f'<div class="parliament-country">{esc(country)}</div>' if country else ''
         bottom = f'<div class="parliament-bottom">{flag_html}{name_html}</div>'
 
-    meta = f'{total} мест · Большинство: {majority}'
+    meta = f'{total} мест / большинство {majority}'
     note_html = f'<div class="parliament-note">{value_html(note)}</div>' if note else ''
     return (
         '<section class="parliament-section"><h2>Состав парламента</h2>'
@@ -932,8 +928,8 @@ section h2 {{
 .party-swatch {{ width: 12px; height: 12px; border: 1px solid var(--border); display: inline-block; }}
 .party-logo {{ width: 18px; height: 18px; object-fit: contain; display: inline-block; }}
 .party-logo-empty {{ border: 1px dashed var(--border); background: transparent; }}
-.party-name {{ min-width: 0; overflow-wrap: anywhere; font-size: 12px; }}
-.party-seats {{ font-size: 11px; color: var(--text-secondary); white-space: nowrap; }}
+.party-name {{ min-width: 0; overflow-wrap: anywhere; font-size: 12px; position: relative; top: 1px; }}
+.party-seats {{ font-size: 11px; color: var(--text-secondary); white-space: nowrap; position: relative; top: 1px; }}
 .parliament-bottom {{ margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; }}
 .parliament-flag {{ display: block; max-width: 84px; max-height: 50px; width: auto; height: auto; border: 1px solid var(--image-border); }}
 .parliament-country {{ font-size: 12px; font-weight: 700; color: var(--text); }}

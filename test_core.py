@@ -22,7 +22,7 @@ from media import (
 )
 from models import Page
 from parser import parse_section, parse_text
-from pillow_renderer import render_pillow
+from pillow_renderer import render_pillow, _hemicycle_layout, _parse_parliament_parties
 from renderer import make_html, render_page
 from templates import get_template
 from text_export import page_to_text, split_text
@@ -414,6 +414,31 @@ class MediaTests(unittest.IsolatedAsyncioTestCase):
         p.data["card_type_label"] = "скрыть"
         html = make_html(p)
         self.assertNotIn('class="kind">', html)
+
+
+
+class ParliamentRegressionTests(unittest.TestCase):
+    def test_parliament_rgb_and_comma_input(self):
+        parties, total = _parse_parliament_parties(
+            "ЛПК, 96, rgb(243, 190, 32)\nНПК, 77, #D84C4C",
+            240,
+        )
+        self.assertEqual(total, 240)
+        self.assertEqual(parties[0]["color"], "#F3BE20")
+        self.assertEqual(parties[1]["seats"], 77)
+
+    def test_hemicycle_has_physical_gap_for_240_seats(self):
+        import math
+        counts, inner_r, step, seat_r, _diagram_h, _base_y = _hemicycle_layout(240, 1.0)
+        self.assertEqual(sum(counts), 240)
+        self.assertGreater(step, seat_r * 2)
+        for row_i, count in enumerate(counts):
+            radius = inner_r + step * row_i
+            if count <= 1:
+                continue
+            # chord distance between adjacent seat centers on this semicircle
+            adjacent = 2 * radius * math.sin(math.pi / (2 * count))
+            self.assertGreater(adjacent, seat_r * 2)
 
 class RendererSmokeTest(unittest.IsolatedAsyncioTestCase):
     async def test_pillow_fallback_png(self):

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import math
+import re
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
@@ -46,8 +48,6 @@ def _font(theme: Theme, size: int, bold: bool = False, heading: bool = False):
         return fallback
 
     if heading:
-        # Wikipedia/Vector: спокойный serif для заголовка. На Linux сначала
-        # пробуем Linux Libertine, затем тот же Liberation Serif, что был раньше.
         if theme.key in {"light", "dark"}:
             libertine = Path(
                 "/usr/share/fonts/opentype/linux-libertine/"
@@ -185,8 +185,9 @@ def _header(w: int, s: float, tpl: Template, page: Page, theme: Theme, right_res
     if theme.key in {"light", "dark"} and not str(page.data.get("card_type_label") or "").strip():
         kind = ""
     text_w = max(40, w - pad_x * 2 - max(0, right_reserve))
+    title_w = max(40, w - pad_x * 2 - (max(0, right_reserve) * 2 if tpl.key == "parliament" else 0))
     kind_lines = _wrap(draw, kind, kind_font, text_w) if kind else []
-    title_lines = _wrap(draw, title, title_font, text_w)
+    title_lines = _wrap(draw, title, title_font, title_w)
     sub_lines = _wrap(draw, subtitle, sub_font, text_w) if subtitle else []
     kh = _line_h(draw, kind_font)
     th = _line_h(draw, title_font)
@@ -203,13 +204,16 @@ def _header(w: int, s: float, tpl: Template, page: Page, theme: Theme, right_res
     draw = ImageDraw.Draw(img)
     y = pad_y
     if kind_lines:
-        _draw_lines(draw, kind_lines, (pad_x, y), kind_font, theme.text_secondary, kh, text_w, "center")
+        _draw_lines(draw, kind_lines, (pad_x, y), kind_font, theme.text_secondary, kh, text_w, "left" if tpl.key == "parliament" else "center")
         y += len(kind_lines) * kh + gap
-    _draw_lines(draw, title_lines, (pad_x, y), title_font, theme.text, th, text_w, "center")
+    if tpl.key == "parliament":
+        _draw_lines(draw, title_lines, (pad_x, y), title_font, theme.text, th, text_w, "left")
+    else:
+        _draw_lines(draw, title_lines, (pad_x, y), title_font, theme.text, th, text_w, "center")
     y += len(title_lines) * th
     if sub_lines:
         y += gap
-        _draw_lines(draw, sub_lines, (pad_x, y), sub_font, theme.text, sh, text_w, "center")
+        _draw_lines(draw, sub_lines, (pad_x, y), sub_font, theme.text, sh, text_w, "left" if tpl.key == "parliament" else "center")
     return img
 
 
@@ -569,12 +573,17 @@ def _safe_color(value: object, fallback: str) -> str:
         body = raw[1:]
         if all(ch in '0123456789abcdefABCDEF' for ch in body):
             return raw
+    m = re.match(r'^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*([0-9.]+))?\s*\)$', raw, re.I)
+    if m:
+        r = max(0, min(255, int(m.group(1))))
+        g = max(0, min(255, int(m.group(2))))
+        b = max(0, min(255, int(m.group(3))))
+        return f'#{r:02X}{g:02X}{b:02X}'
     named = raw.lower()
     return raw if named in {'red', 'green', 'blue', 'yellow', 'orange', 'purple', 'pink', 'gray', 'grey', 'black', 'white', 'brown'} else fallback
 
 
 def _parse_parliament_parties(value: object, total_seats: int | None = None) -> tuple[list[dict], int]:
-    import re
     parties: list[dict] = []
     lines = []
     if isinstance(value, (list, tuple)):
@@ -582,20 +591,27 @@ def _parse_parliament_parties(value: object, total_seats: int | None = None) -> 
     else:
         lines = [ln.strip() for ln in str(value or '').splitlines() if ln.strip()]
     for idx, raw in enumerate(lines):
-        parts = [p.strip() for p in re.split(r'\s*[|;]\s*', raw) if p.strip()]
         name = ''
         seats = None
         color = ''
-        if len(parts) >= 2:
-            name = parts[0]
-            seats = _parse_int_value(parts[1])
-            color = parts[2] if len(parts) >= 3 else ''
+        if '|' in raw or ';' in raw:
+            parts = [p.strip() for p in re.split(r'\s*[|;]\s*', raw) if p.strip()]
+            if len(parts) >= 2:
+                name = parts[0]
+                seats = _parse_int_value(parts[1])
+                color = parts[2] if len(parts) >= 3 else ''
         else:
-            m = re.match(r'^(.*?)\s+(\d+)\s*(#[0-9A-Fa-f]{3,6}|[A-Za-z]+)?\s*$', raw)
+            m = re.match(r'^\s*(.+?)\s*,\s*(\d+)\s*(?:,\s*(.+))?$', raw)
             if m:
                 name = m.group(1).strip()
                 seats = int(m.group(2))
                 color = (m.group(3) or '').strip()
+            else:
+                m = re.match(r'^(.*?)\s+(\d+)\s*(#[0-9A-Fa-f]{3,6}|[A-Za-z]+|rgba?\(.*\))?\s*$', raw)
+                if m:
+                    name = m.group(1).strip()
+                    seats = int(m.group(2))
+                    color = (m.group(3) or '').strip()
         if not name or not seats or seats <= 0:
             continue
         parties.append({
@@ -607,26 +623,103 @@ def _parse_parliament_parties(value: object, total_seats: int | None = None) -> 
     return parties, total
 
 
-def _hemicycle_counts(total: int) -> list[int]:
+def _seat_shape(value: object) -> str:
+    low = str(value or '').strip().casefold()
+    return 'square' if low.startswith('квад') or 'square' in low or 'rect' in low else 'circle'
+
+
+def _max_arc_seats(radius: float, pitch: float) -> int:
+    """Maximum seat centers on a semicircle with at least ``pitch`` distance."""
+    if radius <= 0 or pitch <= 0:
+        return 1
+    ratio = min(1.0, pitch / (2.0 * radius))
+    if ratio >= 1.0:
+        return 1
+    angle = 2.0 * math.asin(ratio)
+    return max(1, int(math.floor(math.pi / angle)))
+
+
+def _hemicycle_layout(total: int, s: float) -> tuple[list[int], float, float, float, int, int]:
+    """Build non-overlapping concentric semicircle rows.
+
+    Row count grows until the exact chord distance between neighbouring seats is
+    larger than the seat diameter plus a visible gap. No overflow is ever dumped
+    into the outer row, which was the cause of seats overlapping on 200+ chambers.
+    """
     if total <= 0:
-        return []
-    rows = 4 if total <= 40 else 5 if total <= 90 else 6 if total <= 160 else 7
-    weights = [1.0 + i * 0.24 for i in range(rows)]
-    raw = [total * w / sum(weights) for w in weights]
-    counts = [max(1, int(x)) for x in raw]
-    diff = total - sum(counts)
-    order = list(range(rows - 1, -1, -1))
-    i = 0
-    while diff != 0:
-        idx = order[i % len(order)]
-        if diff > 0:
-            counts[idx] += 1
-            diff -= 1
-        elif counts[idx] > 1:
-            counts[idx] -= 1
-            diff += 1
-        i += 1
-    return counts
+        return [], 26 * s, 13 * s, 4 * s, int(132 * s), int(111 * s)
+
+    if total <= 60:
+        seat_r, min_rows = 5.1 * s, 4
+    elif total <= 110:
+        seat_r, min_rows = 4.5 * s, 5
+    elif total <= 170:
+        seat_r, min_rows = 3.9 * s, 6
+    elif total <= 280:
+        seat_r, min_rows = 3.2 * s, 7
+    else:
+        seat_r, min_rows = 2.9 * s, 8
+
+    gap = 1.8 * s
+    # Conservative spacing also guarantees axis-aligned square seats never touch.
+    pitch = 2.0 * seat_r * math.sqrt(2.0) + gap
+    inner_r = 24.0 * s
+    step = max(10.8 * s, pitch + 1.4 * s)
+
+    rows = min_rows
+    while rows < 24:
+        capacities = [
+            _max_arc_seats(inner_r + step * i, pitch)
+            for i in range(rows)
+        ]
+        if sum(capacities) >= total:
+            break
+        rows += 1
+
+    capacities = [
+        _max_arc_seats(inner_r + step * i, pitch)
+        for i in range(rows)
+    ]
+
+    # Distribute proportionally to row capacity, then fill remaining free slots
+    # from the outside in. Every row always stays under its geometric capacity.
+    cap_sum = max(1, sum(capacities))
+    counts = [max(1, min(cap, int(total * cap / cap_sum))) for cap in capacities]
+
+    # If mandatory one-per-row pushed us above total, remove from inner rows first.
+    while sum(counts) > total:
+        changed = False
+        for i in range(len(counts)):
+            if counts[i] > 1 and sum(counts) > total:
+                counts[i] -= 1
+                changed = True
+        if not changed:
+            break
+
+    remaining = total - sum(counts)
+    while remaining > 0:
+        changed = False
+        for i in range(len(counts) - 1, -1, -1):
+            if counts[i] < capacities[i]:
+                counts[i] += 1
+                remaining -= 1
+                changed = True
+                if remaining <= 0:
+                    break
+        if not changed:
+            # Defensive fallback: add another outer row rather than overlap.
+            rows += 1
+            rr = inner_r + step * (rows - 1)
+            cap = _max_arc_seats(rr, pitch)
+            capacities.append(cap)
+            take = min(cap, remaining)
+            counts.append(take)
+            remaining -= take
+
+    outer_r = inner_r + step * (len(counts) - 1)
+    diagram_h = int(outer_r + seat_r + 29 * s)
+    base_y = int(diagram_h - 19 * s)
+    return counts, inner_r, step, seat_r, diagram_h, base_y
 
 
 def _fit_contain(src: Image.Image, max_size: tuple[int, int], bg: str) -> Image.Image:
@@ -665,7 +758,7 @@ def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) ->
     gap = int(4 * s)
 
     term_lines = _wrap(tmp, term, title_font, w - pad_x * 2) if term else []
-    meta_text = f'{total} мест · большинство {majority}'
+    meta_text = f'{total} мест / большинство {majority}'
     meta_lines = _wrap(tmp, meta_text, meta_font, w - pad_x * 2)
     note_lines = _wrap(tmp, note, legend_font_small, w - pad_x * 2) if note else []
     tlh = _line_h(tmp, title_font)
@@ -683,7 +776,7 @@ def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) ->
 
     row_h = max(int(18 * s), llh)
     legend_h = len(display_parties) * row_h
-    diagram_h = int(132 * s)
+    counts, inner_r, step, seat_r, diagram_h, base_y_offset = _hemicycle_layout(total, s)
     total_h = pad_y * 2 + diagram_h + len(meta_lines) * mlh + gap + legend_h
     if term_lines:
         total_h += len(term_lines) * tlh + gap
@@ -697,12 +790,9 @@ def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) ->
         _draw_lines(draw, term_lines, (pad_x, y), title_font, theme.text, tlh, w - pad_x * 2, 'center')
         y += len(term_lines) * tlh + gap
 
-    import math
-    counts = _hemicycle_counts(total)
     cx = w / 2
-    base_y = y + int(111 * s)
-    inner_r, step = 26 * s, 13.5 * s
-    seat_r = 5.7 * s if total <= 60 else 4.9 * s if total <= 110 else 4.2 * s if total <= 170 else 3.6 * s
+    base_y = y + base_y_offset
+    seat_shape = _seat_shape(data.get('seat_shape'))
     colors: list[str] = []
     for party in parties:
         colors.extend([party['color']] * int(party['seats']))
@@ -718,12 +808,11 @@ def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) ->
             yy = base_y - rr * math.sin(ang)
             fill = colors[seat_i] if seat_i < len(colors) else '#C8CCD1'
             seat_i += 1
-            draw.ellipse(
-                (x - seat_r, yy - seat_r, x + seat_r, yy + seat_r),
-                fill=fill,
-                outline='#202122',
-                width=max(1, int(0.7 * s)),
-            )
+            box = (x - seat_r, yy - seat_r, x + seat_r, yy + seat_r)
+            if seat_shape == 'square':
+                draw.rectangle(box, fill=fill, outline='#202122', width=max(1, int(1.05 * s)))
+            else:
+                draw.ellipse(box, fill=fill, outline='#202122', width=max(1, int(1.05 * s)))
     y += diagram_h
     _draw_lines(draw, meta_lines, (pad_x, y), meta_font, theme.text, mlh, w - pad_x * 2, 'center')
     y += len(meta_lines) * mlh + gap
@@ -737,7 +826,7 @@ def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) ->
     seats_max = 0
     for party in display_parties:
         seats = int(party['seats'])
-        txt = f'{seats} · {seats / total * 100:.1f}%'
+        txt = f'{seats} / {seats / total * 100:.1f}%'
         seats_max = max(seats_max, _size(draw, txt, legend_font_small)[0])
     name_w = max(10, w - name_x - seats_max - right_pad - int(6 * s))
 
@@ -759,12 +848,14 @@ def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) ->
                 except Exception:
                     pass
         name_lines = _wrap(draw, party['name'], legend_font, name_w)[:1]
-        _draw_lines(draw, name_lines, (name_x, row_top), legend_font, theme.text, llh)
-        seats_text = f'{int(party["seats"])} · {int(party["seats"]) / total * 100:.1f}%'
+        name_y = row_top + max(0, (row_h - llh) // 2) + max(1, int(1.2 * s))
+        _draw_lines(draw, name_lines, (name_x, name_y), legend_font, theme.text, llh)
+        seats_text = f'{int(party["seats"])} / {int(party["seats"]) / total * 100:.1f}%'
         seats_w = _size(draw, seats_text, legend_font_small)[0]
+        seats_y = row_top + max(0, (row_h - slh) // 2) + max(1, int(1.2 * s))
         _draw_lines(
             draw, [seats_text],
-            (w - right_pad - seats_w, row_top + max(0, (llh - slh) // 2)),
+            (w - right_pad - seats_w, seats_y),
             legend_font_small, theme.text_secondary, slh
         )
         y += row_h
@@ -787,7 +878,7 @@ def _parliament_corner_flag(data: dict, root: Path, s: float, theme: Theme) -> I
         src = ImageOps.exif_transpose(Image.open(path))
         src.load()
         src = src.convert('RGB')
-        max_w, max_h = int(58 * s), int(36 * s)
+        max_w, max_h = int(76 * s), int(48 * s)
         src.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
         border = max(1, int(1 * s))
         out = Image.new('RGB', (src.width + border * 2, src.height + border * 2), theme.panel)
