@@ -100,6 +100,21 @@ def image_kb(count: int = 0, page_type: str = "") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+
+
+def parliament_assets_kb(flag_set: bool, parties: list[tuple[str, bool]]) -> InlineKeyboardMarkup:
+    rows = []
+    flag_mark = "✅" if flag_set else "▫️"
+    flag_rm = ib("🗑", "pimg:rm:flag") if flag_set else ib("➕", "pimg:flag")
+    rows.append([ib(f"{flag_mark} Флаг страны", "pimg:flag"), flag_rm])
+    for i, (name, has_logo) in enumerate(parties):
+        mark = "✅" if has_logo else "▫️"
+        action = ib("🗑", f"pimg:rm:{i}") if has_logo else ib("➕", f"pimg:set:{i}")
+        rows.append([ib(f"{mark} {name}"[:52], f"pimg:set:{i}"), action])
+    rows.append([ib("✅ Готово", "pimg:done")])
+    rows.append([ib("⬅️ Назад", "img:back")])
+    rows.append([ib("❌ Отмена", "flow:cancel")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 def page_image_kb(page_id: int, count: int, page_type: str = "") -> InlineKeyboardMarkup:
     rows = [[ib(f"✅ Готово ({count})", f"pi:{page_id}:done")]]
     single = page_type in TFR_SIMPLE_TYPES
