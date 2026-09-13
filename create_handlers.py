@@ -94,7 +94,7 @@ async def ask_field(msg: Message, state: FSMContext) -> None:
         await state.set_state(NewPage.image)
         if ptype == "parliament":
             await state.update_data(image_mode="parliament_assets")
-            await _show_parliament_assets(msg, state)
+            await _show_parliament_assets(msg, state, return_to="theme")
             return
         await state.update_data(image_mode="initial")
         count = len(page_images(d.get("page_data") or {}))
@@ -169,7 +169,7 @@ def _parliament_asset_state(data: dict) -> tuple[bool, list[tuple[str, bool]], d
     return bool(flag_path), rows, {k: v for k, v in party_map.items()}, captions
 
 
-async def _show_parliament_assets(msg: Message, state: FSMContext, note: str | None = None) -> None:
+async def _show_parliament_assets(msg: Message, state: FSMContext, note: str | None = None, return_to: str | None = None) -> None:
     d = await state.get_data()
     data = d.get("page_data") or {}
     flag_set, rows, _party_map, _captions = _parliament_asset_state(data)
@@ -186,7 +186,10 @@ async def _show_parliament_assets(msg: Message, state: FSMContext, note: str | N
     if note:
         text = note + "\n\n" + text
     await state.set_state(NewPage.image)
-    await state.update_data(image_mode="parliament_assets")
+    update = {"image_mode": "parliament_assets"}
+    if return_to is not None:
+        update["parliament_return"] = return_to
+    await state.update_data(**update)
     await flow_show(msg, state, text, parliament_assets_kb(flag_set, rows))
 
 
@@ -506,6 +509,12 @@ async def parliament_remove_asset(q: CallbackQuery, state: FSMContext, db: Db, c
 @router.callback_query(NewPage.image, F.data == "pimg:done")
 async def parliament_assets_done(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, bot: Bot) -> None:
     await q.answer()
+    d = await state.get_data()
+    if d.get("parliament_return") == "preview":
+        await state.update_data(parliament_target=None, parliament_return=None)
+        await show_preview(q.message, state, db, cfg, bot, q.from_user)
+        return
+    await state.update_data(parliament_target=None, parliament_return=None)
     await after_image(q.message, state, db, cfg, bot, q.from_user)
 
 
@@ -519,11 +528,14 @@ async def skip_image(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, b
 async def back_image(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, bot: Bot) -> None:
     await q.answer()
     d = await state.get_data()
-    if d.get("image_mode") == "draft":
+    if d.get("image_mode") == "draft" or (
+        d.get("image_mode") == "parliament_assets" and d.get("parliament_return") == "preview"
+    ):
+        await state.update_data(parliament_target=None, parliament_return=None)
         await show_preview(q.message, state, db, cfg, bot, q.from_user)
         return
     tpl = get_template(d["type"])
-    await state.update_data(i=max(0, len(tpl.wizard) - 1))
+    await state.update_data(i=max(0, len(tpl.wizard) - 1), parliament_target=None, parliament_return=None)
     await ask_field(q.message, state)
 
 
@@ -762,6 +774,9 @@ async def draft_theme(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, 
                 await ask_field(q.message, state)
                 return
             await state.set_state(NewPage.image)
+            if ptype == "parliament":
+                await _show_parliament_assets(q.message, state, return_to="theme")
+                return
             await state.update_data(image_mode="initial")
             cnt = len(page_images(d.get("page_data") or {}))
             max_c = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
@@ -997,6 +1012,9 @@ async def replace_draft_image(q: CallbackQuery, state: FSMContext, cfg: Config) 
         return
     tpl = get_template(d["type"])
     ptype = d.get("type") or ""
+    if ptype == "parliament":
+        await _show_parliament_assets(q.message, state, return_to="preview")
+        return
     count = len(page_images(d.get("page_data") or {}))
     max_c = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
     await state.update_data(image_mode="draft")
