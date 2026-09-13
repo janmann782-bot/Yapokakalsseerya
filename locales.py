@@ -44,6 +44,7 @@ RU = {
         f'{FRAME}\n'
         'Картинки\n'
         f'{FRAME}\n'
+        'Что загружать: {label}\n'
         'PNG JPEG WEBP до {max_mb} МБ\n'
         'Сейчас: {count}/{max_count}\n'
         'Когда закончишь жми Готово\n'

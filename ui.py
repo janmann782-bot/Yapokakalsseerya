@@ -33,6 +33,7 @@ T = TypeVar("T")
 # типы с одной картинкой без своих полей
 TFR_SIMPLE_TYPES = frozenset({"news", "superevent", "mirotorets"})
 SPECIAL_TYPES = frozenset({"news", "superevent", "mirotorets"})
+NO_IMAGE_TYPES = frozenset({"chart", "comparison", "election", "timeline", "composition"})
 
 
 def ib(text: str, data: str, **_kwargs) -> InlineKeyboardButton:
@@ -204,6 +205,8 @@ def draft_kb(page_type: str | None = None, theme: str = "") -> InlineKeyboardMar
     ]
     if page_type in TFR_SIMPLE_TYPES:
         rows.append([ib("🖼 Картинка", "draft:image")])
+    elif page_type in NO_IMAGE_TYPES:
+        rows.append([ib("🎨 Сменить тему", "draft:theme")])
     else:
         rows.append([ib("🎨 Сменить тему", "draft:theme"), ib("🖼 Изображения", "draft:image")])
     if page_type == "battle":
@@ -262,14 +265,16 @@ def fields_kb(tpl: Template, data: dict, page_id: int | None = None) -> InlineKe
         extra = []
         if not is_news:
             extra.append([ib("➕ Свое поле", "draft:custom"), ib("🧩 Свой раздел", "draft:section")])
-        extra.append([ib("🖼 Картинка" if is_news else "🖼 Изображения", "draft:image")])
+        if tpl.key not in NO_IMAGE_TYPES:
+            extra.append([ib("🖼 Картинка" if is_news else "🖼 Изображения", "draft:image")])
         extra.append([ib("⬅️ К предпросмотру", "draft:back")])
         rows += extra
     else:
         extra = []
         if not is_news:
             extra.append([ib("➕ Свое поле", f"pa:{page_id}:custom"), ib("🧩 Свой раздел", f"pa:{page_id}:section")])
-        extra.append([ib("🖼 Картинка" if is_news else "🖼 Изображения", f"pa:{page_id}:image")])
+        if tpl.key not in NO_IMAGE_TYPES:
+            extra.append([ib("🖼 Картинка" if is_news else "🖼 Изображения", f"pa:{page_id}:image")])
         extra.append([ib("⬅️ К странице", f"p:o:{page_id}")])
         rows += extra
     return InlineKeyboardMarkup(inline_keyboard=rows)

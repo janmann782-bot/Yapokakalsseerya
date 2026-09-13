@@ -44,6 +44,7 @@ from text_export import send_page_text
 from themes import get_theme
 from ui import (
     CREATE,
+    NO_IMAGE_TYPES,
     HELP,
     STATS,
     MY_PAGES,
@@ -78,10 +79,19 @@ async def ask_field(msg: Message, state: FSMContext) -> None:
     i = int(d.get("i", 0))
 
     if i >= len(tpl.wizard):
+        ptype = d.get("type") or ""
+        if ptype in NO_IMAGE_TYPES:
+            await state.set_state(NewPage.theme)
+            await flow_show(
+                msg,
+                state,
+                tr("choose_theme"),
+                themes_kb("dt", d.get("theme", "light"), ptype),
+            )
+            return
         await state.set_state(NewPage.image)
         await state.update_data(image_mode="initial")
         count = len(page_images(d.get("page_data") or {}))
-        ptype = d.get("type") or ""
         max_count = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
         if ptype in ("news", "superevent", "mirotorets"):
             text = (
@@ -228,8 +238,10 @@ async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, u
         theme = "fire_rises"
     elif kind == "mirotorets":
         theme = "mirotorets"
+    elif kind in {"parliament", "chart", "comparison", "election", "timeline", "composition"}:
+        theme = "light"
     else:
-        # всем обычным - старый документ по умолчанию (кроме news/se/mirotorets)
+        # обычные инфобоксы по-прежнему стартуют со старого документа
         theme = "olddoc"
     await state.update_data(
         type=kind,
@@ -570,10 +582,14 @@ async def draft_theme(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, 
         if cur == NewPage.field.state or not d.get("type"):
             return
         if cur == NewPage.theme.state:
-            await state.set_state(NewPage.image)
-            await state.update_data(image_mode="initial")
             tpl = get_template(d["type"])
             ptype = d.get("type") or ""
+            if ptype in NO_IMAGE_TYPES:
+                await state.update_data(i=max(0, len(tpl.wizard) - 1))
+                await ask_field(q.message, state)
+                return
+            await state.set_state(NewPage.image)
+            await state.update_data(image_mode="initial")
             cnt = len(page_images(d.get("page_data") or {}))
             max_c = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
             await q.message.answer(

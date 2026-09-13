@@ -629,14 +629,14 @@ def _fit_contain(src: Image.Image, max_size: tuple[int, int], bg: str) -> Image.
 
 
 def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) -> Image.Image | None:
-    parties, total = _parse_parliament_parties(data.get('parliament_parties'), _parse_int_value(data.get('legislature_seats')))
+    parties, total = _parse_parliament_parties(data.get('parties'), _parse_int_value(data.get('total_seats')))
     if not parties or total <= 0:
         return None
 
-    title = str(data.get('parliament_chart_title') or data.get('parliament') or data.get('legislature') or 'Парламент').strip()
-    majority = _parse_int_value(data.get('parliament_majority')) or (total // 2 + 1)
-    note = str(data.get('parliament_note') or '').strip()
-    country = str(data.get('title') or '').strip()
+    title = str(data.get('term') or 'Распределение мест').strip()
+    majority = _parse_int_value(data.get('majority')) or (total // 2 + 1)
+    note = str(data.get('note') or '').strip()
+    country = str(data.get('country') or '').strip()
 
     title_font = _font(theme, max(10, int(13 * s)), bold=True)
     meta_font = _font(theme, max(9, int(12 * s)))
@@ -766,6 +766,251 @@ def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) ->
         _draw_lines(draw, note_lines, (pad_x, y), legend_font_small, theme.text_secondary, slh, w - pad_x * 2, 'center')
 
     return img
+
+
+def _parse_number(raw: object) -> float | None:
+    import re
+    text = str(raw or '').strip().replace('\u00a0', ' ').replace(' ', '').replace(',', '.')
+    text = text.replace('%', '')
+    m = re.search(r'-?\d+(?:\.\d+)?', text)
+    if not m:
+        return None
+    try:
+        return float(m.group(0))
+    except ValueError:
+        return None
+
+
+def _parse_visual_items(value: object) -> list[dict]:
+    import re
+    lines = [ln.strip() for ln in str(value or '').splitlines() if ln.strip()]
+    out = []
+    for i, raw in enumerate(lines):
+        parts = [x.strip() for x in re.split(r'\s*[|;]\s*', raw) if x.strip()]
+        name = ''
+        val = None
+        color = ''
+        if len(parts) >= 2:
+            name = parts[0]
+            val = _parse_number(parts[1])
+            color = parts[2] if len(parts) >= 3 else ''
+        else:
+            m = re.match(r'^(.*?)(?::|—|–|=)\s*(-?[\d\s.,]+%?)(?:\s+(#[0-9A-Fa-f]{3,6}))?\s*$', raw)
+            if m:
+                name = m.group(1).strip()
+                val = _parse_number(m.group(2))
+                color = m.group(3) or ''
+        if name and val is not None:
+            out.append({'name': name, 'value': val, 'color': _safe_color(color, PARLIAMENT_PALETTE[i % len(PARLIAMENT_PALETTE)])})
+    return out
+
+
+def _note_lines(data: dict, draw: ImageDraw.ImageDraw, font, max_w: int) -> list[str]:
+    note = str(data.get('note') or '').strip()
+    return _wrap(draw, note, font, max_w) if note else []
+
+
+def _visual_empty(w: int, s: float, theme: Theme, text: str) -> Image.Image:
+    font = _font(theme, max(10, int(13 * s)))
+    tmp = ImageDraw.Draw(Image.new('RGB', (1, 1)))
+    pad = int(12 * s)
+    lines = _wrap(tmp, text, font, w - pad * 2)
+    lh = _line_h(tmp, font)
+    img = Image.new('RGB', (w, pad * 2 + lh * len(lines)), theme.panel)
+    _draw_lines(ImageDraw.Draw(img), lines, (pad, pad), font, theme.text_secondary, lh, w - pad * 2, 'center')
+    return img
+
+
+def _chart_block(w: int, s: float, data: dict, theme: Theme) -> Image.Image:
+    items = _parse_visual_items(data.get('data_points'))
+    if not items:
+        return _visual_empty(w, s, theme, 'Добавь данные в формате: 2024 | 120 | #3366cc')
+    kind = str(data.get('chart_type') or 'линия').casefold().replace('ё', 'е')
+    mode = 'pie' if any(x in kind for x in ('круг', 'pie', 'сектор')) else 'bar' if any(x in kind for x in ('столб', 'bar', 'колон')) else 'line'
+    pad_l, pad_r = int(42*s), int(14*s)
+    pad_t, pad_b = int(18*s), int(44*s)
+    chart_h = int(220*s)
+    note_font = _font(theme, max(8, int(10*s)))
+    axis_font = _font(theme, max(8, int(10*s)))
+    tmp = ImageDraw.Draw(Image.new('RGB',(1,1)))
+    notes = _note_lines(data, tmp, note_font, w-int(16*s))
+    note_h = len(notes)*_line_h(tmp,note_font) + (int(8*s) if notes else 0)
+    img = Image.new('RGB',(w, chart_h+note_h), theme.panel)
+    draw = ImageDraw.Draw(img)
+    plot = (pad_l, pad_t, w-pad_r, chart_h-pad_b)
+    x0,y0,x1,y1 = plot
+    vals = [float(x['value']) for x in items]
+    vmax = max(vals) if vals else 1
+    vmin = min(0.0, min(vals) if vals else 0.0)
+    if vmax == vmin: vmax = vmin + 1
+    if mode == 'pie':
+        size = min(int(150*s), x1-x0, y1-y0)
+        cx = (w-size)//2
+        cy = y0 + max(0,(y1-y0-size)//2)
+        total = sum(max(0.0,v) for v in vals) or 1.0
+        start = -90.0
+        for item in items:
+            span = max(0.0,float(item['value']))/total*360.0
+            draw.pieslice((cx,cy,cx+size,cy+size), start=start, end=start+span, fill=item['color'], outline=theme.panel)
+            start += span
+        ly = cy+size+int(8*s)
+        if ly > chart_h-int(18*s): ly = int(8*s)
+        # compact legend at bottom/side
+        leg_y = chart_h-int(34*s)
+        avail = w-int(16*s)
+        parts=[]
+        for item in items[:6]:
+            pct = max(0.0,float(item['value']))/total*100
+            parts.append(f"{item['name']} {pct:.1f}%")
+        _draw_lines(draw, _wrap(draw,' · '.join(parts),axis_font,avail), (int(8*s),leg_y), axis_font, theme.text, _line_h(draw,axis_font), avail, 'center')
+    else:
+        # axes/grid
+        draw.line((x0,y0,x0,y1), fill=theme.border, width=max(1,int(s)))
+        draw.line((x0,y1,x1,y1), fill=theme.border, width=max(1,int(s)))
+        for k in range(5):
+            yy = y1 - (y1-y0)*k/4
+            val = vmin + (vmax-vmin)*k/4
+            draw.line((x0,yy,x1,yy), fill=theme.border, width=max(1,int(.35*s)))
+            label = f'{val:g}'
+            tw=_size(draw,label,axis_font)[0]
+            _draw_lines(draw,[label],(x0-int(5*s)-tw,int(yy-_line_h(draw,axis_font)/2)),axis_font,theme.text_secondary,_line_h(draw,axis_font))
+        n=len(items)
+        step=(x1-x0)/max(1,n)
+        points=[]
+        for i,item in enumerate(items):
+            xx=x0+step*(i+.5)
+            yy=y1-(float(item['value'])-vmin)/(vmax-vmin)*(y1-y0)
+            if mode=='bar':
+                bw=max(int(8*s), int(step*.56))
+                draw.rectangle((xx-bw/2,yy,xx+bw/2,y1), fill=item['color'])
+            else:
+                points.append((xx,yy,item['color']))
+            label_lines=_wrap(draw,item['name'],axis_font,max(int(step*.95),int(35*s)))[:2]
+            lh=_line_h(draw,axis_font)
+            for j,line in enumerate(label_lines):
+                tw=_size(draw,line,axis_font)[0]
+                _draw_lines(draw,[line],(int(xx-tw/2),int(y1+4*s+j*lh)),axis_font,theme.text_secondary,lh)
+        if mode=='line':
+            if len(points)>1:
+                draw.line([(x,y) for x,y,_ in points], fill=theme.accent, width=max(2,int(2*s)))
+            for x,y,c in points:
+                rr=max(3,int(3.5*s)); draw.ellipse((x-rr,y-rr,x+rr,y+rr), fill=c, outline=theme.panel)
+        xl=str(data.get('x_label') or '').strip(); yl=str(data.get('y_label') or '').strip()
+        if xl:
+            tw=_size(draw,xl,axis_font)[0]; _draw_lines(draw,[xl],((w-tw)//2,chart_h-int(14*s)),axis_font,theme.text_secondary,_line_h(draw,axis_font))
+        if yl:
+            _draw_lines(draw,[yl],(int(4*s),int(3*s)),axis_font,theme.text_secondary,_line_h(draw,axis_font))
+    if notes:
+        _draw_lines(draw,notes,(int(8*s),chart_h+int(4*s)),note_font,theme.text_secondary,_line_h(draw,note_font),w-int(16*s),'center')
+    return img
+
+
+def _bars_block(w: int, s: float, data: dict, theme: Theme, key: str, election: bool=False, composition: bool=False) -> Image.Image:
+    items=_parse_visual_items(data.get(key))
+    if not items:
+        return _visual_empty(w,s,theme,'Добавь строки в формате: Название | 42 | #3366cc')
+    vals=[max(0.0,float(x['value'])) for x in items]
+    vmax=max(vals) or 1.0
+    total=sum(vals) or 1.0
+    font=_font(theme,max(9,int(12*s)))
+    small=_font(theme,max(8,int(10*s)))
+    tmp=ImageDraw.Draw(Image.new('RGB',(1,1)))
+    lh=_line_h(tmp,font); slh=_line_h(tmp,small)
+    pad=int(10*s); gap=int(7*s); bar_h=int(13*s)
+    note=_note_lines(data,tmp,small,w-pad*2)
+    top_extra=0
+    if composition or election:
+        top_extra=int(36*s)
+    h=pad*2+top_extra+len(items)*(lh+bar_h+gap)+len(note)*slh+(gap if note else 0)
+    img=Image.new('RGB',(w,h),theme.panel); draw=ImageDraw.Draw(img); y=pad
+    if composition or election:
+        sx=pad; sw=w-pad*2; cur=sx
+        for item,val in zip(items,vals):
+            seg=sw*(val/total)
+            draw.rectangle((cur,y,cur+seg,y+int(18*s)),fill=item['color'])
+            cur+=seg
+        y+=int(18*s)+gap
+        extra=[]
+        if election and data.get('turnout'): extra.append(f"Явка: {data.get('turnout')}")
+        if election and data.get('majority'): extra.append(f"Порог: {data.get('majority')}")
+        if extra:
+            _draw_lines(draw,[' · '.join(extra)],(pad,y),small,theme.text_secondary,slh,w-pad*2,'center'); y+=slh+gap
+    unit=str(data.get('unit') or '').strip()
+    for item,val in zip(items,vals):
+        value_text=f'{val:g}{(" " + unit) if unit else ("%" if composition and abs(total-100)<1.5 else "")}'
+        _draw_lines(draw,[item['name']],(pad,y),font,theme.text,lh)
+        tw=_size(draw,value_text,small)[0]
+        _draw_lines(draw,[value_text],(w-pad-tw,y+max(0,(lh-slh)//2)),small,theme.text_secondary,slh)
+        y+=lh
+        bw=w-pad*2
+        draw.rectangle((pad,y,w-pad,y+bar_h),fill=theme.panel_alt,outline=theme.border,width=max(1,int(.5*s)))
+        frac=(val/total) if composition else (val/vmax)
+        draw.rectangle((pad,y,pad+bw*max(0,min(1,frac)),y+bar_h),fill=item['color'])
+        y+=bar_h+gap
+    if note:
+        _draw_lines(draw,note,(pad,y),small,theme.text_secondary,slh,w-pad*2,'center')
+    return img
+
+
+def _timeline_block(w:int,s:float,data:dict,theme:Theme)->Image.Image:
+    import re
+    events=[]
+    for raw in [ln.strip() for ln in str(data.get('events') or '').splitlines() if ln.strip()]:
+        parts=[x.strip() for x in re.split(r'\s*[|;]\s*',raw, maxsplit=1)]
+        if len(parts)<2:
+            m=re.match(r'^(.*?)(?::|—|–)\s*(.+)$',raw)
+            if m: parts=[m.group(1).strip(),m.group(2).strip()]
+        if len(parts)>=2: events.append((parts[0],parts[1]))
+    if not events: return _visual_empty(w,s,theme,'Добавь события: 1991 | Провозглашение независимости')
+    date_font=_font(theme,max(9,int(12*s)),bold=True); text_font=_font(theme,max(9,int(12*s))); small=_font(theme,max(8,int(10*s)))
+    tmp=ImageDraw.Draw(Image.new('RGB',(1,1))); dlh=_line_h(tmp,date_font); tlh=_line_h(tmp,text_font); slh=_line_h(tmp,small)
+    pad=int(12*s); date_w=int(86*s); line_x=pad+date_w+int(10*s); text_x=line_x+int(14*s); text_w=w-text_x-pad
+    wrapped=[]; h=pad*2
+    for date,desc in events:
+        lines=_wrap(tmp,desc,text_font,text_w); eh=max(dlh,len(lines)*tlh)+int(12*s); wrapped.append((date,lines,eh)); h+=eh
+    note=_note_lines(data,tmp,small,w-pad*2); h+=len(note)*slh+(int(8*s) if note else 0)
+    img=Image.new('RGB',(w,h),theme.panel); draw=ImageDraw.Draw(img)
+    y=pad; draw.line((line_x,y,line_x,h-pad-(len(note)*slh if note else 0)),fill=theme.border,width=max(2,int(2*s)))
+    for date,lines,eh in wrapped:
+        _draw_lines(draw,[date],(pad,y),date_font,theme.text,dlh,date_w,'right')
+        rr=max(3,int(4*s)); cy=y+dlh//2; draw.ellipse((line_x-rr,cy-rr,line_x+rr,cy+rr),fill=theme.accent,outline=theme.panel)
+        _draw_lines(draw,lines,(text_x,y),text_font,theme.text,tlh)
+        y+=eh
+    if note:
+        _draw_lines(draw,note,(pad,y),small,theme.text_secondary,slh,w-pad*2,'center')
+    return img
+
+
+VISUAL_TYPES = frozenset({'parliament','chart','comparison','election','timeline','composition'})
+
+
+def _render_visual_page(page: Page, root: Path, path: Path, quality: str, watermark: bool) -> Path:
+    global _ACTIVE_FONT_REG, _ACTIVE_FONT_BOLD
+    theme=get_theme(page.theme); tpl=get_template(page.type); d=page.data or {}
+    s=PILLOW_SCALE.get(quality,PILLOW_SCALE['high']); card_w=int(520*s); bw=max(1,int(theme.border_width*s)); inner_w=card_w-bw*2
+    # selected font support
+    _fk=d.get('_font_key') or 'default'; _uid=d.get('_font_user_id'); _reg=_bold=None
+    if _fk and _fk!='default':
+        if str(_fk).startswith('user:') and _uid is not None:
+            _reg=resolve_user_font(root,int(_uid),str(_fk)); _bold=_reg
+        else:
+            _reg,_bold=resolve_font_files(str(_fk))
+    _ACTIVE_FONT_REG=str(_reg) if _reg and _reg.is_file() else None
+    _ACTIVE_FONT_BOLD=str(_bold or _reg) if _reg and _reg.is_file() else None
+    blocks=[_header(inner_w,s,tpl,page,theme)]
+    if page.type=='parliament': block=_parliament_block(inner_w,s,d,root,theme)
+    elif page.type=='chart': block=_chart_block(inner_w,s,d,theme)
+    elif page.type=='comparison': block=_bars_block(inner_w,s,d,theme,'items')
+    elif page.type=='election': block=_bars_block(inner_w,s,d,theme,'candidates',election=True)
+    elif page.type=='timeline': block=_timeline_block(inner_w,s,d,theme)
+    else: block=_bars_block(inner_w,s,d,theme,'items',composition=True)
+    if block is not None: blocks.append(block)
+    if watermark: blocks.append(_footer(inner_w,s,theme))
+    outer=int(12*s); content_h=sum(b.height for b in blocks)
+    img=Image.new('RGB',(card_w+outer*2,content_h+outer*2+bw*2),theme.background); draw=ImageDraw.Draw(img)
+    x=outer; y=outer; draw.rectangle((x,y,x+card_w-1,y+content_h+bw*2-1),fill=theme.panel,outline=theme.border,width=bw); x+=bw; y+=bw
+    for b in blocks: img.paste(b,(x,y)); y+=b.height
+    img.save(path,'PNG',compress_level=6,dpi=(144,144)); return path
 
 
 def _footer(w: int, s: float, theme: Theme) -> Image.Image:
@@ -1439,6 +1684,8 @@ def render_pillow(
 
     if page.type == "mirotorets" or page.theme == "mirotorets":
         return _render_mirotorets(page, root, path, quality)
+    if page.type in VISUAL_TYPES:
+        return _render_visual_page(page, root, path, quality, watermark)
     if page.type == "news":
         return _render_news_tfr(page, root, path)
     if page.type == "superevent":
@@ -1475,12 +1722,11 @@ def render_pillow(
     if tpl.key == "battle":
         blocks.extend(_battle_blocks(page, root, inner_w, s, theme))
     else:
-        normal_images, _parliament_flag, _parliament_logos = parliament_image_assets(d)
         media = []
-        for value, caption in normal_images:
+        for i, value in enumerate(page_images(d)):
             media_path = _media_path(value, root)
             if media_path:
-                media.append((media_path, caption))
+                media.append((media_path, image_caption(d, value, i)))
         if media:
             pic = _gallery(inner_w, s, media, theme)
             if pic:
@@ -1511,10 +1757,6 @@ def render_pillow(
                     row_index += 1
                     blocks.append(_row(inner_w, s, f.label, d[f.key], theme, alternate=(row_index % 2 == 0)))
 
-        parliament = _parliament_block(inner_w, s, d, root, theme)
-        if parliament is not None:
-            blocks.append(_section_title(inner_w, s, "Состав парламента", theme))
-            blocks.append(parliament)
 
     custom = [
         x

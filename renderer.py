@@ -754,14 +754,12 @@ def make_html(
     gallery_extra, body = standard_sections(tpl, d, work_dir)
 
     gallery = gallery_extra
-    parliament_html = ""
     if tpl.key != "battle":
-        normal_images, _parliament_flag, _parliament_logos = parliament_image_assets(d)
         images = []
-        for path, caption in normal_images:
+        for i, path in enumerate(page_images(d)):
             uri = image_uri(path, work_dir)
             if uri:
-                images.append((uri, caption))
+                images.append((uri, image_caption(d, path, i)))
         if images:
             figures = []
             for img, caption in images:
@@ -769,7 +767,6 @@ def make_html(
                 figures.append(f'<figure><img src="{img}" alt="">{cap}</figure>')
             mode = "single" if len(figures) == 1 else "multi"
             gallery = f'<div class="gallery {mode}">{"".join(figures)}</div>'
-        parliament_html = parliament_block_html(d, work_dir)
 
     # гимн под картинками (как в вики)
     anthem = str(d.get("anthem") or "").strip()
@@ -815,7 +812,7 @@ def make_html(
             f'<div class="description-text">{value_html(description)}</div></section>'
         )
 
-    body = body + parliament_html + custom_fields(d) + custom_sections(d) + desc_html
+    body = body + custom_fields(d) + custom_sections(d) + desc_html
     body = stripe_rows(body)
     vars_ = theme.css_vars()
     extra_font_css = font_css_for_family(font_key, work_dir, user_id)
@@ -973,7 +970,7 @@ async def render_page(
         await asyncio.to_thread(render_olddoc, page, root, quality, path, watermark)
         return path
 
-    if page.type in ("news", "superevent"):
+    if page.type in ("news", "superevent", "parliament", "chart", "comparison", "election", "timeline", "composition"):
         from pillow_renderer import render_pillow
 
         await asyncio.to_thread(render_pillow, page, root, quality, path, watermark)
