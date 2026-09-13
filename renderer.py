@@ -53,6 +53,9 @@ def font_css() -> str:
     root = Path(__file__).resolve().parent
 
     def find_font(name: str) -> Path | None:
+        raw = Path(name)
+        if raw.is_absolute() and raw.is_file():
+            return raw
         candidates = (
             root / name,
             Path("/usr/share/fonts/truetype/liberation") / name,
@@ -64,12 +67,21 @@ def font_css() -> str:
                 return candidate
         return None
 
+    # Для светлой/тёмной темы повторяем википедийную связку:
+    # sans-serif для интерфейсного/табличного текста и Linux Libertine-подобный
+    # serif для главного заголовка. Если Linux Libertine отсутствует в системе,
+    # спокойно откатываемся на Liberation Serif.
+    libertine_regular = Path("/usr/share/fonts/opentype/linux-libertine/LinLibertine_R.otf")
+    libertine_bold = Path("/usr/share/fonts/opentype/linux-libertine/LinLibertine_RB.otf")
+    wiki_serif_regular = str(libertine_regular) if libertine_regular.is_file() else "LiberationSerif-Regular.ttf"
+    wiki_serif_bold = str(libertine_bold) if libertine_bold.is_file() else "LiberationSerif-Bold.ttf"
+
     fonts = (
         ("Isaac Fill", "ISAACFONTDESCRIPTIONENGRUS-FILL_0.TTF", 400),
         ("Wikipedia Sans", "LiberationSans-Regular.ttf", 400),
         ("Wikipedia Sans", "LiberationSans-Bold.ttf", 700),
-        ("Wikipedia Serif", "LiberationSerif-Regular.ttf", 400),
-        ("Wikipedia Serif", "LiberationSerif-Bold.ttf", 700),
+        ("Wikipedia Serif", wiki_serif_regular, 400),
+        ("Wikipedia Serif", wiki_serif_bold, 700),
         ("InfoBox Mono", "LiberationMono-Regular.ttf", 400),
         ("InfoBox Mono", "LiberationMono-Bold.ttf", 700),
     )
@@ -843,6 +855,8 @@ body {{ padding: 12px; font-family: var(--font); font-size: 16px; line-height: 1
 header {{ padding: 8px 10px 6px; text-align: center; background: var(--panel); border-bottom: 0; }}
 .kind {{ margin-bottom: 2px; color: var(--text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: none; }}
 h1 {{ margin: 0; overflow-wrap: anywhere; font: 700 23px/1.2 var(--heading-font); color: var(--text); }}
+.sheet[data-theme="light"] h1,
+.sheet[data-theme="dark"] h1 {{ font-weight: 400; letter-spacing: 0; }}
 .subtitle {{ margin-top: 4px; color: var(--text); font-size: 13px; line-height: 1.35; }}
 a, .wiki-link {{ color: var(--link); text-decoration: none; }}
 a:hover, .wiki-link:hover {{ text-decoration: underline; }}
@@ -970,7 +984,7 @@ async def render_page(
         await asyncio.to_thread(render_olddoc, page, root, quality, path, watermark)
         return path
 
-    if page.type in ("news", "superevent", "parliament", "chart", "comparison", "election", "timeline", "composition"):
+    if page.type in ("news", "superevent", "parliament"):
         from pillow_renderer import render_pillow
 
         await asyncio.to_thread(render_pillow, page, root, quality, path, watermark)

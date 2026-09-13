@@ -25,7 +25,7 @@ PARLIAMENT_ROLE_MARKERS = {
     "flag": (
         "pflag", "pflag:", "parliament flag", "parliament flag:",
         "country flag", "country flag:", "флаг страны", "флаг страны:",
-        "парламентский флаг", "парламентский флаг:"
+        "парламентский флаг", "парламентский флаг:", "flag", "flag:", "флаг", "флаг:"
     ),
     "party_logo": (
         "party", "party:", "party logo", "party logo:", "plogo", "plogo:",
@@ -83,6 +83,7 @@ def parliament_image_assets(data: dict) -> tuple[list[tuple[str, str]], tuple[st
     country_flag: tuple[str, str] | None = None
     party_logos: list[tuple[str, str]] = []
 
+    untagged: list[tuple[str, str]] = []
     for i, path in enumerate(page_images(data)):
         caption = image_caption(data, path, i)
         role, clean = split_parliament_image_role(caption)
@@ -94,7 +95,13 @@ def parliament_image_assets(data: dict) -> tuple[list[tuple[str, str]], tuple[st
         elif role == "party_logo":
             party_logos.append((path, clean))
         else:
-            gallery.append((path, caption))
+            untagged.append((path, caption))
+
+    # Для отдельной карточки парламента первая обычная картинка — это флаг.
+    # Пользователю не нужно знать служебную подпись pflag:.
+    if country_flag is None and untagged:
+        country_flag = untagged.pop(0)
+    gallery.extend(untagged)
     return gallery, country_flag, party_logos
 
 

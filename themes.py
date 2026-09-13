@@ -183,9 +183,9 @@ THEME_PAGE_TYPES: dict[str, set[str] | None] = {
     "fire_rises": {"news", "superevent"},
     "mirotorets": {"mirotorets"},
     # ordinary themes not for news/superevent/mirotorets
-    "light": {"country", "region", "battle", "person", "parliament", "chart", "comparison", "election", "timeline", "composition"},
-    "dark": {"country", "region", "battle", "person", "parliament", "chart", "comparison", "election", "timeline", "composition"},
-    "aurelia": {"country", "region", "battle", "person", "parliament", "chart", "comparison", "election", "timeline", "composition"},
+    "light": {"country", "region", "battle", "person", "parliament"},
+    "dark": {"country", "region", "battle", "person", "parliament"},
+    "aurelia": {"country", "region", "battle", "person", "parliament"},
 }
 
 

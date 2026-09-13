@@ -238,7 +238,7 @@ async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, u
         theme = "fire_rises"
     elif kind == "mirotorets":
         theme = "mirotorets"
-    elif kind in {"parliament", "chart", "comparison", "election", "timeline", "composition"}:
+    elif kind == "parliament":
         theme = "light"
     else:
         # обычные инфобоксы по-прежнему стартуют со старого документа

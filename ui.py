@@ -33,7 +33,7 @@ T = TypeVar("T")
 # типы с одной картинкой без своих полей
 TFR_SIMPLE_TYPES = frozenset({"news", "superevent", "mirotorets"})
 SPECIAL_TYPES = frozenset({"news", "superevent", "mirotorets"})
-NO_IMAGE_TYPES = frozenset({"chart", "comparison", "election", "timeline", "composition"})
+NO_IMAGE_TYPES = frozenset()
 
 
 def ib(text: str, data: str, **_kwargs) -> InlineKeyboardButton:

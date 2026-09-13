@@ -210,103 +210,19 @@ PARLIAMENT = Template(
     emoji="🏛",
     image_label="флаг страны и логотипы партий; подпиши флаг как pflag:, логотип как party: Название партии",
     subtitle_key="country",
-    wizard=("title", "country", "total_seats", "parties", "majority", "note"),
+    wizard=("title", "country", "total_seats", "parties", "term"),
     fields=(
         f("title", "Название парламента", "Основные сведения"),
         f("country", "Страна / территория", "Основные сведения"),
         f("total_seats", "Всего мест", "Основные сведения"),
-        f("majority", "Порог большинства", "Основные сведения"),
+        f("majority", "Порог большинства (если нужен особый)", "Основные сведения"),
         f("term", "Созыв / период", "Основные сведения"),
         f("parties", "Партии и места (Название | места | #цвет)", "Состав", multiline=True),
-        f("note", "Подпись", "Примечание", multiline=True),
+        f("note", "Примечание (необязательно)", "Примечание", multiline=True),
     ),
 )
 
 
-CHART = Template(
-    key="chart",
-    label="График",
-    emoji="📈",
-    image_label="изображения не нужны",
-    subtitle_key="subtitle",
-    wizard=("title", "chart_type", "data_points", "x_label", "y_label"),
-    fields=(
-        f("title", "Название графика", "Основные сведения"),
-        f("subtitle", "Подзаголовок", "Основные сведения"),
-        f("chart_type", "Тип графика (линия / столбцы / круг)", "Настройки"),
-        f("x_label", "Подпись оси X", "Настройки"),
-        f("y_label", "Подпись оси Y", "Настройки"),
-        f("data_points", "Данные графика (X | значение | #цвет)", "Данные", multiline=True),
-        f("note", "Источник / примечание", "Примечание", multiline=True),
-    ),
-)
-
-
-COMPARISON = Template(
-    key="comparison",
-    label="Сравнение",
-    emoji="📊",
-    image_label="изображения не нужны",
-    subtitle_key="subtitle",
-    wizard=("title", "items", "unit"),
-    fields=(
-        f("title", "Название сравнения", "Основные сведения"),
-        f("subtitle", "Подзаголовок", "Основные сведения"),
-        f("unit", "Единица измерения", "Настройки"),
-        f("items", "Пункты сравнения (Название | значение | #цвет)", "Данные", multiline=True),
-        f("note", "Источник / примечание", "Примечание", multiline=True),
-    ),
-)
-
-
-ELECTION = Template(
-    key="election",
-    label="Выборы",
-    emoji="🗳",
-    image_label="изображения не нужны",
-    subtitle_key="date",
-    wizard=("title", "date", "candidates", "turnout"),
-    fields=(
-        f("title", "Название выборов", "Основные сведения"),
-        f("date", "Дата", "Основные сведения"),
-        f("turnout", "Явка", "Основные сведения"),
-        f("majority", "Порог победы / большинства", "Основные сведения"),
-        f("candidates", "Партии / кандидаты (Название | результат | #цвет)", "Результаты", multiline=True),
-        f("note", "Источник / примечание", "Примечание", multiline=True),
-    ),
-)
-
-
-TIMELINE = Template(
-    key="timeline",
-    label="Хронология",
-    emoji="🕒",
-    image_label="изображения не нужны",
-    subtitle_key="subtitle",
-    wizard=("title", "events"),
-    fields=(
-        f("title", "Название хронологии", "Основные сведения"),
-        f("subtitle", "Период / подзаголовок", "Основные сведения"),
-        f("events", "События (Дата | событие)", "Хронология", multiline=True),
-        f("note", "Источник / примечание", "Примечание", multiline=True),
-    ),
-)
-
-
-COMPOSITION = Template(
-    key="composition",
-    label="Состав",
-    emoji="👥",
-    image_label="изображения не нужны",
-    subtitle_key="subtitle",
-    wizard=("title", "items"),
-    fields=(
-        f("title", "Название состава", "Основные сведения"),
-        f("subtitle", "Подзаголовок", "Основные сведения"),
-        f("items", "Группы / доли (Название | значение | #цвет)", "Состав", multiline=True),
-        f("note", "Источник / примечание", "Примечание", multiline=True),
-    ),
-)
 
 
 NEWS = Template(
@@ -364,7 +280,7 @@ MIROTORETS = Template(
 )
 
 
-TEMPLATES = {x.key: x for x in (COUNTRY, REGION, BATTLE, PERSON, PARLIAMENT, CHART, COMPARISON, ELECTION, TIMELINE, COMPOSITION, NEWS, SUPEREVENT, MIROTORETS)}
+TEMPLATES = {x.key: x for x in (COUNTRY, REGION, BATTLE, PERSON, PARLIAMENT, NEWS, SUPEREVENT, MIROTORETS)}
 
 
 def get_template(key: str) -> Template:
