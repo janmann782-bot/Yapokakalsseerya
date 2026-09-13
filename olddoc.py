@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
-from media import image_caption, page_images
+from media import battle_image_groups, image_caption, map_image_caption, map_images, page_images
 from models import Page
 from templates import Field, Template, get_template
 from themes import Theme, get_theme
@@ -514,12 +514,26 @@ def render_olddoc(
     header_parts.append(header)
 
     # --- images ---
-    media_items = []
-    for i, value in enumerate(page_images(data)):
-        mp = _media_path(value, root)
-        if mp:
-            media_items.append((mp, image_caption(data, value, i)))
-    if media_items:
+    battle_flags1: list[tuple[Path, str]] = []
+    battle_flags2: list[tuple[Path, str]] = []
+
+    def resolve_item(item: tuple[str, str] | None) -> tuple[Path, str] | None:
+        if not item:
+            return None
+        mp = _media_path(item[0], root)
+        return (mp, item[1]) if mp else None
+
+    def resolve_items(items: list[tuple[str, str]]) -> list[tuple[Path, str]]:
+        out: list[tuple[Path, str]] = []
+        for value, cap in items:
+            mp = _media_path(value, root)
+            if mp:
+                out.append((mp, cap))
+        return out
+
+    def gallery_block(media_items: list[tuple[Path, str]], *, tilt: bool = False) -> Image.Image | None:
+        if not media_items:
+            return None
         gap = int(10 * s)
         cell_w = content_w if len(media_items) == 1 else (content_w - gap) // 2
         max_h = int(320 * s)
@@ -534,57 +548,90 @@ def render_olddoc(
                 prepared.append((src, cap))
             except Exception:
                 continue
-        if prepared:
-            cap_font = _serif(max(12, int(14 * s)), italic=True)
-            lh = _line_h(tmp, cap_font)
-            rows = [prepared[i : i + (1 if len(prepared) == 1 else 2)] for i in range(0, len(prepared), 2 if len(prepared) > 1 else 1)]
-            heights = []
-            for row in rows:
-                rh = max(p[0].height for p in row)
-                for _, cap in row:
-                    if cap:
-                        rh += int(6 * s) + len(_wrap(tmp, cap, cap_font, cell_w)) * lh
-                heights.append(rh)
-            gh = pad // 2 + sum(heights) + gap * (len(rows) - 1) + pad // 2
-            gal = Image.new("RGBA", (card_w, gh), (0, 0, 0, 0))
-            gd = ImageDraw.Draw(gal)
-            yy = pad // 2
-            for row, rh in zip(rows, heights):
-                for i, (src, cap) in enumerate(row):
-                    if len(row) == 1:
-                        cx = (card_w - src.width) // 2
-                    else:
-                        cx = pad + i * (cell_w + gap) + (cell_w - src.width) // 2
-                    if drunk_flags:
-                        ang = rng.uniform(-8.0, 8.0) if substances else rng.uniform(-3.5, 3.5)
-                        rgb = src.convert("RGB")
-                        alpha = src.split()[3] if src.mode == "RGBA" else Image.new("L", src.size, 255)
-                        rgb_r = rgb.rotate(ang, expand=True, resample=Image.Resampling.BICUBIC, fillcolor=(0, 0, 0))
-                        a_r = alpha.rotate(ang, expand=True, resample=Image.Resampling.NEAREST, fillcolor=0)
-                        a_r = a_r.point(lambda v: 255 if v > 200 else 0)
-                        rotated = rgb_r.convert("RGBA")
-                        rotated.putalpha(a_r)
-                        ox = cx + rng.randint(-2, 2) - (rotated.width - src.width) // 2
-                        oy = yy + rng.randint(-2, 2) - (rotated.height - src.height) // 2
-                        gal.paste(rotated, (ox, oy), rotated)
-                    else:
-                        # clean, straight placement
-                        gal.paste(src, (cx, yy), src if src.mode == "RGBA" else None)
-                    if cap:
-                        lines = _wrap(tmp, cap, cap_font, cell_w - 8)
-                        draw_lines(
-                            gd,
-                            lines,
-                            (cx, yy + src.height + int(6 * s)),
-                            cap_font,
-                            ink_sec,
-                            lh,
-                            cell_w,
-                            "center",
-                            1.0,
-                        )
-                yy += rh + gap
-            media_parts.append(gal)
+        if not prepared:
+            return None
+
+        cap_font = _serif(max(12, int(14 * s)), italic=True)
+        lh = _line_h(tmp, cap_font)
+        cols = 1 if len(prepared) == 1 else 2
+        rows = [prepared[i : i + cols] for i in range(0, len(prepared), cols)]
+        heights = []
+        for row in rows:
+            rh = 0
+            for src, cap in row:
+                ch = src.height
+                if cap:
+                    ch += int(6 * s) + len(_wrap(tmp, cap, cap_font, cell_w - 8)) * lh
+                rh = max(rh, ch)
+            heights.append(rh)
+
+        gh = pad // 2 + sum(heights) + gap * (len(rows) - 1) + pad // 2
+        gal = Image.new("RGBA", (card_w, gh), (0, 0, 0, 0))
+        gd = ImageDraw.Draw(gal)
+        yy = pad // 2
+        for row, rh in zip(rows, heights):
+            for i, (src, cap) in enumerate(row):
+                if len(row) == 1:
+                    cell_x = pad
+                    this_w = content_w
+                else:
+                    cell_x = pad + i * (cell_w + gap)
+                    this_w = cell_w
+                cx = cell_x + (this_w - src.width) // 2
+                paste_y = yy
+                if tilt:
+                    ang = rng.uniform(-8.0, 8.0) if substances else rng.uniform(-3.5, 3.5)
+                    rgb = src.convert("RGB")
+                    alpha = src.split()[3] if src.mode == "RGBA" else Image.new("L", src.size, 255)
+                    rgb_r = rgb.rotate(ang, expand=True, resample=Image.Resampling.BICUBIC, fillcolor=(0, 0, 0))
+                    a_r = alpha.rotate(ang, expand=True, resample=Image.Resampling.NEAREST, fillcolor=0)
+                    a_r = a_r.point(lambda v: 255 if v > 200 else 0)
+                    rotated = rgb_r.convert("RGBA")
+                    rotated.putalpha(a_r)
+                    ox = cx + rng.randint(-2, 2) - (rotated.width - src.width) // 2
+                    oy = yy + rng.randint(-2, 2) - (rotated.height - src.height) // 2
+                    gal.paste(rotated, (ox, oy), rotated)
+                else:
+                    gal.paste(src, (cx, paste_y), src)
+                if cap:
+                    lines = _wrap(tmp, cap, cap_font, this_w - 8)
+                    draw_lines(
+                        gd, lines, (cell_x + 4, yy + src.height + int(6 * s)),
+                        cap_font, ink_sec, lh, this_w - 8, "center", 1.0,
+                    )
+            yy += rh + gap
+        return gal
+
+    media_items: list[tuple[Path, str]] = []
+    if page.type == "battle":
+        main_item, side1_items, side2_items, extra_items = battle_image_groups(data)
+        main = resolve_item(main_item)
+        if main:
+            media_items.append(main)
+        battle_flags1 = resolve_items(side1_items)
+        battle_flags2 = resolve_items(side2_items)
+        # Flags belong to conflict-side rows, never to the normal image gallery.
+        media_items.extend(resolve_items(extra_items))
+    else:
+        for i, value in enumerate(page_images(data)):
+            mp = _media_path(value, root)
+            if mp:
+                media_items.append((mp, image_caption(data, value, i)))
+
+    gallery = gallery_block(media_items)
+    if gallery:
+        media_parts.append(gallery)
+
+    # Territory maps are a separate media collection. Their captions must be
+    # explicit: the main image's legacy caption must never leak onto a map.
+    map_items: list[tuple[Path, str]] = []
+    for value in map_images(data):
+        mp = _media_path(value, root)
+        if mp:
+            map_items.append((mp, map_image_caption(data, value)))
+    map_gallery = gallery_block(map_items)
+    if map_gallery:
+        media_parts.append(map_gallery)
 
     label_font = _serif(max(13, int(15 * s)), bold=True)
     value_font = _serif(max(13, int(15 * s)))
@@ -631,7 +678,110 @@ def render_olddoc(
         )
         return img
 
-    skip = {"title", "description", "image_caption"}
+    def _battle_parts(value: object) -> list[str]:
+        if value in (None, "", []):
+            return ["—"]
+        if isinstance(value, (list, tuple)):
+            return [str(x).strip() for x in value if str(x).strip()] or ["—"]
+        return [line.strip() for line in str(value).splitlines() if line.strip()] or ["—"]
+
+    def _battle_flag_thumb(path: Path, size: tuple[int, int]) -> Image.Image | None:
+        try:
+            src = ImageOps.exif_transpose(Image.open(path))
+            src.load()
+            src = ImageOps.fit(src.convert("RGBA"), size, Image.Resampling.LANCZOS)
+        except Exception:
+            return None
+        if drunk_flags:
+            ang = rng.uniform(-8.0, 8.0) if substances else rng.uniform(-3.5, 3.5)
+            src = src.rotate(ang, expand=True, resample=Image.Resampling.BICUBIC)
+        return src
+
+    def battle_side_grid(left: object, right: object) -> Image.Image:
+        col_w = content_w // 2
+        inner_pad = max(8, int(10 * s))
+        pad_y = max(6, int(8 * s))
+        row_gap = max(4, int(5 * s))
+        flag_size = (max(22, int(30 * s)), max(14, int(19 * s)))
+        gap = max(5, int(7 * s))
+        font = value_font
+        line_h = lh_v
+
+        def side_rows(value: object, flags: list[tuple[Path, str]]):
+            parts = _battle_parts(value)
+            part_keys = {x.casefold().replace("ё", "е").strip() for x in parts}
+            named = {}
+            fallback = []
+            for fp, cap in flags:
+                thumb = _battle_flag_thumb(fp, flag_size)
+                if thumb is None:
+                    continue
+                key = str(cap or "").casefold().replace("ё", "е").strip()
+                if key and key in part_keys:
+                    named[key] = thumb
+                else:
+                    fallback.append(thumb)
+            fallback_slots = [i for i, x in enumerate(parts) if x.casefold().replace("ё", "е").strip() not in named]
+            fallback_targets = set(fallback_slots[-len(fallback):]) if fallback else set()
+            fallback_iter = iter(fallback)
+            rows = []
+            for i, part in enumerate(parts):
+                key = part.casefold().replace("ё", "е").strip()
+                thumb = named.get(key)
+                if thumb is None and i in fallback_targets:
+                    thumb = next(fallback_iter, None)
+                reserve = (thumb.width + gap) if thumb is not None else 0
+                lines = _wrap(tmp, part, font, max(40, col_w - inner_pad * 2 - reserve))
+                row_h = max(len(lines) * line_h, thumb.height if thumb is not None else 0, line_h)
+                rows.append((thumb, lines, row_h))
+            return rows
+
+        left_rows = side_rows(left, battle_flags1)
+        right_rows = side_rows(right, battle_flags2)
+
+        def total_h(rows) -> int:
+            return sum(rh for _thumb, _lines, rh in rows) + row_gap * max(0, len(rows) - 1)
+
+        h = max(total_h(left_rows), total_h(right_rows)) + pad_y * 2
+        img = Image.new("RGBA", (card_w, h), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        divider_x = pad + col_w
+        d.line((divider_x, pad_y // 2, divider_x, h - pad_y // 2), fill=sep, width=max(1, int(s)))
+
+        def paint(rows, x0: int, mirror: bool) -> None:
+            y = pad_y
+            for thumb, lines, row_h in rows:
+                x = x0 + inner_pad
+                if thumb is not None:
+                    fy = y + max(0, (row_h - thumb.height) // 2)
+                    img.paste(thumb, (x, fy), thumb)
+                    d.rectangle((x, fy, x + thumb.width - 1, fy + thumb.height - 1), outline=sep, width=max(1, int(s)))
+                    x += thumb.width + gap
+                text_w = max(30, x0 + col_w - inner_pad - x)
+                ty = y + max(0, (row_h - len(lines) * line_h) // 2)
+                draw_lines(d, lines, (x, ty), font, ink, line_h, text_w, "left", 1.1)
+                y += row_h + row_gap
+
+        paint(left_rows, pad, False)
+        paint(right_rows, pad + col_w, True)
+        return img
+
+    def battle_text_grid(left: object, right: object) -> Image.Image:
+        col_w = content_w // 2
+        inner_pad = max(8, int(10 * s))
+        pad_y = max(6, int(8 * s))
+        left_lines = _wrap(tmp, left if left not in (None, "", []) else "—", value_font, col_w - inner_pad * 2)
+        right_lines = _wrap(tmp, right if right not in (None, "", []) else "—", value_font, col_w - inner_pad * 2)
+        h = max(len(left_lines), len(right_lines)) * lh_v + pad_y * 2
+        img = Image.new("RGBA", (card_w, h), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        divider_x = pad + col_w
+        d.line((divider_x, pad_y // 2, divider_x, h - pad_y // 2), fill=sep, width=max(1, int(s)))
+        draw_lines(d, left_lines, (pad + inner_pad, pad_y), value_font, ink, lh_v, col_w - inner_pad * 2, "left", 1.2)
+        draw_lines(d, right_lines, (pad + col_w + inner_pad, pad_y), value_font, ink, lh_v, col_w - inner_pad * 2, "left", 1.2)
+        return img
+
+    skip = {"card_type_label", "title", "description", "image_caption"}
     if tpl.subtitle_key:
         skip.add(tpl.subtitle_key)
     sections_order = []
@@ -639,10 +789,40 @@ def render_olddoc(
         if f.key not in skip and f.section not in sections_order:
             sections_order.append(f.section)
 
+    battle_pairs = {
+        "Командующие": ("commander_1", "commander_2"),
+        "Силы сторон": ("strength_1", "strength_2"),
+        "Потери": ("losses_1", "losses_2"),
+    }
+
     for sec_name in sections_order:
         fields = [f for f in tpl.fields if f.section == sec_name and f.key not in skip and data.get(f.key) not in (None, "", [])]
         if not fields:
             continue
+
+        if page.type == "battle" and sec_name == "Противники":
+            left = data.get("side_1")
+            right = data.get("side_2")
+            if left not in (None, "", []) or right not in (None, "", []):
+                info_parts.append(section_title(sec_name))
+                info_parts.append(battle_side_grid(left, right))
+            continue
+
+        if page.type == "battle" and sec_name in battle_pairs:
+            left_key, right_key = battle_pairs[sec_name]
+            left = data.get(left_key)
+            right = data.get(right_key)
+            if left not in (None, "", []) or right not in (None, "", []):
+                info_parts.append(section_title(sec_name))
+                info_parts.append(battle_text_grid(left, right))
+            # Preserve any non-column fields in the same section (e.g. civilian casualties).
+            for f in fields:
+                if f.key not in (left_key, right_key):
+                    if not (left not in (None, "", []) or right not in (None, "", [])) and f == fields[0]:
+                        info_parts.append(section_title(sec_name))
+                    info_parts.append(field_row(f.label, data[f.key]))
+            continue
+
         info_parts.append(section_title(sec_name))
         for f in fields:
             info_parts.append(field_row(f.label, data[f.key]))

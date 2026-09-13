@@ -195,6 +195,20 @@ def map_images(data: dict) -> list[str]:
     return out[:MAX_PAGE_IMAGES]
 
 
+def map_image_caption(data: dict, path: str) -> str:
+    """Return a caption explicitly attached to a map image.
+
+    Map images share ``image_captions`` storage with normal images, but must not
+    inherit the legacy ``image_caption`` value of the page's first/main image.
+    """
+    captions = data.get("image_captions")
+    if isinstance(captions, dict):
+        value = captions.get(path)
+        if isinstance(value, str):
+            return value
+    return ""
+
+
 def set_map_images(data: dict, images: list[str]) -> None:
     items = []
     for x in images:

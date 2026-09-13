@@ -143,6 +143,35 @@ class TemplateTests(unittest.TestCase):
         self.assertNotIn("INFOBOX BOT", make_html(p, watermark=False))
 
 
+    def test_wikipedia_like_light_layout_and_battle_labels(self):
+        page = Page(
+            owner_id=1,
+            type="battle",
+            title="Тестовая битва",
+            theme="light",
+            data={
+                "title": "Тестовая битва",
+                "date": "1 января",
+                "result": "Победа",
+                "side_1": "Сторона А",
+                "side_2": "Сторона Б",
+                "commander_1": "Командир А",
+                "commander_2": "Командир Б",
+                "strength_1": "100",
+                "strength_2": "90",
+            },
+        )
+        html = make_html(page, watermark=False)
+        self.assertIn("width: 360px", html)
+        self.assertNotIn("💥 Битва", html)
+        self.assertIn("Итог", html)
+        self.assertIn("Противники", html)
+        self.assertIn("Командующие", html)
+        self.assertIn("Силы сторон", html)
+        self.assertNotIn("Стороны конфликта", html)
+        self.assertNotIn("Командующие и лидеры", html)
+
+
 class BattleSideTests(unittest.TestCase):
     def test_legacy_sides_are_upgraded(self):
         d = {"side_1": "Турбания\nКефирстан", "side_2": "Йогуртстан\nСеверная коалиция"}

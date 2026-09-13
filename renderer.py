@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from uuid import uuid4
 
-from media import battle_image_groups, image_caption, map_images, page_images
+from media import battle_image_groups, image_caption, map_image_caption, map_images, page_images
 from models import Page
 from templates import Field, Template, get_template
 from themes import Theme, get_theme
@@ -113,7 +113,7 @@ def battle_media(data: dict, work_dir: str | Path) -> tuple[tuple[str, str] | No
 
 
 def battle_side_cell(value: object, flags: list[tuple[str, str]], mirror: bool = False) -> str:
-    """Each text line is its own row. Flag on left (side1) or right (side2/mirror)."""
+    """Wikipedia-like conflict cell: compact rows with the flag before the member name."""
     if value in (None, '', []):
         parts = ["—"]
     elif isinstance(value, (list, tuple)):
@@ -121,22 +121,30 @@ def battle_side_cell(value: object, flags: list[tuple[str, str]], mirror: bool =
     else:
         parts = [ln.strip() for ln in str(value).splitlines() if ln.strip()] or ["—"]
 
-    uris = [uri for uri, _cap in flags if uri]
-    # more lines than flags → title without flag, flags on trailing member lines
-    offset = max(0, len(parts) - len(uris))
+    part_keys = {p.casefold().replace("ё", "е").strip() for p in parts}
+    named = {
+        cap.casefold().replace("ё", "е").strip(): uri
+        for uri, cap in flags
+        if uri and str(cap).strip() and cap.casefold().replace("ё", "е").strip() in part_keys
+    }
+    fallback_uris = [
+        uri for uri, cap in flags
+        if uri and (not str(cap).strip() or cap.casefold().replace("ё", "е").strip() not in part_keys)
+    ]
+    fallback_slots = [i for i, p in enumerate(parts) if p.casefold().replace("ё", "е").strip() not in named]
+    fallback_targets = set(fallback_slots[-len(fallback_uris):]) if fallback_uris else set()
+    fallback_iter = iter(fallback_uris)
 
     row_cls = "side-row side-row-mirror" if mirror else "side-row"
     rows_html = []
     for i, part in enumerate(parts):
-        fi = i - offset
-        uri = uris[fi] if 0 <= fi < len(uris) else None
+        key = part.casefold().replace("ё", "е").strip()
+        uri = named.get(key)
+        if uri is None and i in fallback_targets:
+            uri = next(fallback_iter, None)
         flag_html = f'<img class="mini-flag" src="{uri}" alt="">' if uri else ""
         text_html = f'<div class="battle-text">{value_html(part)}</div>'
-        if mirror:
-            # text then flag (flag on the right)
-            rows_html.append(f'<div class="{row_cls}">{text_html}{flag_html}</div>')
-        else:
-            rows_html.append(f'<div class="{row_cls}">{flag_html}{text_html}</div>')
+        rows_html.append(f'<div class="{row_cls}">{flag_html}{text_html}</div>')
     cell_cls = "battle-cell battle-side-name battle-side-mirror" if mirror else "battle-cell battle-side-name"
     return f'<div class="{cell_cls}">' + "".join(rows_html) + "</div>"
 
@@ -180,22 +188,20 @@ def battle_sections(data: dict, work_dir: str | Path) -> tuple[str, str]:
         gallery = f'<div class="gallery single"><figure><img src="{img}" alt="">{cap}</figure></div>'
 
     top = []
-    for label, key in (("Дата", "date"), ("Место", "place"), ("Результат", "result")):
+    for label, key in (("Дата", "date"), ("Место", "place"), ("Итог", "result"), ("Территориальные изменения", "territorial_changes")):
         if data.get(key) not in (None, '', []):
             top.append(row(label, data[key]))
 
     body = ''.join(top)
-    body += battle_side_section('Стороны конфликта', data.get('side_1'), data.get('side_2'), flags1, flags2)
-    body += battle_two_col_section('Командующие и лидеры', data.get('commander_1'), data.get('commander_2'))
-    body += battle_two_col_section('Силы', data.get('strength_1'), data.get('strength_2'))
+    body += battle_side_section('Противники', data.get('side_1'), data.get('side_2'), flags1, flags2)
+    body += battle_two_col_section('Командующие', data.get('commander_1'), data.get('commander_2'))
+    body += battle_two_col_section('Силы сторон', data.get('strength_1'), data.get('strength_2'))
     body += battle_two_col_section('Потери', data.get('losses_1'), data.get('losses_2'))
+    if data.get('casualties_civilian') not in (None, '', []):
+        body += row('Жертвы среди гражданских', data['casualties_civilian'])
 
-    if extras:
-        figures = []
-        for img, caption in extras:
-            cap = f"<figcaption>{value_html(caption)}</figcaption>" if caption else ''
-            figures.append(f'<figure><img src="{img}" alt="">{cap}</figure>')
-        gallery += f'<section><h2>Дополнительные изображения</h2><div class="gallery multi">{"".join(figures)}</div></section>'
+    # Extra battle images are intentionally not rendered inside the infobox.
+    # A Wikipedia-style infobox is a compact summary: main image + map are enough.
     return gallery, body
 
 
@@ -608,8 +614,8 @@ def make_html(
     for i, path in enumerate(map_images(d)):
         uri = image_uri(path, work_dir)
         if uri:
-            cap = image_caption(d, path, i)
-            # captions for maps stored same dict by path
+            cap = map_image_caption(d, path)
+            # map captions are explicit only; do not inherit the main image caption
             map_imgs.append((uri, cap))
     map_html = ""
     if map_imgs:
@@ -622,6 +628,8 @@ def make_html(
 
     subtitle_html = f'<div class="subtitle">{value_html(subtitle)}</div>' if subtitle else ""
     kind_label = resolve_kind_label(tpl, d)
+    if theme.key in {"light", "dark"} and not str(d.get("card_type_label") or "").strip():
+        kind_label = ""
     kind_html = f'<div class="kind">{esc(kind_label)}</div>' if kind_label else ""
     desc_html = ""
     if description:
@@ -648,103 +656,85 @@ def make_html(
 <style>
 {font_css()}
 {extra_font_css}
+
 :root {{{vars_}}}
 * {{ box-sizing: border-box; box-shadow: none !important; text-shadow: none !important; }}
 html, body {{ margin: 0; padding: 0; background: var(--background); color: var(--text); }}
-body {{ padding: 26px; font-family: var(--font); font-size: 20px; line-height: 1.42; }}
+body {{ padding: 12px; font-family: var(--font); font-size: 16px; line-height: 1.45; }}
 .sheet {{
-  position: relative; width: 820px; overflow: hidden; margin: 0 auto;
+  position: relative; width: 360px; overflow: hidden; margin: 0 auto;
   background: var(--panel); border: var(--border-width) solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 0;
 }}
-header {{ padding: 24px 28px 20px; text-align: center; background: var(--panel-alt); border-bottom: var(--border-width) solid var(--border); }}
-.kind {{ color: var(--text); font-size: 14px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }}
-h1 {{ margin: 5px 0 0; overflow-wrap: anywhere; font: 700 36px/1.16 var(--heading-font); color: var(--link); }}
-.subtitle {{ margin-top: 9px; color: var(--text-secondary); font-size: 19px; }}
+header {{ padding: 8px 10px 6px; text-align: center; background: var(--panel); border-bottom: 0; }}
+.kind {{ margin-bottom: 2px; color: var(--text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: none; }}
+h1 {{ margin: 0; overflow-wrap: anywhere; font: 700 23px/1.2 var(--heading-font); color: var(--text); }}
+.subtitle {{ margin-top: 4px; color: var(--text); font-size: 13px; line-height: 1.35; }}
 a, .wiki-link {{ color: var(--link); text-decoration: none; }}
 a:hover, .wiki-link:hover {{ text-decoration: underline; }}
-.gallery {{ margin: 20px; }}
-.gallery.multi {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
-.gallery.multi figure:last-child:nth-child(odd) {{ grid-column: 1 / -1; }}
-figure {{ min-width: 0; margin: 0; }}
+.gallery {{ margin: 6px 8px 8px; text-align: center; }}
+.gallery.multi {{ display: flex; flex-direction: column; align-items: center; gap: 7px; }}
+figure {{ min-width: 0; margin: 0; text-align: center; }}
 figure img {{
-  display: block; width: 100%; max-height: 650px; object-fit: contain;
-  background: var(--panel-alt); border: var(--border-width) solid var(--image-border);
-  border-radius: var(--radius);
+  display: block; width: auto; max-width: 300px; max-height: 360px; margin: 0 auto; object-fit: contain;
+  background: transparent; border: 0; border-radius: 0;
 }}
-.gallery.multi img {{ height: 360px; }}
-figcaption {{ padding: 8px 8px 0; text-align: center; color: var(--text-secondary); font-size: 16px; }}
-section {{ margin: 0; border-top: var(--border-width) solid var(--border); }}
+.gallery.multi img {{ width: auto; height: auto; max-width: 300px; max-height: 300px; }}
+figcaption {{ max-width: 320px; margin: 0 auto; padding: 4px 4px 0; text-align: center; color: var(--text); font-size: 12px; line-height: 1.3; }}
+section {{ margin: 0; border-top: 0; }}
 section h2 {{
-  margin: 0; padding: 9px 22px; overflow-wrap: anywhere; text-align: center;
+  margin: 0; padding: 4px 6px; overflow-wrap: anywhere; text-align: center;
   background: var(--section-bg); color: var(--section-text);
-  font: 700 22px/1.25 var(--heading-font); letter-spacing: .01em;
+  font: 700 14px/1.3 var(--font); letter-spacing: 0;
 }}
-.row {{ display: grid; grid-template-columns: minmax(170px, 36%) 1fr; border-top: var(--border-width) solid var(--border); }}
-.row:first-of-type {{ border-top: 0; }}
-.label, .value {{ padding: 11px 15px; min-width: 0; overflow-wrap: anywhere; }}
-.label {{ color: var(--text-secondary); font-weight: 650; background: var(--panel-alt); border-right: var(--border-width) solid var(--border); }}
-.sheet[data-theme="aurelia"] section > .row .label,
-.sheet[data-theme="aurelia"] section > .row .value {{ background: var(--panel); }}
+.row {{ display: grid; grid-template-columns: minmax(0, 38%) minmax(0, 62%); border-top: 0; }}
+.label, .value {{ padding: 3px 5px; min-width: 0; overflow-wrap: anywhere; }}
+.label {{ color: var(--text); font-weight: 700; background: transparent; border-right: 0; }}
+.value {{ color: var(--text); background: transparent; }}
+.row-alt .label, .row-alt .value {{ background: transparent; }}
 .sheet[data-theme="aurelia"] section > .row.row-alt .label,
 .sheet[data-theme="aurelia"] section > .row.row-alt .value {{ background: var(--row-alt); }}
 .side-grid {{ display: grid; grid-template-columns: 1fr 1fr; }}
-.side-col {{ min-width: 0; padding: 13px 16px 15px; overflow-wrap: anywhere; }}
+.side-col {{ min-width: 0; padding: 5px 6px; overflow-wrap: anywhere; }}
 .side-col + .side-col {{ border-left: var(--border-width) solid var(--border); }}
-.side-item + .side-item {{ margin-top: 12px; padding-top: 10px; border-top: var(--border-width) solid var(--border); }}
-.side-label {{ margin-bottom: 3px; color: var(--text-secondary); font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }}
+.side-item + .side-item {{ margin-top: 6px; padding-top: 0; border-top: 0; }}
+.side-label {{ margin-bottom: 1px; color: var(--text); font-size: 12px; font-weight: 700; text-transform: none; letter-spacing: 0; }}
 .battle-table {{ display: grid; grid-template-columns: 1fr 1fr; }}
-.battle-cell {{ min-width: 0; padding: 12px 16px 14px; overflow-wrap: anywhere; text-align: left; }}
+.battle-cell {{ min-width: 0; padding: 5px 6px; overflow-wrap: anywhere; text-align: left; font-size: 13px; }}
 .battle-cell + .battle-cell {{ border-left: var(--border-width) solid var(--border); }}
 .battle-side-name {{
   display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
-  gap: 8px; text-align: left; font-weight: 700; font-size: 20px; min-height: 0;
+  gap: 4px; text-align: left; font-weight: 400; font-size: 13px; min-height: 0;
 }}
-.battle-side-mirror {{
-  align-items: stretch; text-align: right;
-}}
-.side-row {{
-  display: flex; flex-direction: row; align-items: center; gap: 10px;
+.battle-side-mirror {{ align-items: stretch; text-align: left; }}
+.side-row, .side-row-mirror {{
+  display: flex; flex-direction: row; align-items: center; gap: 5px;
   text-align: left; justify-content: flex-start;
 }}
-.side-row-mirror {{
-  justify-content: flex-end; text-align: right;
-}}
-.side-row-mirror .battle-text {{ text-align: right; }}
-.mini-flag {{ width: 34px; height: 22px; object-fit: cover; flex: 0 0 auto; border: 1px solid var(--image-border); background: var(--panel-alt); }}
+.side-row-mirror .battle-text {{ text-align: left; }}
+.mini-flag {{ width: 26px; height: auto; max-height: 18px; object-fit: contain; flex: 0 0 auto; border: 1px solid var(--image-border); background: transparent; }}
 .battle-text {{ min-width: 0; text-align: left; }}
-.description-text {{ padding: 18px 22px 22px; overflow-wrap: anywhere; }}
-.footer {{ padding: 12px 18px; text-align: right; color: var(--text-secondary); background: var(--panel-alt); border-top: var(--border-width) solid var(--border); font-size: 13px; letter-spacing: .04em; }}
+.description-text {{ padding: 6px 7px 8px; overflow-wrap: anywhere; font-size: 14px; }}
+.footer {{ padding: 5px 7px; text-align: right; color: var(--text-secondary); background: var(--panel); border-top: 0; font-size: 9px; letter-spacing: .02em; }}
 
-.anthem-block {{ margin: 4px 20px 16px; text-align: center; }}
-.anthem-title {{ color: var(--link); font-size: 17px; margin-bottom: 8px; }}
-/* Wikipedia TimedMediaHandler-style player */
+.anthem-block {{ margin: 3px 8px 8px; text-align: center; }}
+.anthem-title {{ color: var(--link); font-size: 12px; margin-bottom: 4px; }}
 .anthem-player {{
   display: flex; align-items: center; justify-content: space-between;
-  background: #7c7c7c; border: none;
-  border-radius: 3px; padding: 0 10px; height: 38px;
-  max-width: 420px; margin: 0 auto; box-sizing: border-box;
+  background: #72777d; border: 1px solid #a2a9b1;
+  border-radius: 2px; padding: 0 7px; height: 28px;
+  max-width: 300px; margin: 0 auto; box-sizing: border-box;
 }}
 .anthem-play {{
-  width: 0; height: 0; flex: 0 0 auto;
-  border-style: solid;
-  border-width: 9px 0 9px 14px;
-  border-color: transparent transparent transparent #ffffff;
-  background: transparent; border-radius: 0;
-  margin-left: 4px;
-}}
-.sheet[data-theme="dark"] .anthem-play,
-.sheet[data-theme="aurelia"] .anthem-play {{
-  border-color: transparent transparent transparent #ffffff;
-  background: transparent;
+  width: 0; height: 0; flex: 0 0 auto; border-style: solid;
+  border-width: 6px 0 6px 10px; border-color: transparent transparent transparent #ffffff;
+  background: transparent; border-radius: 0; margin-left: 2px;
 }}
 .anthem-time {{
-  font-size: 13px; line-height: 1; color: #ffffff;
-  background: #000000; border-radius: 4px;
-  padding: 5px 10px; flex: 0 0 auto;
-  font-variant-numeric: tabular-nums;
+  font-size: 10px; line-height: 1; color: #ffffff; background: #202122; border-radius: 2px;
+  padding: 4px 6px; flex: 0 0 auto; font-variant-numeric: tabular-nums;
 }}
-.gallery.map {{ margin-top: 8px; }}
+.gallery.map {{ margin-top: 4px; }}
 </style>
 </head>
 <body>
