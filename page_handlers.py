@@ -30,6 +30,7 @@ from models import Page
 from parser import parse_section
 from renderer import render_error_text, render_page
 from states import EditPage, clear_flow
+from drafts import park_flow
 from templates import get_template
 from text_export import send_page_text
 from themes import THEMES, get_theme
@@ -38,6 +39,8 @@ from ui import (
     delete_kb,
     edit_value_kb,
     fields_kb,
+    field_sections_kb,
+    flow_show,
     image_caption_kb,
     main_menu,
     page_actions_kb,
@@ -157,7 +160,7 @@ async def render_saved(
                 pass
         except Exception as e:
             log.exception("saved page render failed: page=%s user=%s", p.id, p.owner_id)
-            await msg.answer(tr("render_error", error=render_error_text(e)))
+            await msg.answer(tr('render_error', error=render_error_text(e)), parse_mode='HTML')
             return None
         finally:
             if wait:
@@ -172,22 +175,19 @@ async def render_saved(
 async def get_owned(q: CallbackQuery, db: Db, page_id: int) -> Page | None:
     p = await db.get_page(page_id, q.from_user.id)
     if not p:
-        await q.message.answer(tr("page_not_found"))
+        await q.message.answer(tr('page_not_found'), parse_mode='HTML')
     return p
 
 
 async def show_pages(msg: Message, db: Db, user_id: int) -> None:
-    pages = await db.get_user_pages(user_id)
-    if not pages:
-        await msg.answer(tr("pages_empty"), reply_markup=main_menu())
-        return
-    await msg.answer(tr("pages_title"), reply_markup=pages_kb(pages))
+    pages = await db.search_pages(user_id, limit=9)
+    await msg.answer(tr("pages_title") if pages else tr("pages_empty"), reply_markup=pages_kb(pages[:8], has_more=len(pages) > 8), parse_mode="HTML")
 
 
 @router.message(Command("my_pages"))
-@router.message(F.text == MY_PAGES)
+@router.message(F.text.in_({MY_PAGES, "📚 Мои страницы"}))
 async def my_pages(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
-    await clear_flow(state, msg.from_user.id, db, cfg)
+    await park_flow(state, msg.from_user.id, db, cfg)
     await show_pages(msg, db, msg.from_user.id)
 
 
@@ -196,14 +196,14 @@ async def page_list_callback(
     q: CallbackQuery, state: FSMContext, db: Db, cfg: Config
 ) -> None:
     await q.answer()
-    await clear_flow(state, q.from_user.id, db, cfg)
+    await park_flow(state, q.from_user.id, db, cfg)
     await show_pages(q.message, db, q.from_user.id)
 
 
 @router.callback_query(F.data.startswith("p:o:"))
 async def open_page(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> None:
     await q.answer()
-    await clear_flow(state, q.from_user.id, db, cfg)
+    await park_flow(state, q.from_user.id, db, cfg)
     page_id = int(q.data.rsplit(":", 1)[1])
     p = await get_owned(q, db, page_id)
     if p:
@@ -213,16 +213,25 @@ async def open_page(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) ->
 @router.callback_query(F.data.startswith("p:e:"))
 async def edit_page(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> None:
     await q.answer()
-    await clear_flow(state, q.from_user.id, db, cfg)
+    await park_flow(state, q.from_user.id, db, cfg)
     page_id = int(q.data.rsplit(":", 1)[1])
     p = await get_owned(q, db, page_id)
     if not p:
         return
     await q.message.answer(
         tr("fields_title"),
-        reply_markup=fields_kb(get_template(p.type), p.data, p.id),
-        parse_mode="Markdown",
+        reply_markup=field_sections_kb(get_template(p.type), p.data, p.id),
+        parse_mode="HTML",
     )
+
+
+@router.callback_query(F.data.startswith("fields:p:"))
+async def saved_fields_page(q: CallbackQuery, db: Db) -> None:
+    await q.answer()
+    _, _, page_id, offset = q.data.split(":")
+    p = await get_owned(q, db, int(page_id))
+    if p:
+        await q.message.answer(tr("fields_title"), reply_markup=fields_kb(get_template(p.type), p.data, p.id, int(offset)), parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("pe:"))
@@ -273,35 +282,32 @@ async def choose_page_field(q: CallbackQuery, state: FSMContext, db: Db) -> None
 
     await state.update_data(**edit)
     await state.set_state(EditPage.value)
-    await q.message.answer(
-        tr("edit_value", label=label),
-        reply_markup=edit_value_kb(f"p:e:{page_id}", f"p:o:{page_id}"),
-    )
+    await q.message.answer(tr('edit_value', label=label), reply_markup=edit_value_kb(f'p:e:{page_id}', f'p:o:{page_id}'), parse_mode='HTML')
 
 
 async def save_and_render(msg: Message, p: Page, db: Db, cfg: Config) -> None:
     safe_unlink(p.preview_path, cfg.work_dir, "preview_")
     p.preview_path = None
     await db.update_page(p)
-    await msg.answer(tr("field_saved"))
+    await msg.answer(tr('field_saved'), parse_mode='HTML')
     await render_saved(msg, p, db, cfg)
 
 
 @router.message(EditPage.value)
 async def take_page_value(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
     if not msg.text:
-        await msg.answer(tr("text_only"))
+        await msg.answer(tr('text_only'), parse_mode='HTML')
         return
     s = msg.text.strip()
     if len(s) > 3800:
-        await msg.answer(tr("too_long", limit=3800))
+        await msg.answer(tr('too_long', limit=3800), parse_mode='HTML')
         return
 
     d = await state.get_data()
     p = await db.get_page(int(d["page_id"]), msg.from_user.id)
     if not p:
         await state.clear()
-        await msg.answer(tr("page_not_found"))
+        await msg.answer(tr('page_not_found'), parse_mode='HTML')
         return
 
     kind = d["edit_kind"]
@@ -309,7 +315,7 @@ async def take_page_value(msg: Message, state: FSMContext, db: Db, cfg: Config) 
     if kind == "s":
         key = d["edit_key"]
         if key == "title" and not value:
-            await msg.answer(tr("title_required"))
+            await msg.answer(tr('title_required'), parse_mode='HTML')
             return
         if key == "image_caption" and page_images(p.data):
             set_image_caption(p.data, page_images(p.data)[0], value)
@@ -327,7 +333,7 @@ async def take_page_value(msg: Message, state: FSMContext, db: Db, cfg: Config) 
             p.data["custom_fields"].pop(i)
     elif kind == "h":
         if not value:
-            await msg.answer(tr("section_title_empty"))
+            await msg.answer(tr('section_title_empty'), parse_mode='HTML')
             return
         p.data["sections"][int(d["edit_i"])]["title"] = value[:120]
     elif kind == "x":
@@ -338,7 +344,10 @@ async def take_page_value(msg: Message, state: FSMContext, db: Db, cfg: Config) 
             p.data["sections"][i]["fields"].pop(j)
 
     await state.clear()
-    await save_and_render(msg, p, db, cfg)
+    safe_unlink(p.preview_path, cfg.work_dir, "preview_")
+    p.preview_path = None
+    await db.update_page(p)
+    await msg.answer(tr("field_saved") + "\n\n" + tr("fields_title"), reply_markup=field_sections_kb(get_template(p.type), p.data, p.id), parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("pa:"))
@@ -353,22 +362,16 @@ async def page_add(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> 
 
     if action == "custom":
         if len(p.data.get("custom_fields") or []) >= 20:
-            await q.message.answer(tr("limit_reached"))
+            await q.message.answer(tr('limit_reached'), parse_mode='HTML')
             return
         await state.set_state(EditPage.custom_name)
-        await q.message.answer(
-            tr("custom_name"),
-            reply_markup=edit_value_kb(f"p:e:{page_id}", f"p:o:{page_id}"),
-        )
+        await q.message.answer(tr('custom_name'), reply_markup=edit_value_kb(f'p:e:{page_id}', f'p:o:{page_id}'), parse_mode='HTML')
     elif action == "section":
         if len(p.data.get("sections") or []) >= 6:
-            await q.message.answer(tr("limit_reached"))
+            await q.message.answer(tr('limit_reached'), parse_mode='HTML')
             return
         await state.set_state(EditPage.section)
-        await q.message.answer(
-            tr("section_prompt"),
-            reply_markup=edit_value_kb(f"p:e:{page_id}", f"p:o:{page_id}"),
-        )
+        await q.message.answer(tr('section_prompt'), reply_markup=edit_value_kb(f'p:e:{page_id}', f'p:o:{page_id}'), parse_mode='HTML')
     elif action == "image":
         if p.type == "parliament":
             await _show_page_parliament_assets(q.message, p, state)
@@ -397,28 +400,25 @@ async def page_add(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> 
 @router.message(EditPage.custom_name)
 async def page_custom_name(msg: Message, state: FSMContext) -> None:
     if not msg.text or not msg.text.strip():
-        await msg.answer(tr("custom_name"))
+        await msg.answer(tr('custom_name'), parse_mode='HTML')
         return
     name = msg.text.strip()[:100]
     d = await state.get_data()
     await state.update_data(custom_name=name)
     await state.set_state(EditPage.custom_value)
-    await msg.answer(
-        tr("custom_value", name=name),
-        reply_markup=edit_value_kb(f"p:e:{d['page_id']}", f"p:o:{d['page_id']}"),
-    )
+    await msg.answer(tr('custom_value', name=name), reply_markup=edit_value_kb(f"p:e:{d['page_id']}", f"p:o:{d['page_id']}"), parse_mode='HTML')
 
 
 @router.message(EditPage.custom_value)
 async def page_custom_value(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
     if not msg.text or not msg.text.strip():
-        await msg.answer(tr("empty_value"))
+        await msg.answer(tr('empty_value'), parse_mode='HTML')
         return
     d = await state.get_data()
     p = await db.get_page(int(d["page_id"]), msg.from_user.id)
     if not p:
         await state.clear()
-        await msg.answer(tr("page_not_found"))
+        await msg.answer(tr('page_not_found'), parse_mode='HTML')
         return
     p.data.setdefault("custom_fields", []).append(
         {"name": d["custom_name"], "value": msg.text.strip()[:3800]}
@@ -431,17 +431,17 @@ async def page_custom_value(msg: Message, state: FSMContext, db: Db, cfg: Config
 async def page_section(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
     sec = parse_section(msg.text or "")
     if not sec:
-        await msg.answer(tr("section_bad"))
+        await msg.answer(tr('section_bad'), parse_mode='HTML')
         return
     d = await state.get_data()
     p = await db.get_page(int(d["page_id"]), msg.from_user.id)
     if not p:
         await state.clear()
-        await msg.answer(tr("page_not_found"))
+        await msg.answer(tr('page_not_found'), parse_mode='HTML')
         return
     total = sum(len(x.get("fields") or []) for x in p.data.get("sections") or [])
     if total + len(sec["fields"]) > 40:
-        await msg.answer(tr("limit_reached"))
+        await msg.answer(tr('limit_reached'), parse_mode='HTML')
         return
     p.data.setdefault("sections", []).append(sec)
     await state.clear()
@@ -513,7 +513,7 @@ async def page_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
     p = await db.get_page(int(d["page_id"]), msg.from_user.id)
     if not p:
         await state.clear()
-        await msg.answer(tr("page_not_found"))
+        await msg.answer(tr('page_not_found'), parse_mode='HTML')
         return
     images = page_images(p.data)
     if p.type == "parliament" and d.get("image_mode") == "parliament_assets":
@@ -572,22 +572,16 @@ async def page_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
 
     max_c = 1 if p.type in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
     if len(images) >= max_c and p.type not in ("news", "superevent", "mirotorets"):
-        await msg.answer(
-            tr("image_limit", max_count=max_c),
-            reply_markup=page_image_kb(p.id, len(images), p.type),
-        )
+        await msg.answer(tr('image_limit', max_count=max_c), reply_markup=page_image_kb(p.id, len(images), p.type), parse_mode='HTML')
         return
 
     f = msg.photo[-1] if msg.photo else msg.document
     if not f:
-        await msg.answer(tr("image_only"), reply_markup=page_image_kb(p.id, len(images), p.type))
+        await msg.answer(tr('image_only'), reply_markup=page_image_kb(p.id, len(images), p.type), parse_mode='HTML')
         return
     size = getattr(f, "file_size", 0) or 0
     if size > cfg.max_image_mb * 1024 * 1024:
-        await msg.answer(
-            tr("image_bad", error=f"файл больше {cfg.max_image_mb} МБ"),
-            reply_markup=page_image_kb(p.id, len(images), p.type),
-        )
+        await msg.answer(tr('image_bad', error=f'файл больше {cfg.max_image_mb} МБ'), reply_markup=page_image_kb(p.id, len(images), p.type), parse_mode='HTML')
         return
 
     buf = BytesIO()
@@ -595,17 +589,11 @@ async def page_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
         await bot.download(f, destination=buf)
         info = await save_image(buf.getvalue(), msg.from_user.id, cfg.work_dir, cfg.max_image_mb)
     except BadImage as e:
-        await msg.answer(
-            tr("image_bad", error=str(e)),
-            reply_markup=page_image_kb(p.id, len(images), p.type),
-        )
+        await msg.answer(tr('image_bad', error=str(e)), reply_markup=page_image_kb(p.id, len(images), p.type), parse_mode='HTML')
         return
     except Exception:
         log.exception("page image download failed for user %s", msg.from_user.id)
-        await msg.answer(
-            tr("image_bad", error="не удалось скачать файл"),
-            reply_markup=page_image_kb(p.id, len(images), p.type),
-        )
+        await msg.answer(tr('image_bad', error='не удалось скачать файл'), reply_markup=page_image_kb(p.id, len(images), p.type), parse_mode='HTML')
         return
 
     if p.type in ("news", "superevent", "mirotorets"):
@@ -683,10 +671,7 @@ async def page_image_action(q: CallbackQuery, state: FSMContext, db: Db, cfg: Co
     await db.update_page(p)
     if await db.drop_media_if_unused(old, q.from_user.id):
         safe_unlink(old, cfg.work_dir, "media_")
-    await q.message.answer(
-        tr("image_removed", number=i + 1, count=len(images)),
-        reply_markup=page_image_kb(page_id, len(images), p.type),
-    )
+    await q.message.answer(tr('image_removed', number=i + 1, count=len(images)), reply_markup=page_image_kb(page_id, len(images), p.type), parse_mode='HTML')
 
 
 @router.message(EditPage.image_caption)
@@ -694,29 +679,26 @@ async def take_page_image_caption(msg: Message, state: FSMContext, db: Db, cfg: 
     d = await state.get_data()
     page_id = int(d["page_id"])
     if not msg.text:
-        await msg.answer(tr("text_only"), reply_markup=image_caption_kb(page_id))
+        await msg.answer(tr('text_only'), reply_markup=image_caption_kb(page_id), parse_mode='HTML')
         return
     s = msg.text.strip()
     if not s:
-        await msg.answer(tr("empty_value"), reply_markup=image_caption_kb(page_id))
+        await msg.answer(tr('empty_value'), reply_markup=image_caption_kb(page_id), parse_mode='HTML')
         return
     if len(s) > IMAGE_CAPTION_LIMIT:
-        await msg.answer(
-            tr("too_long", limit=IMAGE_CAPTION_LIMIT),
-            reply_markup=image_caption_kb(page_id),
-        )
+        await msg.answer(tr('too_long', limit=IMAGE_CAPTION_LIMIT), reply_markup=image_caption_kb(page_id), parse_mode='HTML')
         return
 
     p = await db.get_page(page_id, msg.from_user.id)
     if not p:
         await state.clear()
-        await msg.answer(tr("page_not_found"))
+        await msg.answer(tr('page_not_found'), parse_mode='HTML')
         return
     images = page_images(p.data)
     path = str(d.get("caption_path") or "")
     if path not in images:
         await state.set_state(EditPage.image)
-        await msg.answer(tr("images_continue"), reply_markup=page_image_kb(page_id, len(images), p.type))
+        await msg.answer(tr('images_continue'), reply_markup=page_image_kb(page_id, len(images), p.type), parse_mode='HTML')
         return
 
     set_image_caption(p.data, path, s)
@@ -725,7 +707,7 @@ async def take_page_image_caption(msg: Message, state: FSMContext, db: Db, cfg: 
     await db.update_page(p)
     await state.update_data(page_id=page_id, caption_path=None, caption_i=None)
     await state.set_state(EditPage.image)
-    await msg.answer(tr("image_caption_saved"), reply_markup=page_image_kb(page_id, len(images), p.type))
+    await msg.answer(tr('image_caption_saved'), reply_markup=page_image_kb(page_id, len(images), p.type), parse_mode='HTML')
 
 
 @router.callback_query(EditPage.image_caption, F.data.startswith("pc:"))
@@ -807,11 +789,11 @@ async def copy_page(q: CallbackQuery, db: Db) -> None:
     page_id = int(q.data.rsplit(":", 1)[1])
     p = await db.copy_page(page_id, q.from_user.id)
     if not p:
-        await q.message.answer(tr("page_not_found"))
+        await q.message.answer(tr('page_not_found'), parse_mode='HTML')
         return
     for path in page_images(p.data):
         await db.attach_media(path, p.id, q.from_user.id)
-    await q.message.answer(tr("copied", title=p.title), reply_markup=page_actions_kb(p.id, p.type, p.theme))
+    await q.message.answer(tr('copied', title=p.title), reply_markup=page_actions_kb(p.id, p.type, p.theme), parse_mode='HTML')
 
 
 @router.callback_query(F.data.startswith("p:x:"))
@@ -830,7 +812,7 @@ async def ask_delete(q: CallbackQuery, db: Db) -> None:
     page_id = int(q.data.rsplit(":", 1)[1])
     p = await get_owned(q, db, page_id)
     if p:
-        await q.message.answer(tr("delete_confirm", title=p.title), reply_markup=delete_kb(page_id))
+        await q.message.answer(tr('delete_confirm', title=p.title), reply_markup=delete_kb(page_id), parse_mode='HTML')
 
 
 @router.callback_query(F.data.startswith("pd:") & F.data.endswith(":yes"))
@@ -848,7 +830,7 @@ async def delete_page(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) 
             if await db.drop_media_if_unused(path, q.from_user.id):
                 safe_unlink(path, cfg.work_dir, "media_")
         await state.clear()
-        await q.message.answer(tr("deleted"), reply_markup=main_menu())
+        await q.message.answer(tr('deleted'), reply_markup=main_menu(), parse_mode='HTML')
 
 
 
@@ -862,32 +844,7 @@ async def page_olddoc_menu(q: CallbackQuery, db: Db) -> None:
         return
     from olddoc import ensure_old_meta, paper_count
     ensure_old_meta(p.data)
-    await q.message.answer(
-        tr(
-            "olddoc_pick",
-            seed=p.data.get("_old_seed", 0),
-            paper=int(p.data.get("_old_paper", 0)) + 1,
-            cups=p.data.get("_old_stain_count", 0),
-            text="пьяный" if p.data.get("_old_drunk") else "обычный",
-            flags="пьяные" if p.data.get("_old_drunk_flags") else "обычные",
-            sub="вкл" if p.data.get("_old_substances") else "выкл",
-            window="вкл" if p.data.get("_old_window", True) else "выкл",
-            outline="вкл" if p.data.get("_old_outline", True) else "выкл",
-            bw="вкл" if p.data.get("_old_bw") else "выкл",
-        ),
-        reply_markup=olddoc_options_kb(
-            page_id,
-            stain_count=int(p.data.get("_old_stain_count", 0)),
-            paper=int(p.data.get("_old_paper", 0)),
-            paper_total=paper_count(),
-            drunk=bool(p.data.get("_old_drunk", False)),
-            drunk_flags=bool(p.data.get("_old_drunk_flags", False)),
-            substances=bool(p.data.get("_old_substances", False)),
-            window=bool(p.data.get("_old_window", True)),
-            outline=bool(p.data.get("_old_outline", True)),
-            bw=bool(p.data.get("_old_bw", False)),
-        ),
-    )
+    await q.message.answer(tr('olddoc_pick', seed=p.data.get('_old_seed', 0), paper=int(p.data.get('_old_paper', 0)) + 1, cups=p.data.get('_old_stain_count', 0), text='пьяный' if p.data.get('_old_drunk') else 'обычный', flags='пьяные' if p.data.get('_old_drunk_flags') else 'обычные', sub='вкл' if p.data.get('_old_substances') else 'выкл', window='вкл' if p.data.get('_old_window', True) else 'выкл', outline='вкл' if p.data.get('_old_outline', True) else 'выкл', bw='вкл' if p.data.get('_old_bw') else 'выкл'), reply_markup=olddoc_options_kb(page_id, stain_count=int(p.data.get('_old_stain_count', 0)), paper=int(p.data.get('_old_paper', 0)), paper_total=paper_count(), drunk=bool(p.data.get('_old_drunk', False)), drunk_flags=bool(p.data.get('_old_drunk_flags', False)), substances=bool(p.data.get('_old_substances', False)), window=bool(p.data.get('_old_window', True)), outline=bool(p.data.get('_old_outline', True)), bw=bool(p.data.get('_old_bw', False))), parse_mode='HTML')
 
 
 @router.callback_query(
@@ -949,7 +906,7 @@ async def page_old_actions(q: CallbackQuery, db: Db, cfg: Config) -> None:
         safe_unlink(p.preview_path, cfg.work_dir, "preview_")
         p.preview_path = None
         await db.update_page(p)
-        await q.message.answer(tr("olddoc_applied"))
+        await q.message.answer(tr('olddoc_applied'), parse_mode='HTML')
         await render_saved(q.message, p, db, cfg)
         return
 

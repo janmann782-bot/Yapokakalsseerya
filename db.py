@@ -26,6 +26,40 @@ class Db:
 
     async def init(self) -> None:
         await asyncio.to_thread(self._init)
+        await asyncio.to_thread(self._init_drafts)
+
+    def _init_drafts(self) -> None:
+        with self._connect() as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS drafts (owner_id INTEGER PRIMARY KEY, payload TEXT NOT NULL, updated_at TEXT NOT NULL)")
+
+    async def save_draft(self, owner_id: int, data: dict) -> None:
+        payload = json.dumps(data, ensure_ascii=False)
+        def save():
+            with self._connect() as conn:
+                conn.execute("INSERT INTO drafts VALUES (?, ?, ?) ON CONFLICT(owner_id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at", (owner_id, payload, now()))
+        await asyncio.to_thread(save)
+
+    async def get_draft(self, owner_id: int) -> dict | None:
+        def get():
+            with self._connect() as conn:
+                row = conn.execute("SELECT payload FROM drafts WHERE owner_id=?", (owner_id,)).fetchone()
+            return json.loads(row[0]) if row else None
+        return await asyncio.to_thread(get)
+
+    async def delete_draft(self, owner_id: int) -> None:
+        def delete():
+            with self._connect() as conn:
+                conn.execute("DELETE FROM drafts WHERE owner_id=?", (owner_id,))
+        await asyncio.to_thread(delete)
+
+    async def search_pages(self, owner_id: int, query: str = "", offset: int = 0, limit: int = 9) -> list[Page]:
+        def search():
+            with self._connect() as conn:
+                rows = conn.execute("SELECT * FROM pages WHERE owner_id=? ORDER BY updated_at DESC, id DESC", (owner_id,)).fetchall()
+            # Python casefold handles Cyrillic, SQLite's default LIKE does not.
+            found = [Page.from_row(row) for row in rows if query.casefold() in str(row["title"]).casefold()]
+            return found[max(0, offset):max(0, offset) + limit]
+        return await asyncio.to_thread(search)
 
     def _init(self) -> None:
         with self._connect() as conn:

@@ -11,6 +11,7 @@ from models import Page
 from templates import Field, Template, get_template
 from themes import Theme, get_theme
 from fonts_catalog import resolve_font_files, resolve_user_font
+from wiki_layout import country_groups
 
 
 PILLOW_SCALE = {"standard": 3.0, "high": 3.5, "ultra": 4.0}
@@ -71,6 +72,9 @@ def _load_font(here: Path, name: str, size: int):
     for p in paths:
         if p.is_file():
             return ImageFont.truetype(str(p), size)
+    fallback = here / ("DejaVuSans-Bold.ttf" if "Bold" in name else "DejaVuSans.ttf")
+    if fallback.is_file():
+        return ImageFont.truetype(str(fallback), size)
     return ImageFont.load_default(size=size)
 
 
@@ -233,6 +237,7 @@ def _picture(
     path: Path,
     caption: object,
     theme: Theme,
+    symbol: bool = False,
 ) -> Image.Image | None:
     try:
         src = ImageOps.exif_transpose(Image.open(path))
@@ -244,6 +249,9 @@ def _picture(
     pad_y = int(6 * s)
     max_w = min(w - pad_x * 2, int(300 * s))
     max_h = int(360 * s)
+    if symbol:
+        max_w = min(max_w, int(180 * s))
+        max_h = int(130 * s)
     src.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
     if src.mode in {"RGBA", "LA"}:
         base = Image.new("RGBA", src.size, theme.panel)
@@ -272,7 +280,33 @@ def _gallery(
     s: float,
     items: list[tuple[Path, str]],
     theme: Theme,
+    symbols: bool = False,
 ) -> Image.Image | None:
+    if symbols and items:
+        # The first two country images are displayed as flag / coat of arms.
+        columns = min(2, len(items))
+        cell_w = w // columns
+        tiles = []
+        for path, caption in items:
+            # Limit only symbol size; maps continue using the full card width.
+            block = _picture(cell_w, s, path, caption, theme, symbol=True)
+            if block is not None:
+                tiles.append(block)
+        if not tiles:
+            return None
+        strips = []
+        for i in range(0, len(tiles), columns):
+            cells = tiles[i:i + columns]
+            strip = Image.new("RGB", (w, max(c.height for c in cells)), theme.panel)
+            for j, cell in enumerate(cells):
+                strip.paste(cell, (j * cell_w, 0))
+            strips.append(strip)
+        out = Image.new("RGB", (w, sum(strip.height for strip in strips)), theme.panel)
+        y = 0
+        for strip in strips:
+            out.paste(strip, (0, y))
+            y += strip.height
+        return out
     blocks = []
     for path, caption in items:
         block = _picture(w, s, path, caption, theme)
@@ -480,7 +514,7 @@ def _section_title(w: int, s: float, title: str, theme: Theme) -> Image.Image:
 
 
 def _row(w: int, s: float, label: object, value: object, theme: Theme, alternate: bool = False) -> Image.Image:
-    label_w = int(w * 0.38)
+    label_w = int(w * (0.42 if theme.key == "light" else 0.38))
     pad_x = int(5 * s)
     pad_y = int(3 * s)
     label_font = _font(theme, max(10, int(13 * s)), bold=True)
@@ -1643,7 +1677,7 @@ def render_pillow(
             if media_path:
                 media.append((media_path, image_caption(d, value, i)))
         if media:
-            pic = _gallery(inner_w, s, media, theme)
+            pic = _gallery(inner_w, s, media, theme, symbols=theme.key == "light" and tpl.key == "country")
             if pic:
                 blocks.append(pic)
 
@@ -1663,14 +1697,20 @@ def render_pillow(
             if pic:
                 blocks.append(pic)
 
-        for title, fields in _standard_groups(tpl, d):
-            blocks.append(_section_title(inner_w, s, title, theme))
+        groups = country_groups(tpl, d) if theme.key == "light" and tpl.key == "country" else _standard_groups(tpl, d)
+        for title, fields in groups:
+            if title:
+                blocks.append(_section_title(inner_w, s, title, theme))
             if any(f.column for f in fields):
                 blocks.append(_side_rows(inner_w, s, fields, d, theme))
             else:
                 for f in fields:
                     row_index += 1
                     blocks.append(_row(inner_w, s, f.label, d[f.key], theme, alternate=(row_index % 2 == 0)))
+        if theme.key == "light" and tpl.key == "country":
+            for key, label in (("alt_name", "Другие названия"), ("motto", "Девиз")):
+                if d.get(key):
+                    blocks.append(_row(inner_w, s, label, d[key], theme))
 
 
     custom = [
