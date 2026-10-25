@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from aiogram import Dispatcher
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.memory import MemoryStorage, SimpleEventIsolation
 
 from admin import maintenance_middleware, router as admin_router
 from config import Config
@@ -11,17 +11,22 @@ from db import Db
 from handlers import on_error
 from handlers import router as common_router
 from page_handlers import router as page_router
+from navigation import router as navigation_router
+from drafts import DraftCheckpointMiddleware
 
 
 def make_dispatcher(db: Db, cfg: Config) -> Dispatcher:
-    dp = Dispatcher(storage=MemoryStorage())
+    dp = Dispatcher(storage=MemoryStorage(), events_isolation=SimpleEventIsolation())
     dp["db"] = db
     dp["cfg"] = cfg
     # Blocks non-admins when maintenance is on (admin commands still work)
     dp.message.middleware(maintenance_middleware)
     dp.callback_query.middleware(maintenance_middleware)
+    dp.message.outer_middleware(DraftCheckpointMiddleware())
+    dp.callback_query.outer_middleware(DraftCheckpointMiddleware())
     # Admin router first so /maint_* always reachable for admins
     dp.include_router(admin_router)
+    dp.include_router(navigation_router)
     dp.include_router(common_router)
     dp.include_router(page_router)
     dp.include_router(create_router)

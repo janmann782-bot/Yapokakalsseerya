@@ -54,7 +54,7 @@ async def _render_saved(msg: Message, p, db: Db, cfg: Config) -> None:
         )
     except Exception as e:
         log.exception("battle side render failed page=%s", p.id)
-        await msg.answer(tr("render_error", error=str(e)[:300]))
+        await msg.answer(tr('render_error', error=str(e)[:300]), parse_mode='HTML')
     finally:
         with suppress(TelegramBadRequest):
             await wait.delete()
@@ -144,6 +144,17 @@ async def _handle_cb(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, b
 
     action = parts[3] if page_id is not None else parts[2]
     args = parts[4:] if page_id is not None else parts[3:]
+    if action == "skip" and not args:
+        await _skip_flag(q, state, db, cfg, bot, page_id is not None)
+        return
+    if action == "cancel" and not args:
+        current = await state.get_data()
+        if page_id is None:
+            await state.set_state(NewPage.review)
+        else:
+            await state.clear()
+        await _show_side(q.message, data, int(current.get("battle_side_i", 0)), page_id)
+        return
     if action == "back" and not args:
         if page_id is None:
             from create_handlers import show_preview
@@ -162,22 +173,25 @@ async def _handle_cb(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, b
         await _skip_flag(q, state, db, cfg, bot, page_id is not None)
         return
     if op == "cancel":
-        await q.message.answer(tr("cancelled"))
-        await state.clear()
+        await q.message.answer(tr('cancelled'), parse_mode='HTML')
+        if page_id is None:
+            await state.set_state(NewPage.review)
+        else:
+            await state.clear()
         return
     if op == "add":
         if len(normalize_sides(data)[side_i]["members"]) >= MAX_SIDE_MEMBERS:
-            await q.message.answer(tr("battle_side_limit"))
+            await q.message.answer(tr('battle_side_limit'), parse_mode='HTML')
             return
         await state.update_data(battle_side_i=side_i, battle_member_i=None)
         await state.set_state(EditPage.battle_text if page_id is not None else NewPage.battle_text)
         await state.update_data(battle_action="add_member", battle_page_id=page_id)
-        await q.message.answer(tr("battle_member_name"))
+        await q.message.answer(tr('battle_member_name'), parse_mode='HTML')
         return
     if op == "name" and len(args) == 1:
         await state.update_data(battle_side_i=side_i, battle_page_id=page_id, battle_action="side_name")
         await state.set_state(EditPage.battle_text if page_id is not None else NewPage.battle_text)
-        await q.message.answer(tr("battle_side_name"))
+        await q.message.answer(tr('battle_side_name'), parse_mode='HTML')
         return
     if op == "e" and len(args) == 2:
         await _open_member(q.message, data, side_i, int(args[1]), page_id)
@@ -193,6 +207,8 @@ async def _handle_cb(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, b
         await _save_sides_data(data, sides)
         if p:
             await _invalidate_saved(p, db, cfg)
+        else:
+            await state.update_data(page_data=data)
         await _remove_flag(old_flag, q.from_user.id, db, cfg, page_id is not None)
         await _show_side(q.message, data, side_i, page_id)
         return
@@ -202,7 +218,7 @@ async def _handle_cb(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, b
             return
         await state.update_data(battle_side_i=side_i, battle_member_i=idx, battle_page_id=page_id, battle_action="flag")
         await state.set_state(EditPage.battle_flag if page_id is not None else NewPage.battle_flag)
-        await q.message.answer(tr("battle_flag_prompt"), reply_markup=battle_flag_kb(prefix))
+        await q.message.answer(tr('battle_flag_prompt'), reply_markup=battle_flag_kb(prefix), parse_mode='HTML')
         return
     if op == "name" and len(args) == 2:
         idx = int(args[1])
@@ -210,7 +226,7 @@ async def _handle_cb(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, b
             return
         await state.update_data(battle_side_i=side_i, battle_member_i=idx, battle_page_id=page_id, battle_action="member_name")
         await state.set_state(EditPage.battle_text if page_id is not None else NewPage.battle_text)
-        await q.message.answer(tr("battle_member_name"))
+        await q.message.answer(tr('battle_member_name'), parse_mode='HTML')
         return
 
 
@@ -248,7 +264,7 @@ async def page_battle_sides(q: CallbackQuery, state: FSMContext, db: Db, cfg: Co
 
 async def battle_text_input(msg: Message, state: FSMContext, db: Db, cfg: Config, saved: bool) -> None:
     if not msg.text or not msg.text.strip():
-        await msg.answer(tr("text_only"))
+        await msg.answer(tr('text_only'), parse_mode='HTML')
         return
     d = await state.get_data()
     side_i = int(d.get("battle_side_i", 0))
@@ -261,7 +277,7 @@ async def battle_text_input(msg: Message, state: FSMContext, db: Db, cfg: Config
         p = await db.get_page(int(page_id), msg.from_user.id)
         if not p:
             await state.clear()
-            await msg.answer(tr("page_not_found"))
+            await msg.answer(tr('page_not_found'), parse_mode='HTML')
             return
         data = p.data
     else:
@@ -288,7 +304,7 @@ async def battle_text_input(msg: Message, state: FSMContext, db: Db, cfg: Config
         await state.update_data(page_data=data)
     if action == "add_member":
         await state.set_state(EditPage.battle_flag if saved else NewPage.battle_flag)
-        await msg.answer(tr("battle_flag_prompt"), reply_markup=battle_flag_kb(_base(page_id)))
+        await msg.answer(tr('battle_flag_prompt'), reply_markup=battle_flag_kb(_base(page_id)), parse_mode='HTML')
         return
     if saved:
         await state.clear()
@@ -317,29 +333,29 @@ async def battle_flag_input(msg: Message, state: FSMContext, bot: Bot, db: Db, c
         p = await db.get_page(int(page_id), msg.from_user.id)
         if not p:
             await state.clear()
-            await msg.answer(tr("page_not_found"))
+            await msg.answer(tr('page_not_found'), parse_mode='HTML')
             return
         data = p.data
     else:
         data = d.get("page_data") or {}
     f = msg.photo[-1] if msg.photo else msg.document
     if not f:
-        await msg.answer(tr("battle_flag_only"))
+        await msg.answer(tr('battle_flag_only'), parse_mode='HTML')
         return
     size = getattr(f, "file_size", 0) or 0
     if size > cfg.max_image_mb * 1024 * 1024:
-        await msg.answer(tr("image_bad", error=f"файл больше {cfg.max_image_mb} МБ"))
+        await msg.answer(tr('image_bad', error=f'файл больше {cfg.max_image_mb} МБ'), parse_mode='HTML')
         return
     buf = BytesIO()
     try:
         await bot.download(f, destination=buf)
         info = await save_image(buf.getvalue(), msg.from_user.id, cfg.work_dir, cfg.max_image_mb)
     except BadImage as e:
-        await msg.answer(tr("image_bad", error=str(e)))
+        await msg.answer(tr('image_bad', error=str(e)), parse_mode='HTML')
         return
     except Exception:
         log.exception("battle flag download failed user=%s", msg.from_user.id)
-        await msg.answer(tr("image_bad", error="не удалось скачать файл"))
+        await msg.answer(tr('image_bad', error='не удалось скачать файл'), parse_mode='HTML')
         return
 
     sides = normalize_sides(data)

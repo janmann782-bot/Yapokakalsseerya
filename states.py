@@ -21,6 +21,11 @@ class FontSearch(StatesGroup):
     wait = State()
 
 
+class Navigation(StatesGroup):
+    paste = State()
+    search = State()
+
+
 class NewPage(StatesGroup):
     field = State()
     image = State()

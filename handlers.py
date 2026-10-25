@@ -13,6 +13,9 @@ from locales import tr
 from log_sink import spawn_user_start
 from media import safe_unlink
 from states import clear_flow
+from states import FontUpload
+from drafts import park_flow, invalidate_previews
+from navigation import show_home
 from stats import format_count
 from themes import THEMES, get_theme
 from ui import (
@@ -28,17 +31,21 @@ from ui import (
     themes_kb,
     types_kb,
     flow_show,
+    home_kb,
 )
 
 router = Router(name="common")
 log = logging.getLogger(__name__)
 
 
-QUALITY_NAMES = {"standard": "обычное", "high": "высокое", "ultra": "очень высокое"}
+QUALITY_NAMES = {"standard": "обычный", "high": "высокий", "ultra": "максимальный"}
 
 
 async def show_settings(msg: Message, db: Db, user_id: int) -> None:
     s = await db.get_settings(user_id)
+    from fonts_catalog import list_bundled_families
+    selected_font = getattr(s, "font", "default") or "default"
+    font_name = dict(list_bundled_families()).get(selected_font, selected_font.removeprefix("user:"))
     await msg.answer(
         tr(
             "settings",
@@ -47,7 +54,7 @@ async def show_settings(msg: Message, db: Db, user_id: int) -> None:
             quality=QUALITY_NAMES.get(s.quality, s.quality),
             format=s.export_format.upper(),
             watermark="включена" if s.watermark else "отключена",
-            font=getattr(s, "font", "default") or "default",
+            font=font_name,
         ),
         reply_markup=settings_kb(s.watermark),
         parse_mode="HTML",
@@ -56,67 +63,65 @@ async def show_settings(msg: Message, db: Db, user_id: int) -> None:
 
 @router.message(CommandStart())
 async def start(msg: Message, state: FSMContext, db: Db, cfg: Config, bot: Bot) -> None:
-    await clear_flow(state, msg.from_user.id, db, cfg)
+    await park_flow(state, msg.from_user.id, db, cfg)
     await db.touch_user(
         msg.from_user.id,
         msg.from_user.first_name or "",
         msg.from_user.username or "",
     )
     spawn_user_start(bot, cfg, msg.from_user)
-    await msg.answer(tr("welcome"), reply_markup=main_menu(), parse_mode="HTML")
+    await show_home(msg, state, db, msg.from_user.id)
 
 
 @router.message(Command("help"))
-@router.message(F.text == HELP)
+@router.message(F.text.in_({HELP, 'ℹ️ Помощь'}))
 async def help_message(msg: Message) -> None:
-    await msg.answer(tr("help"), reply_markup=main_menu(), parse_mode="HTML")
+    await msg.answer(tr("help"), reply_markup=home_kb(), parse_mode="HTML")
 
 
 
 
 @router.message(Command("create"))
-@router.message(F.text == CREATE)
+@router.message(F.text.in_({CREATE, '➕ Создать'}))
 async def create(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
     from admin import is_admin
-    await clear_flow(state, msg.from_user.id, db, cfg)
+    await park_flow(state, msg.from_user.id, db, cfg)
     await flow_show(msg, state, tr("choose_type"), types_kb(admin=is_admin(msg.from_user.id)), as_new=True)
 
 
 @router.message(Command("cancel"))
 async def cancel(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
-    await clear_flow(state, msg.from_user.id, db, cfg)
-    await msg.answer(tr("cancelled"), reply_markup=main_menu())
+    await show_home(msg, state, db, msg.from_user.id)
 
 
 @router.message(Command("stats"))
-@router.message(F.text == STATS)
-async def statistics(msg: Message, db: Db) -> None:
-    await db.touch_user(
-        msg.from_user.id,
-        msg.from_user.first_name or "",
-        msg.from_user.username or "",
-    )
-    total, own = await db.get_generation_stats(msg.from_user.id)
+@router.message(F.text.in_({STATS, '🥰Статистика'}))
+async def statistics(msg: Message, db: Db, user_id: int | None = None) -> None:
+    if user_id is None:
+        user_id = msg.from_user.id
+        await db.touch_user(user_id, msg.from_user.first_name or "", msg.from_user.username or "")
+    total, own = await db.get_generation_stats(user_id)
     await msg.answer(
-        "🥰 <b>Статистика</b>\n\n"
-        f"Всего генераций: <b>{format_count(total)}</b>\n"
-        f"Твои генерации: <b>{format_count(own)}</b>\n\n"
-        "<i>Считается первое успешное создание новой карточки даже если её потом не сохранять</i>",
+        "<b>Счетчик карточек</b>\n\n"
+        f"Твоих: <b>{format_count(own)}</b>\n"
+        f"У всех: <b>{format_count(total)}</b>\n\n"
+        "Считаю 1 успешный рендер новой карточки. Повторные правки счетчик не крутят",
+        reply_markup=home_kb(),
         parse_mode="HTML",
     )
 
 
 @router.message(Command("settings"))
-@router.message(F.text == SETTINGS)
+@router.message(F.text.in_({SETTINGS, '⚙️ Настройки'}))
 async def settings(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
-    await clear_flow(state, msg.from_user.id, db, cfg)
+    await park_flow(state, msg.from_user.id, db, cfg)
     await show_settings(msg, db, msg.from_user.id)
 
 
 @router.message(Command("themes"))
-@router.message(F.text == THEMES_BTN)
+@router.message(F.text.in_({THEMES_BTN, '🎨 Темы'}))
 async def themes(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
-    await clear_flow(state, msg.from_user.id, db, cfg)
+    await park_flow(state, msg.from_user.id, db, cfg)
     s = await db.get_settings(msg.from_user.id)
     await msg.answer(tr("settings_theme"), reply_markup=themes_kb("st", s.theme), parse_mode="HTML")
 
@@ -124,13 +129,13 @@ async def themes(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
 @router.callback_query(F.data == "menu:home")
 async def home(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> None:
     await q.answer()
-    await clear_flow(state, q.from_user.id, db, cfg)
-    await q.message.answer(tr("welcome"), reply_markup=main_menu(), parse_mode="HTML")
+    await show_home(q, state, db, q.from_user.id)
 
 
 @router.callback_query(F.data == "settings:back")
-async def settings_back(q: CallbackQuery, db: Db) -> None:
+async def settings_back(q: CallbackQuery, state: FSMContext, db: Db) -> None:
     await q.answer()
+    await park_flow(state, q.from_user.id, db)
     await show_settings(q.message, db, q.from_user.id)
 
 
@@ -165,7 +170,7 @@ async def settings_quality(q: CallbackQuery, db: Db) -> None:
 
 
 @router.callback_query(F.data.startswith("quality:"))
-async def save_quality(q: CallbackQuery, db: Db) -> None:
+async def save_quality(q: CallbackQuery, db: Db, cfg: Config) -> None:
     await q.answer()
     value = q.data.split(":", 1)[1]
     if value not in QUALITY_NAMES:
@@ -173,6 +178,7 @@ async def save_quality(q: CallbackQuery, db: Db) -> None:
     s = await db.get_settings(q.from_user.id)
     s.quality = value
     await db.save_settings(s)
+    await invalidate_previews(db, cfg, q.from_user.id)
     await q.message.answer(tr("settings_saved"))
     await show_settings(q.message, db, q.from_user.id)
 
@@ -183,8 +189,7 @@ async def toggle_watermark(q: CallbackQuery, db: Db, cfg: Config) -> None:
     s = await db.get_settings(q.from_user.id)
     s.watermark = not s.watermark
     await db.save_settings(s)
-    for path in await db.clear_previews(q.from_user.id):
-        safe_unlink(path, cfg.work_dir, "preview_")
+    await invalidate_previews(db, cfg, q.from_user.id)
     state = "включена" if s.watermark else "отключена"
     await q.message.answer(tr("watermark_saved", state=state))
     await show_settings(q.message, db, q.from_user.id)
@@ -218,21 +223,22 @@ async def on_error(event: ErrorEvent) -> bool:
 
 
 @router.callback_query(F.data == "settings:font")
-async def settings_font(q: CallbackQuery, db: Db, cfg: Config) -> None:
+async def settings_font(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> None:
     await q.answer()
+    await state.update_data(font_search_results=None)
     s = await db.get_settings(q.from_user.id)
     from fonts_catalog import all_font_choices
     choices = all_font_choices(cfg.work_dir, q.from_user.id)
     cur = getattr(s, "font", "default") or "default"
     name = next((n for k, n in choices if k == cur), cur)
     await q.message.answer(
-        f"▬▬ι══════════════ι▬▬\nШрифт карточек\n▬▬ι══════════════ι▬▬\nСейчас: {name}\nВыбери из списка, ищи по имени/номеру или загрузи свой TTF/OTF",
+        f"Шрифт карточек\nСейчас: {name}\nВыбери из списка, ищи по имени/номеру или загрузи свой TTF/OTF",
         reply_markup=fonts_kb(choices, cur, 0),
     )
 
 
 @router.callback_query(F.data.startswith("font:page:"))
-async def font_page(q: CallbackQuery, db: Db, cfg: Config) -> None:
+async def font_page(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> None:
     await q.answer()
     try:
         page = int(q.data.split(":")[-1])
@@ -240,7 +246,7 @@ async def font_page(q: CallbackQuery, db: Db, cfg: Config) -> None:
         return
     s = await db.get_settings(q.from_user.id)
     from fonts_catalog import all_font_choices
-    choices = all_font_choices(cfg.work_dir, q.from_user.id)
+    choices = (await state.get_data()).get("font_search_results") or all_font_choices(cfg.work_dir, q.from_user.id)
     cur = getattr(s, "font", "default") or "default"
     await q.message.edit_reply_markup(reply_markup=fonts_kb(choices, cur, page))
 
@@ -251,16 +257,23 @@ async def font_noop(q: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data.startswith("font:set:"))
-async def font_set(q: CallbackQuery, db: Db, cfg: Config) -> None:
+async def font_set(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> None:
     key = q.data.split(":", 2)[-1]
+    from fonts_catalog import all_font_choices
+    choices = all_font_choices(cfg.work_dir, q.from_user.id)
+    if key not in {k for k, _ in choices}:
+        await q.answer("Этого шрифта уже нет. Открой список заново", show_alert=True)
+        return
     s = await db.get_settings(q.from_user.id)
     s.font = key
     await db.save_settings(s)
+    await invalidate_previews(db, cfg, q.from_user.id)
     from fonts_catalog import all_font_choices
     choices = all_font_choices(cfg.work_dir, q.from_user.id)
     name = next((n for k, n in choices if k == key), key)
     await q.answer(f"Шрифт: {name}")
-    await q.message.answer(f"Шрифт карточек: {name}")
+    await state.clear()
+    await show_settings(q.message, db, q.from_user.id)
 
 
 @router.callback_query(F.data == "font:upload")
@@ -269,11 +282,11 @@ async def font_upload_start(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     await state.set_state(FontUpload.wait)
     await q.message.answer(
-        "▬▬ι══════════════ι▬▬\nСвой шрифт\n▬▬ι══════════════ι▬▬\nКинь файл .ttf или .otf (до 5 МБ)\nИли /cancel"
+        'Свой шрифт\nПришли файл .ttf или .otf до 5 МБ', reply_markup=settings_kb()
     )
 
 
-@router.message(F.document)
+@router.message(FontUpload.wait, F.document)
 async def font_upload_file(msg: Message, state: FSMContext, db: Db, cfg: Config) -> None:
     from states import FontUpload
     cur = await state.get_state()
@@ -314,7 +327,7 @@ async def font_search_start(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     await state.set_state(FontSearch.wait)
     await q.message.answer(
-        "▬▬ι══════════════ι▬▬\nПоиск шрифта\n▬▬ι══════════════ι▬▬\nНапиши название (roboto, noto) или номер из списка\nИли /cancel"
+        'Поиск шрифта\nНапиши название или номер из списка', reply_markup=settings_kb()
     )
 
 
@@ -329,10 +342,10 @@ async def font_search_query(msg: Message, state: FSMContext, db: Db, cfg: Config
         return
     from fonts_catalog import search_fonts
     found = search_fonts(cfg.work_dir, msg.from_user.id, text)
-    await state.clear()
     if not found:
-        await msg.answer("Ничего не нашёл. Попробуй другое имя или номер")
+        await msg.answer('Ничего не нашел. Попробуй другое имя или номер', reply_markup=settings_kb())
         return
+    await state.clear()
     if text.isdigit() and len(found) == 1:
         _num, key, name = found[0]
         s = await db.get_settings(msg.from_user.id)
@@ -341,10 +354,11 @@ async def font_search_query(msg: Message, state: FSMContext, db: Db, cfg: Config
         await msg.answer(f"Шрифт: {name}")
         return
     choices = [(k, name) for n, k, name in found]
+    await state.update_data(font_search_results=choices)
     s = await db.get_settings(msg.from_user.id)
     cur_font = getattr(s, "font", "default") or "default"
     await msg.answer(
         f"Найдено: {len(found)}\nВыбери:",
-        reply_markup=fonts_kb(choices, cur_font, 0, per_page=10),
+        reply_markup=fonts_kb(choices, cur_font, 0),
     )
 

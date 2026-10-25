@@ -55,6 +55,7 @@ from ui import (
     olddoc_options_kb,
     edit_value_kb,
     fields_kb,
+    field_sections_kb,
     image_caption_kb,
     image_kb,
     parliament_assets_kb,
@@ -101,9 +102,9 @@ async def ask_field(msg: Message, state: FSMContext) -> None:
         max_count = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
         if ptype in ("news", "superevent", "mirotorets"):
             text = (
-                f"▬▬ι══════════════ι▬▬\n"
+                f""
                 f"Картинка\n"
-                f"▬▬ι══════════════ι▬▬\n"
+                f""
                 f"Кинь фотографию или не кинь\n"
                 f"PNG JPEG WEBP до {d.get('max_image_mb', 12)} МБ\n"
                 f"Сейчас: {count}/{max_count}"
@@ -122,11 +123,13 @@ async def ask_field(msg: Message, state: FSMContext) -> None:
     f = tpl.get_field(tpl.wizard[i])
     hint = tr("field_hint") if f.multiline else ""
     s = tr("field_prompt", label=f.label, hint=hint, step=i + 1, total=len(tpl.wizard))
+    if f.key == "title":
+        s = tr("name_prompt")
     current = (d.get("page_data") or {}).get(f.key)
     if current:
         # value в current_value уже в blockquote - экранируем HTML
         from html import escape
-        s += "\n\n" + tr("current_value", value=escape(str(current)[:500]))
+        s += "\n\n" + tr("current_value", value=str(current)[:500])
     await state.set_state(NewPage.field)
     await flow_show(msg, state, s, wizard_kb(can_skip=f.key != "title"))
 
@@ -216,7 +219,7 @@ async def show_preview(
 ) -> Page | None:
     d = await state.get_data()
     if not d.get("type"):
-        await msg.answer(tr("draft_missing"), reply_markup=main_menu())
+        await msg.answer(tr('draft_missing'), reply_markup=main_menu(), parse_mode='HTML')
         await state.clear()
         return None
 
@@ -265,7 +268,7 @@ async def show_preview(
         log.exception("draft render failed for user %s", user_id)
         err = render_error_text(e)
         spawn_render_error(bot, cfg, user, d.get("type") or "", err)
-        await msg.answer(tr("render_error", error=err), reply_markup=draft_kb((d.get("type") or ""), d.get("theme", "")))
+        await msg.answer(tr('render_error', error=err), reply_markup=draft_kb(d.get('type') or '', d.get('theme', '')), parse_mode='HTML')
         return None
     finally:
         with suppress(TelegramBadRequest):
@@ -369,6 +372,10 @@ async def take_field(msg: Message, state: FSMContext) -> None:
     data = d.get("page_data") or {}
     data[f.key] = s
     await state.update_data(page_data=data, i=i + 1)
+    if d.get("creation_mode") == "editor" and f.key == "title":
+        await state.set_state(NewPage.review)
+        await flow_show(msg, state, tr("fields_title"), field_sections_kb(tpl, data))
+        return
     await ask_field(msg, state)
 
 
@@ -552,10 +559,7 @@ async def remove_draft_image(q: CallbackQuery, state: FSMContext, db: Db, cfg: C
     await state.update_data(page_data=data)
     if await db.drop_unattached_media(old, q.from_user.id):
         safe_unlink(old, cfg.work_dir, "media_")
-    await q.message.answer(
-        tr("image_removed", number=i + 1, count=len(images)),
-        reply_markup=image_kb(len(images), d.get("type") or ""),
-    )
+    await q.message.answer(tr('image_removed', number=i + 1, count=len(images)), reply_markup=image_kb(len(images), d.get('type') or ''), parse_mode='HTML')
 
 
 @router.callback_query(NewPage.image, F.data.startswith("img:cap:"))
@@ -595,10 +599,7 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
         if ptype == "parliament" and d.get("image_mode") == "parliament_assets":
             await _show_parliament_assets(msg, state, f"Достигнут лимит {max_count}")
         else:
-            await msg.answer(
-                tr("image_limit", max_count=max_count),
-                reply_markup=image_kb(len(images), ptype),
-            )
+            await msg.answer(tr('image_limit', max_count=max_count), reply_markup=image_kb(len(images), ptype), parse_mode='HTML')
         return
 
     f = msg.photo[-1] if msg.photo else msg.document
@@ -606,7 +607,7 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
         if ptype == "parliament" and d.get("image_mode") == "parliament_assets":
             await _show_parliament_assets(msg, state, "Нужна картинка")
         else:
-            await msg.answer(tr("image_only"), reply_markup=image_kb(len(images), ptype))
+            await msg.answer(tr('image_only'), reply_markup=image_kb(len(images), ptype), parse_mode='HTML')
         return
 
     size = getattr(f, "file_size", 0) or 0
@@ -614,10 +615,7 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
         if ptype == "parliament" and d.get("image_mode") == "parliament_assets":
             await _show_parliament_assets(msg, state, f"Файл больше {cfg.max_image_mb} МБ")
         else:
-            await msg.answer(
-                tr("image_bad", error=f"файл больше {cfg.max_image_mb} МБ"),
-                reply_markup=image_kb(len(images), ptype),
-            )
+            await msg.answer(tr('image_bad', error=f'файл больше {cfg.max_image_mb} МБ'), reply_markup=image_kb(len(images), ptype), parse_mode='HTML')
         return
 
     buf = BytesIO()
@@ -628,17 +626,14 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
         if ptype == "parliament" and d.get("image_mode") == "parliament_assets":
             await _show_parliament_assets(msg, state, str(e))
         else:
-            await msg.answer(tr("image_bad", error=str(e)), reply_markup=image_kb(len(images), ptype))
+            await msg.answer(tr('image_bad', error=str(e)), reply_markup=image_kb(len(images), ptype), parse_mode='HTML')
         return
     except Exception:
         log.exception("telegram image download failed for user %s", msg.from_user.id)
         if ptype == "parliament" and d.get("image_mode") == "parliament_assets":
             await _show_parliament_assets(msg, state, "Не удалось скачать файл")
         else:
-            await msg.answer(
-                tr("image_bad", error="не удалось скачать файл"),
-                reply_markup=image_kb(len(images), ptype),
-            )
+            await msg.answer(tr('image_bad', error='не удалось скачать файл'), reply_markup=image_kb(len(images), ptype), parse_mode='HTML')
         return
 
     await db.add_media(msg.from_user.id, info.path.name, info.width, info.height)
@@ -684,7 +679,7 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
         await flow_show(
             msg,
             state,
-            f"▬▬ι══════════════ι▬▬\nКартинка стоит {len(images)}/{max_count}\n▬▬ι══════════════ι▬▬\nЖми Готово или кинь другую - заменю",
+            f"Картинка стоит {len(images)}/{max_count}\nЖми Готово или кинь другую - заменю",
             image_kb(len(images), ptype),
         )
         return
@@ -705,17 +700,14 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
 @router.message(NewPage.image_caption)
 async def take_draft_image_caption(msg: Message, state: FSMContext) -> None:
     if not msg.text:
-        await msg.answer(tr("text_only"), reply_markup=image_caption_kb())
+        await msg.answer(tr('text_only'), reply_markup=image_caption_kb(), parse_mode='HTML')
         return
     s = msg.text.strip()
     if not s:
-        await msg.answer(tr("empty_value"), reply_markup=image_caption_kb())
+        await msg.answer(tr('empty_value'), reply_markup=image_caption_kb(), parse_mode='HTML')
         return
     if len(s) > IMAGE_CAPTION_LIMIT:
-        await msg.answer(
-            tr("too_long", limit=IMAGE_CAPTION_LIMIT),
-            reply_markup=image_caption_kb(),
-        )
+        await msg.answer(tr('too_long', limit=IMAGE_CAPTION_LIMIT), reply_markup=image_caption_kb(), parse_mode='HTML')
         return
 
     d = await state.get_data()
@@ -725,13 +717,13 @@ async def take_draft_image_caption(msg: Message, state: FSMContext) -> None:
     ptype = d.get("type") or ""
     if path not in images:
         await state.set_state(NewPage.image)
-        await msg.answer(tr("images_continue"), reply_markup=image_kb(len(images), ptype))
+        await msg.answer(tr('images_continue'), reply_markup=image_kb(len(images), ptype), parse_mode='HTML')
         return
 
     set_image_caption(data, path, s)
     await state.update_data(page_data=data, caption_path=None, caption_i=None)
     await state.set_state(NewPage.image)
-    await msg.answer(tr("image_caption_saved"), reply_markup=image_kb(len(images), ptype))
+    await msg.answer(tr('image_caption_saved'), reply_markup=image_kb(len(images), ptype), parse_mode='HTML')
 
 
 @router.callback_query(NewPage.image_caption, F.data.startswith("imgcap:"))
@@ -779,16 +771,7 @@ async def draft_theme(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, 
             await state.update_data(image_mode="initial")
             cnt = len(page_images(d.get("page_data") or {}))
             max_c = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
-            await q.message.answer(
-                tr(
-                    "send_image",
-                    label=tpl.image_label.lower(),
-                    max_mb=cfg.max_image_mb,
-                    count=cnt,
-                    max_count=max_c,
-                ),
-                reply_markup=image_kb(cnt, ptype),
-            )
+            await q.message.answer(tr('send_image', label=tpl.image_label.lower(), max_mb=cfg.max_image_mb, count=cnt, max_count=max_c), reply_markup=image_kb(cnt, ptype), parse_mode='HTML')
         elif cur == NewPage.quick.state:
             await show_quick(q.message, state)
         else:
@@ -811,7 +794,7 @@ async def choose_draft_theme(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     await q.message.answer(tr("choose_theme"), reply_markup=themes_kb("dt", d.get("theme", "light"), d.get("type", "")), parse_mode="HTML")
 
@@ -819,13 +802,14 @@ async def choose_draft_theme(q: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "draft:fields")
 async def draft_fields(q: CallbackQuery, state: FSMContext, offset: int = 0) -> None:
     await q.answer()
+    await state.set_state(NewPage.review)
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     await q.message.answer(
         tr("fields_title"),
-        reply_markup=fields_kb(get_template(d["type"]), d.get("page_data") or {}, offset=offset),
+        reply_markup=field_sections_kb(get_template(d["type"]), d.get("page_data") or {}),
         parse_mode="HTML",
     )
 
@@ -846,7 +830,7 @@ async def edit_draft_standard(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     tpl = get_template(d["type"])
     i = int(q.data.split(":")[1])
@@ -855,7 +839,7 @@ async def edit_draft_standard(q: CallbackQuery, state: FSMContext) -> None:
     f = tpl.fields[i]
     await state.update_data(edit_kind="standard", edit_key=f.key, edit_label=f.label)
     await state.set_state(NewPage.edit_value)
-    await q.message.answer(tr("edit_value", label=f.label), reply_markup=edit_value_kb("draft:fields"), parse_mode="HTML")
+    await flow_show(q, state, tr("edit_value", label=f.label), edit_value_kb("draft:fields"))
 
 
 @router.callback_query(F.data.startswith("dc:"))
@@ -863,7 +847,7 @@ async def edit_draft_custom(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     i = int(q.data.split(":")[1])
     items = (d.get("page_data") or {}).get("custom_fields") or []
@@ -872,7 +856,7 @@ async def edit_draft_custom(q: CallbackQuery, state: FSMContext) -> None:
     label = items[i].get("name", "Свое поле")
     await state.update_data(edit_kind="custom", edit_i=i, edit_label=label)
     await state.set_state(NewPage.edit_value)
-    await q.message.answer(tr("edit_value", label=label), reply_markup=edit_value_kb("draft:fields"), parse_mode="HTML")
+    await flow_show(q, state, tr("edit_value", label=label), edit_value_kb("draft:fields"))
 
 
 @router.callback_query(F.data.startswith("dx:"))
@@ -882,7 +866,7 @@ async def edit_draft_section(q: CallbackQuery, state: FSMContext) -> None:
     i, j = int(a), int(b)
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     sections = (d.get("page_data") or {}).get("sections") or []
     if not 0 <= i < len(sections) or not 0 <= j < len(sections[i].get("fields") or []):
@@ -890,17 +874,17 @@ async def edit_draft_section(q: CallbackQuery, state: FSMContext) -> None:
     label = sections[i]["fields"][j].get("name", "Поле")
     await state.update_data(edit_kind="section", edit_i=i, edit_j=j, edit_label=label)
     await state.set_state(NewPage.edit_value)
-    await q.message.answer(tr("edit_value", label=label), reply_markup=edit_value_kb("draft:fields"), parse_mode="HTML")
+    await flow_show(q, state, tr("edit_value", label=label), edit_value_kb("draft:fields"))
 
 
 @router.message(NewPage.edit_value)
 async def take_draft_edit(msg: Message, state: FSMContext, db: Db, cfg: Config, bot: Bot) -> None:
     if not msg.text:
-        await msg.answer(tr("text_only"))
+        await msg.answer(tr('text_only'), parse_mode='HTML')
         return
     s = msg.text.strip()
     if len(s) > 3800:
-        await msg.answer(tr("too_long", limit=3800))
+        await msg.answer(tr('too_long', limit=3800), parse_mode='HTML')
         return
 
     d = await state.get_data()
@@ -911,7 +895,7 @@ async def take_draft_edit(msg: Message, state: FSMContext, db: Db, cfg: Config, 
     if kind == "standard":
         key = d["edit_key"]
         if key == "title" and not value:
-            await msg.answer(tr("title_required"))
+            await msg.answer(tr('title_required'), parse_mode='HTML')
             return
         if key == "image_caption" and page_images(data):
             set_image_caption(data, page_images(data)[0], value)
@@ -922,12 +906,14 @@ async def take_draft_edit(msg: Message, state: FSMContext, db: Db, cfg: Config, 
     elif kind == "section":
         data["sections"][int(d["edit_i"])]["fields"][int(d["edit_j"])]["value"] = value
     else:
-        await msg.answer(tr("draft_missing"))
+        await msg.answer(tr('draft_missing'), parse_mode='HTML')
         return
 
     await state.update_data(page_data=data)
-    await msg.answer(tr("field_saved"))
-    await show_preview(msg, state, db, cfg, bot, msg.from_user)
+    safe_unlink(d.get("preview_path"), cfg.work_dir, "preview_")
+    await state.update_data(preview_path=None)
+    await state.set_state(NewPage.review)
+    await flow_show(msg, state, tr("field_saved") + "\n\n" + tr("fields_title"), field_sections_kb(get_template(d["type"]), data))
 
 
 @router.callback_query(F.data == "draft:custom")
@@ -935,40 +921,40 @@ async def add_draft_custom(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     if d.get("type") in ("news", "superevent", "mirotorets"):
         await q.message.answer("Тут свои поля не нужны")
         return
     if len((d.get("page_data") or {}).get("custom_fields") or []) >= 20:
-        await q.message.answer(tr("limit_reached"))
+        await q.message.answer(tr('limit_reached'), parse_mode='HTML')
         return
     await state.set_state(NewPage.custom_name)
-    await q.message.answer(tr("custom_name"), reply_markup=edit_value_kb("draft:fields"))
+    await q.message.answer(tr('custom_name'), reply_markup=edit_value_kb('draft:fields'), parse_mode='HTML')
 
 
 @router.message(NewPage.custom_name)
 async def draft_custom_name(msg: Message, state: FSMContext) -> None:
     if not msg.text or not msg.text.strip():
-        await msg.answer(tr("custom_name"))
+        await msg.answer(tr('custom_name'), parse_mode='HTML')
         return
     name = msg.text.strip()[:100]
     await state.update_data(custom_name=name)
     await state.set_state(NewPage.custom_value)
-    await msg.answer(tr("custom_value", name=name), reply_markup=edit_value_kb("draft:fields"))
+    await msg.answer(tr('custom_value', name=name), reply_markup=edit_value_kb('draft:fields'), parse_mode='HTML')
 
 
 @router.message(NewPage.custom_value)
 async def draft_custom_value(msg: Message, state: FSMContext, db: Db, cfg: Config, bot: Bot) -> None:
     if not msg.text or not msg.text.strip():
-        await msg.answer(tr("empty_value"))
+        await msg.answer(tr('empty_value'), parse_mode='HTML')
         return
     d = await state.get_data()
     data = d.get("page_data") or {}
     items = data.setdefault("custom_fields", [])
     items.append({"name": d["custom_name"], "value": msg.text.strip()[:3800]})
     await state.update_data(page_data=data)
-    await msg.answer(tr("custom_added"))
+    await msg.answer(tr('custom_added'), parse_mode='HTML')
     await show_preview(msg, state, db, cfg, bot, msg.from_user)
 
 
@@ -977,33 +963,33 @@ async def add_draft_section(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     if d.get("type") in ("news", "superevent", "mirotorets"):
         await q.message.answer("Тут свои разделы не нужны")
         return
     if len((d.get("page_data") or {}).get("sections") or []) >= 6:
-        await q.message.answer(tr("limit_reached"))
+        await q.message.answer(tr('limit_reached'), parse_mode='HTML')
         return
     await state.set_state(NewPage.section)
-    await q.message.answer(tr("section_prompt"), reply_markup=edit_value_kb("draft:fields"))
+    await q.message.answer(tr('section_prompt'), reply_markup=edit_value_kb('draft:fields'), parse_mode='HTML')
 
 
 @router.message(NewPage.section)
 async def draft_section(msg: Message, state: FSMContext, db: Db, cfg: Config, bot: Bot) -> None:
     sec = parse_section(msg.text or "")
     if not sec:
-        await msg.answer(tr("section_bad"))
+        await msg.answer(tr('section_bad'), parse_mode='HTML')
         return
     d = await state.get_data()
     data = d.get("page_data") or {}
     total = sum(len(x.get("fields") or []) for x in data.get("sections") or [])
     if total + len(sec["fields"]) > 40:
-        await msg.answer(tr("limit_reached"))
+        await msg.answer(tr('limit_reached'), parse_mode='HTML')
         return
     data.setdefault("sections", []).append(sec)
     await state.update_data(page_data=data)
-    await msg.answer(tr("section_added"))
+    await msg.answer(tr('section_added'), parse_mode='HTML')
     await show_preview(msg, state, db, cfg, bot, msg.from_user)
 
 
@@ -1012,7 +998,7 @@ async def replace_draft_image(q: CallbackQuery, state: FSMContext, cfg: Config) 
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     tpl = get_template(d["type"])
     ptype = d.get("type") or ""
@@ -1025,9 +1011,9 @@ async def replace_draft_image(q: CallbackQuery, state: FSMContext, cfg: Config) 
     await state.set_state(NewPage.image)
     if ptype in ("news", "superevent", "mirotorets"):
         text = (
-            f"▬▬ι══════════════ι▬▬\n"
+            f""
             f"Картинка\n"
-            f"▬▬ι══════════════ι▬▬\n"
+            f""
             f"Кинь фотографию или не кинь\n"
             f"PNG JPEG или WEBP до {cfg.max_image_mb} МБ\n"
             f"Сейчас: {count}/{max_c}"
@@ -1048,16 +1034,17 @@ async def save_draft(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     p = make_draft(d, q.from_user.id)
     if not p.data.get("title"):
-        await q.message.answer(tr("title_required"))
+        await q.message.answer(tr('title_required'), parse_mode='HTML')
         return
     p = await db.save_page(p)
-    for path in page_images(p.data):
+    for path in list(page_images(p.data)) + list(map_images(p.data)):
         await db.attach_media(path, p.id, q.from_user.id)
     spawn_page_saved(q.bot, cfg, q.from_user, p)
+    await db.delete_draft(q.from_user.id)
     await state.clear()
     await q.message.answer(tr("saved", title=p.title), reply_markup=page_actions_kb(p.id, p.type, p.theme), parse_mode="HTML")
 
@@ -1067,7 +1054,7 @@ async def text_draft(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     p = make_draft(d, q.from_user.id)
     await send_page_text(q.message, p, draft_kb(p.type, p.theme))
@@ -1078,7 +1065,7 @@ async def export_draft(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config,
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
 
     raw = Path(d.get("preview_path") or "")
@@ -1098,9 +1085,10 @@ async def export_draft(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config,
 @router.callback_query(F.data.in_({"draft:cancel", "flow:cancel"}))
 async def cancel_flow(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> None:
     await q.answer()
-    await clear_flow(state, q.from_user.id, db, cfg)
+    from drafts import park_flow
+    await park_flow(state, q.from_user.id, db, cfg)
     spawn_cancel(q.bot, cfg, q.from_user)
-    await q.message.answer(tr("cancelled"), reply_markup=main_menu())
+    await q.message.answer(tr('cancelled'), reply_markup=main_menu(), parse_mode='HTML')
 
 
 @router.callback_query(F.data == "quick:text")
@@ -1108,7 +1096,7 @@ async def quick_text(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     await send_page_text(q.message, make_draft(d, q.from_user.id), quick_kb())
 
@@ -1124,11 +1112,11 @@ async def quick_fields(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     await q.message.answer(
         tr("fields_title"),
-        reply_markup=fields_kb(get_template(d["type"]), d.get("page_data") or {}),
+        reply_markup=field_sections_kb(get_template(d["type"]), d.get("page_data") or {}),
         parse_mode="HTML",
     )
 
@@ -1138,7 +1126,7 @@ async def quick_theme(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     await q.message.answer(tr("choose_theme"), reply_markup=themes_kb("dt", d.get("theme", "light"), d.get("type", "")), parse_mode="HTML")
 
@@ -1149,12 +1137,12 @@ async def quick_input(msg: Message, state: FSMContext, db: Db, cfg: Config) -> N
     if text in {CREATE, MY_PAGES, THEMES_BTN, SETTINGS, HELP, STATS}:
         return
     if text.startswith("/"):
-        await msg.answer(tr("quick_hint"), reply_markup=main_menu())
+        await msg.answer(tr('quick_hint'), reply_markup=main_menu(), parse_mode='HTML')
         return
 
     parsed = parse_text(text)
     if parsed.recognized < 2:
-        await msg.answer(tr("quick_hint"), reply_markup=main_menu())
+        await msg.answer(tr('quick_hint'), reply_markup=main_menu(), parse_mode='HTML')
         return
 
     s = await db.get_settings(msg.from_user.id)
@@ -1193,7 +1181,7 @@ async def draft_olddoc_menu(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     data = d.get("page_data") or {}
     from olddoc import ensure_old_meta, paper_count
@@ -1210,32 +1198,7 @@ async def draft_olddoc_menu(q: CallbackQuery, state: FSMContext) -> None:
         "_old_bw": bool(data.get("_old_bw", False)),
     }
     await state.update_data(page_data=data, old_pending=pending)
-    await q.message.answer(
-        tr(
-            "olddoc_pick",
-            seed=pending.get("_old_seed", 0),
-            paper=int(pending.get("_old_paper", 0)) + 1,
-            cups=pending.get("_old_stain_count", 0),
-            text="пьяный" if pending.get("_old_drunk") else "обычный",
-            flags="пьяные" if pending.get("_old_drunk_flags") else "обычные",
-            sub="вкл" if pending.get("_old_substances") else "выкл",
-            window="вкл" if pending.get("_old_window", True) else "выкл",
-            outline="вкл" if pending.get("_old_outline", True) else "выкл",
-            bw="вкл" if pending.get("_old_bw") else "выкл",
-        ),
-        reply_markup=olddoc_options_kb(
-            None,
-            stain_count=int(pending.get("_old_stain_count", 0)),
-            paper=int(pending.get("_old_paper", 0)),
-            paper_total=paper_count(),
-            drunk=bool(pending.get("_old_drunk", False)),
-            drunk_flags=bool(pending.get("_old_drunk_flags", False)),
-            substances=bool(pending.get("_old_substances", False)),
-            window=bool(pending.get("_old_window", True)),
-            outline=bool(pending.get("_old_outline", True)),
-            bw=bool(pending.get("_old_bw", False)),
-        ),
-    )
+    await q.message.answer(tr('olddoc_pick', seed=pending.get('_old_seed', 0), paper=int(pending.get('_old_paper', 0)) + 1, cups=pending.get('_old_stain_count', 0), text='пьяный' if pending.get('_old_drunk') else 'обычный', flags='пьяные' if pending.get('_old_drunk_flags') else 'обычные', sub='вкл' if pending.get('_old_substances') else 'выкл', window='вкл' if pending.get('_old_window', True) else 'выкл', outline='вкл' if pending.get('_old_outline', True) else 'выкл', bw='вкл' if pending.get('_old_bw') else 'выкл'), reply_markup=olddoc_options_kb(None, stain_count=int(pending.get('_old_stain_count', 0)), paper=int(pending.get('_old_paper', 0)), paper_total=paper_count(), drunk=bool(pending.get('_old_drunk', False)), drunk_flags=bool(pending.get('_old_drunk_flags', False)), substances=bool(pending.get('_old_substances', False)), window=bool(pending.get('_old_window', True)), outline=bool(pending.get('_old_outline', True)), bw=bool(pending.get('_old_bw', False))), parse_mode='HTML')
 
 
 def _pending_opts(d: dict) -> dict:
@@ -1277,7 +1240,7 @@ def _kb_from_pending(pending: dict):
 async def _draft_old_apply(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, bot: Bot, action: str) -> None:
     d = await state.get_data()
     if not d.get("type"):
-        await q.message.answer(tr("draft_missing"))
+        await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
     data = d.get("page_data") or {}
     from olddoc import (
@@ -1300,7 +1263,7 @@ async def _draft_old_apply(q: CallbackQuery, state: FSMContext, db: Db, cfg: Con
             data[k] = v
         data["_old_stains"] = int(data.get("_old_stain_count", 0) or 0) > 0
         await state.update_data(page_data=data, old_pending=pending)
-        await q.message.answer(tr("olddoc_applied"))
+        await q.message.answer(tr('olddoc_applied'), parse_mode='HTML')
         await show_preview(q.message, state, db, cfg, bot, q.from_user)
         return
 
