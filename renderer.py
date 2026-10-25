@@ -949,16 +949,16 @@ section h2 {{
 .parliament-country {{ font-size: 12px; font-weight: 700; color: var(--text); }}
 .parliament-note {{ margin-top: 5px; font-size: 11px; color: var(--text-secondary); }}
 
-/* Wikipedia infobox: compact sans-serif table, not an article headline. */
+/* Compact Wikipedia layout with the original serif headline. */
 .sheet[data-theme="light"] {{ padding: 4px; font-size: 13px; line-height: 1.45; }}
 .sheet[data-theme="light"] header {{ padding: 7px 6px 9px; }}
-.sheet[data-theme="light"] h1 {{ font: 700 22px/1.2 var(--font); }}
+.sheet[data-theme="light"] h1 {{ font: 400 23px/1.2 var(--heading-font); }}
 .sheet[data-theme="light"] .subtitle {{ margin-top: 5px; font-size: 13px; line-height: 1.4; }}
 .sheet[data-theme="light"] section h2 {{ margin: 5px 0 3px; padding: 4px 6px; font-size: 13px; }}
 .sheet[data-theme="light"] .row {{ grid-template-columns: minmax(0, 42%) minmax(0, 58%); }}
 .sheet[data-theme="light"] .label,
 .sheet[data-theme="light"] .value {{ padding: 4px 5px; line-height: 1.45; }}
-.sheet[data-theme="light"] .label {{ font-weight: 400; }}
+.sheet[data-theme="light"] .label {{ font-weight: 700; }}
 .sheet[data-theme="light"] .gallery {{ margin: 4px 4px 10px; }}
 .sheet[data-theme="light"][data-type="country"] .gallery:not(.map).multi {{
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 10px;
