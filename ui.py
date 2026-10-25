@@ -291,7 +291,7 @@ def olddoc_options_kb(
 
 def draft_kb(page_type: str | None = None, theme: str = "") -> InlineKeyboardMarkup:
     rows = [[ib("Сохранить карточку", "draft:save")],
-            [ib("Поправить данные", "draft:fields")],
+            [ib("Добавить или править", "draft:fields")],
             [ib("Картинки", "draft:image"), ib("Оформление", "draft:theme")],
             [ib("Скачать PNG", "draft:export"), ib("Забрать текст", "draft:text")]]
     if page_type == "battle":
@@ -386,7 +386,7 @@ def edit_value_kb(back: str, cancel: str = "menu:home") -> InlineKeyboardMarkup:
 
 
 def page_actions_kb(page_id: int, page_type: str | None = None, theme: str = "") -> InlineKeyboardMarkup:
-    rows = [[ib("Поправить данные", f"p:e:{page_id}")],
+    rows = [[ib("Добавить или править", f"p:e:{page_id}")],
             [ib("Картинки", f"pa:{page_id}:image"), ib("Оформление", f"p:t:{page_id}")],
             [ib("Скачать PNG", f"p:x:{page_id}"), ib("Забрать текст", f"p:txt:{page_id}")],
             [ib("Сделать копию", f"p:c:{page_id}"), ib("Удалить карточку", f"p:d:{page_id}")]]
