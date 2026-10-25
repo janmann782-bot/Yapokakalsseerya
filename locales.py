@@ -5,7 +5,10 @@ import html
 from version import __version__
 
 # Interface copy follows the supplied Pismo v8 Vox. User values stay untouched.
-RU = {'welcome': '<b>InfoBox Bot - 1.8.0</b>\n'
+RU = {'channel_recommendations': '<b>Рекомендуем подписаться (необязательно)</b>\n\n'
+        '@Aurelia_Infobox - новости о боте и уведомления о нововведениях\n\n'
+        '@AureliaAOH2 - канал про вымышленный мир Аурелия',
+ 'welcome': '<b>InfoBox Bot - 1.8.0</b>\n'
             '\n'
             'Тут собираем карточки стран, людей, битв и прочего\n'
             'Можно пройти по шагам или сразу кинуть текст с данными',

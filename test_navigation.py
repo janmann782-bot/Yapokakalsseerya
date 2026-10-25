@@ -91,6 +91,27 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         q = CallbackQuery(id=str(self.updates), from_user=User(id=self.uid, is_bot=False, first_name="Тест"), chat_instance="test", message=msg, data=data)
         await self.dp.feed_update(self.bot, Update(update_id=self.updates, callback_query=q))
 
+    async def test_channel_recommendations_once_across_restarts(self):
+        # Existing users also see the notice once after upgrading.
+        await self.db.touch_user(self.uid)
+        await self.message("/start")
+        notices = [c for c in self.session.calls if isinstance(c, SendMessage) and "Рекомендуем подписаться" in c.text]
+        self.assertEqual(len(notices), 1)
+        self.assertIn("(необязательно)", notices[0].text)
+        self.assertIn("@Aurelia_Infobox", notices[0].text)
+        self.assertIn("@AureliaAOH2", notices[0].text)
+        self.assertTrue(await self.db.channels_recommended(self.uid))
+        self.dp["db"] = self.db = Db(self.root / "test.db")
+        await self.db.init()
+        await self.state.clear()
+        await self.message("/start")
+        notices = [c for c in self.session.calls if isinstance(c, SendMessage) and "Рекомендуем подписаться" in c.text]
+        self.assertEqual(len(notices), 1)
+        await self.callback("compose:country")
+        await self.callback("build:country:editor")
+        await self.message("Кефирстан")
+        self.assertEqual(await self.state.get_state(), NewPage.review.state)
+
     async def test_editor_draft_survives_home_and_fsm_restart(self):
         await self.message("/start")
         await self.callback("compose:country")

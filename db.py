@@ -131,6 +131,11 @@ class Db:
                 """
             )
             cols = {row[1] for row in conn.execute("PRAGMA table_info(user_settings)")}
+            user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+            if "channels_recommended" not in user_cols:
+                conn.execute(
+                    "ALTER TABLE users ADD COLUMN channels_recommended INTEGER NOT NULL DEFAULT 0"
+                )
             if "watermark" not in cols:
                 conn.execute(
                     "ALTER TABLE user_settings ADD COLUMN watermark INTEGER NOT NULL DEFAULT 1"
@@ -158,6 +163,19 @@ class Db:
                 """,
                 (user_id, first_name, username, now()),
             )
+
+    async def channels_recommended(self, user_id: int) -> bool:
+        def get():
+            with self._connect() as conn:
+                row = conn.execute("SELECT channels_recommended FROM users WHERE id=?", (user_id,)).fetchone()
+            return bool(row and row[0])
+        return await asyncio.to_thread(get)
+
+    async def mark_channels_recommended(self, user_id: int) -> None:
+        def mark():
+            with self._connect() as conn:
+                conn.execute("UPDATE users SET channels_recommended=1 WHERE id=?", (user_id,))
+        await asyncio.to_thread(mark)
 
     async def save_page(self, page: Page) -> Page:
         return await asyncio.to_thread(self._save_page, page)

@@ -70,6 +70,9 @@ async def start(msg: Message, state: FSMContext, db: Db, cfg: Config, bot: Bot) 
         msg.from_user.username or "",
     )
     spawn_user_start(bot, cfg, msg.from_user)
+    if not await db.channels_recommended(msg.from_user.id):
+        await msg.answer(tr("channel_recommendations"), parse_mode="HTML")
+        await db.mark_channels_recommended(msg.from_user.id)
     await show_home(msg, state, db, msg.from_user.id)
 
 
