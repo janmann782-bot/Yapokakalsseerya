@@ -10,6 +10,7 @@ from aiogram.types import BotCommand
 from bot import make_dispatcher
 from config import load_config
 from db import Db
+from version import __version__
 
 log = logging.getLogger("infobox")
 
@@ -60,7 +61,7 @@ async def main() -> None:
 
     # при каждом запуске - техработы
     set_maintenance(cfg, True)
-    log.info("Maintenance ON (default on startup)")
+    log.info("InfoBox Bot %s | Maintenance ON (default on startup)", __version__)
 
     db = Db(cfg.db_path)
     await db.init()

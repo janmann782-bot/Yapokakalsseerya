@@ -266,7 +266,7 @@ def quick_kb() -> InlineKeyboardMarkup:
     )
 
 
-def fields_kb(tpl: Template, data: dict, page_id: int | None = None) -> InlineKeyboardMarkup:
+def fields_kb(tpl: Template, data: dict, page_id: int | None = None, offset: int = 0) -> InlineKeyboardMarkup:
     rows = []
     btns = []
     for i, f in enumerate(tpl.fields):
@@ -293,6 +293,19 @@ def fields_kb(tpl: Template, data: dict, page_id: int | None = None) -> InlineKe
             cb = f"dx:{i}:{j}" if page_id is None else f"pe:{page_id}:x:{i}:{j}"
             rows.append([ib(f"↳ ✓ {name}", cb)])
 
+    # Keep Telegram keyboards below 100 buttons, including custom sections.
+    page_size = 30
+    total = len(rows)
+    offset = max(0, min(offset, max(0, (total - 1) // page_size * page_size)))
+    rows = rows[offset:offset + page_size]
+    prefix = "fields:d" if page_id is None else f"fields:p:{page_id}"
+    nav = []
+    if offset:
+        nav.append(ib("Предыдущие поля", f"{prefix}:{offset - page_size}"))
+    if offset + page_size < total:
+        nav.append(ib("Следующие поля", f"{prefix}:{offset + page_size}"))
+    if nav:
+        rows.append(nav)
     is_news = tpl.key in TFR_SIMPLE_TYPES
     if page_id is None:
         extra = []

@@ -42,7 +42,7 @@ from states import NewPage, clear_flow
 from stats import spawn_milestone_broadcast
 from templates import get_template
 from text_export import send_page_text
-from themes import get_theme
+from themes import get_theme, theme_allowed
 from ui import (
     CREATE,
     NO_IMAGE_TYPES,
@@ -309,8 +309,7 @@ async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, u
     elif kind == "parliament":
         theme = "light"
     else:
-        # обычные инфобоксы по-прежнему стартуют со старого документа
-        theme = "olddoc"
+        theme = s.theme if theme_allowed(s.theme, kind) else "light"
     await state.update_data(
         type=kind,
         page_data={},
@@ -818,7 +817,7 @@ async def choose_draft_theme(q: CallbackQuery, state: FSMContext) -> None:
 
 
 @router.callback_query(F.data == "draft:fields")
-async def draft_fields(q: CallbackQuery, state: FSMContext) -> None:
+async def draft_fields(q: CallbackQuery, state: FSMContext, offset: int = 0) -> None:
     await q.answer()
     d = await state.get_data()
     if not d.get("type"):
@@ -826,9 +825,14 @@ async def draft_fields(q: CallbackQuery, state: FSMContext) -> None:
         return
     await q.message.answer(
         tr("fields_title"),
-        reply_markup=fields_kb(get_template(d["type"]), d.get("page_data") or {}),
+        reply_markup=fields_kb(get_template(d["type"]), d.get("page_data") or {}, offset=offset),
         parse_mode="HTML",
     )
+
+
+@router.callback_query(F.data.startswith("fields:d:"))
+async def draft_fields_page(q: CallbackQuery, state: FSMContext) -> None:
+    await draft_fields(q, state, offset=int(q.data.rsplit(":", 1)[1]))
 
 
 @router.callback_query(F.data == "draft:back")

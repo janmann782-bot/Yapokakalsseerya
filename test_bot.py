@@ -22,6 +22,7 @@ from create_handlers import (
     remove_draft_image,
     save_draft,
     skip_image,
+    skip_map_image,
     start_new,
     take_image,
     take_draft_image_caption,
@@ -48,9 +49,12 @@ from ui import (
 
 
 def fake_message(user_id: int = 10, text: str | None = None):
-    sent = SimpleNamespace(delete=AsyncMock(), edit_text=AsyncMock())
+    sent = SimpleNamespace(message_id=2, chat=SimpleNamespace(id=user_id), delete=AsyncMock(), edit_text=AsyncMock())
     return SimpleNamespace(
-        from_user=SimpleNamespace(id=user_id, first_name="Тест", username="test"),
+        message_id=1,
+        chat=SimpleNamespace(id=user_id),
+        bot=SimpleNamespace(),
+        from_user=SimpleNamespace(id=user_id, first_name="Тест", full_name="Тест", username="test"),
         text=text,
         photo=None,
         document=None,
@@ -64,7 +68,8 @@ def fake_callback(data: str, msg, user_id: int = 10):
     return SimpleNamespace(
         data=data,
         message=msg,
-        from_user=SimpleNamespace(id=user_id),
+        bot=SimpleNamespace(),
+        from_user=SimpleNamespace(id=user_id, full_name="Тест", username="test"),
         answer=AsyncMock(),
     )
 
@@ -88,7 +93,9 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_short_wizard_reaches_preview_and_saves(self):
         msg = fake_message()
-        await start_new(fake_callback("new:country", msg), self.state, self.db, self.cfg)
+        with patch("create_handlers.spawn_create_started"):
+            await start_new(fake_callback("new:country", msg), self.state, self.db, self.cfg)
+        self.assertEqual((await self.state.get_data())["theme"], "light")
 
         values = [
             "Республика Гринвальд",
@@ -103,7 +110,9 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
             await take_field(msg, self.state)
 
         self.assertEqual(await self.state.get_state(), NewPage.image.state)
-        await skip_image(fake_callback("img:skip", msg), self.state, self.db, self.cfg)
+        await skip_image(fake_callback("img:skip", msg), self.state, self.db, self.cfg, msg.bot)
+        self.assertEqual(await self.state.get_state(), NewPage.map_image.state)
+        await skip_map_image(fake_callback("map:skip", msg), self.state, self.db, self.cfg, msg.bot)
         self.assertEqual(await self.state.get_state(), NewPage.theme.state)
 
         path = self.cfg.work_dir / "preview_test.png"
@@ -111,11 +120,13 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         with (
             patch("create_handlers.render_page", AsyncMock(return_value=path)),
             patch("create_handlers.send_png", AsyncMock()),
+            patch("log_sink.spawn_created_page_log"),
         ):
-            await draft_theme(fake_callback("dt:dark", msg), self.state, self.db, self.cfg)
+            await draft_theme(fake_callback("dt:dark", msg), self.state, self.db, self.cfg, msg.bot)
 
         self.assertEqual(await self.state.get_state(), NewPage.review.state)
-        await save_draft(fake_callback("draft:save", msg), self.state, self.db)
+        with patch("create_handlers.spawn_page_saved"):
+            await save_draft(fake_callback("draft:save", msg), self.state, self.db, self.cfg)
         pages = await self.db.get_user_pages(10)
         self.assertEqual(len(pages), 1)
         self.assertEqual(pages[0].data["capital"], "Норд")

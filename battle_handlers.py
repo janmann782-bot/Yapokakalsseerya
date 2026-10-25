@@ -284,11 +284,16 @@ async def battle_text_input(msg: Message, state: FSMContext, db: Db, cfg: Config
     await _save_sides_data(data, sides)
     if p:
         await _invalidate_saved(p, db, cfg)
+    else:
+        await state.update_data(page_data=data)
     if action == "add_member":
         await state.set_state(EditPage.battle_flag if saved else NewPage.battle_flag)
         await msg.answer(tr("battle_flag_prompt"), reply_markup=battle_flag_kb(_base(page_id)))
         return
-    await state.clear()
+    if saved:
+        await state.clear()
+    else:
+        await state.set_state(NewPage.review)
     await _show_side(msg, data, side_i, page_id)
 
 

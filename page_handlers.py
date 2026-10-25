@@ -225,6 +225,15 @@ async def edit_page(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) ->
     )
 
 
+@router.callback_query(F.data.startswith("fields:p:"))
+async def saved_fields_page(q: CallbackQuery, db: Db) -> None:
+    await q.answer()
+    _, _, page_id, offset = q.data.split(":")
+    p = await get_owned(q, db, int(page_id))
+    if p:
+        await q.message.answer(tr("fields_title"), reply_markup=fields_kb(get_template(p.type), p.data, p.id, int(offset)), parse_mode="HTML")
+
+
 @router.callback_query(F.data.startswith("pe:"))
 async def choose_page_field(q: CallbackQuery, state: FSMContext, db: Db) -> None:
     await q.answer()

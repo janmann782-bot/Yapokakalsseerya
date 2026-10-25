@@ -13,6 +13,7 @@ from models import Page
 from templates import Field, Template, get_template
 from themes import Theme, get_theme
 from fonts_catalog import css_family_name, font_css_for_family
+from wiki_layout import country_groups
 
 QUALITY_SCALE = {"standard": 1.5, "high": 2.0, "ultra": 2.5}
 _render_slots = asyncio.Semaphore(2)
@@ -65,6 +66,10 @@ def font_css() -> str:
         for candidate in candidates:
             if candidate.is_file():
                 return candidate
+        # The repository ships DejaVu Sans; minimal hosts may lack Liberation.
+        fallback = root / name.replace("LiberationSans-Regular.ttf", "DejaVuSans.ttf").replace("LiberationSans-Bold.ttf", "DejaVuSans-Bold.ttf")
+        if fallback.is_file():
+            return fallback
         return None
 
     libertine_regular = Path("/usr/share/fonts/opentype/linux-libertine/LinLibertine_R.otf")
@@ -760,6 +765,15 @@ def make_html(
     description = d.get("description", "")
 
     gallery_extra, body = standard_sections(tpl, d, work_dir)
+    if theme.key == "light" and tpl.key == "country":
+        body = "".join(
+            (f'<section><h2>{esc(name)}</h2>' if name else '<section>')
+            + "".join(row(f.label, d[f.key]) for f in fields) + '</section>'
+            for name, fields in country_groups(tpl, d)
+        )
+        for key, label in (("alt_name", "Другие названия"), ("motto", "Девиз")):
+            if d.get(key):
+                body += row(label, d[key])
 
     gallery = gallery_extra
     if tpl.key != "battle":
@@ -934,10 +948,34 @@ section h2 {{
 .parliament-flag {{ display: block; max-width: 84px; max-height: 50px; width: auto; height: auto; border: 1px solid var(--image-border); }}
 .parliament-country {{ font-size: 12px; font-weight: 700; color: var(--text); }}
 .parliament-note {{ margin-top: 5px; font-size: 11px; color: var(--text-secondary); }}
+
+/* Wikipedia infobox: compact sans-serif table, not an article headline. */
+.sheet[data-theme="light"] {{ padding: 4px; font-size: 13px; line-height: 1.45; }}
+.sheet[data-theme="light"] header {{ padding: 7px 6px 9px; }}
+.sheet[data-theme="light"] h1 {{ font: 700 22px/1.2 var(--font); }}
+.sheet[data-theme="light"] .subtitle {{ margin-top: 5px; font-size: 13px; line-height: 1.4; }}
+.sheet[data-theme="light"] section h2 {{ margin: 5px 0 3px; padding: 4px 6px; font-size: 13px; }}
+.sheet[data-theme="light"] .row {{ grid-template-columns: minmax(0, 42%) minmax(0, 58%); }}
+.sheet[data-theme="light"] .label,
+.sheet[data-theme="light"] .value {{ padding: 4px 5px; line-height: 1.45; }}
+.sheet[data-theme="light"] .label {{ font-weight: 400; }}
+.sheet[data-theme="light"] .gallery {{ margin: 4px 4px 10px; }}
+.sheet[data-theme="light"][data-type="country"] .gallery:not(.map).multi {{
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 10px;
+}}
+.sheet[data-theme="light"][data-type="country"] .gallery:not(.map) img {{ max-width: 180px; max-height: 130px; }}
+.sheet[data-theme="light"][data-type="country"] .gallery:not(.map).multi img {{ max-width: 100%; max-height: 110px; }}
+.sheet[data-theme="light"] figcaption {{ padding-top: 5px; font-size: 12px; }}
+.sheet[data-theme="light"] .description-text {{ padding: 6px 5px; font-size: 13px; }}
+.sheet[data-theme="light"] .battle-cell {{ padding: 5px; font-size: 13px; }}
+.sheet[data-theme="light"] .anthem-player {{ background: #eaecf0; border-radius: 0; }}
+.sheet[data-theme="light"] .anthem-play {{ border-left-color: #000; }}
+.sheet[data-theme="light"] .anthem-time {{ color: #000; background: transparent; }}
+.sheet[data-theme="light"] .footer {{ margin-top: 6px; padding-top: 6px; border-top: 1px solid #c8ccd1; }}
 </style>
 </head>
 <body>
-<article class="sheet" id="infobox" data-theme="{esc(theme.key)}">
+<article class="sheet" id="infobox" data-theme="{esc(theme.key)}" data-type="{esc(tpl.key)}">
   <header>{kind_html}<h1>{esc(title)}</h1>{subtitle_html}</header>
   {gallery}
   {anthem_html}
