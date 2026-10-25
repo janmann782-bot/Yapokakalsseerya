@@ -12,6 +12,7 @@ from templates import Field, Template, get_template
 from themes import Theme, get_theme
 from fonts_catalog import resolve_font_files, resolve_user_font
 from wiki_layout import country_groups
+from parliament_layout import hemicycle_layout as _hemicycle_layout, fitted_hemicycle, seat_colors
 
 
 PILLOW_SCALE = {"standard": 3.0, "high": 3.5, "ultra": 4.0}
@@ -662,99 +663,6 @@ def _seat_shape(value: object) -> str:
     return 'square' if low.startswith('квад') or 'square' in low or 'rect' in low else 'circle'
 
 
-def _max_arc_seats(radius: float, pitch: float) -> int:
-    """Maximum seat centers on a semicircle with at least ``pitch`` distance."""
-    if radius <= 0 or pitch <= 0:
-        return 1
-    ratio = min(1.0, pitch / (2.0 * radius))
-    if ratio >= 1.0:
-        return 1
-    angle = 2.0 * math.asin(ratio)
-    return max(1, int(math.floor(math.pi / angle)))
-
-
-def _hemicycle_layout(total: int, s: float) -> tuple[list[int], float, float, float, int, int]:
-    """Build non-overlapping concentric semicircle rows.
-
-    Row count grows until the exact chord distance between neighbouring seats is
-    larger than the seat diameter plus a visible gap. No overflow is ever dumped
-    into the outer row, which was the cause of seats overlapping on 200+ chambers.
-    """
-    if total <= 0:
-        return [], 26 * s, 13 * s, 4 * s, int(132 * s), int(111 * s)
-
-    if total <= 60:
-        seat_r, min_rows = 5.1 * s, 4
-    elif total <= 110:
-        seat_r, min_rows = 4.5 * s, 5
-    elif total <= 170:
-        seat_r, min_rows = 3.9 * s, 6
-    elif total <= 280:
-        seat_r, min_rows = 3.2 * s, 7
-    else:
-        seat_r, min_rows = 2.9 * s, 8
-
-    gap = 1.8 * s
-    # Conservative spacing also guarantees axis-aligned square seats never touch.
-    pitch = 2.0 * seat_r * math.sqrt(2.0) + gap
-    inner_r = 24.0 * s
-    step = max(10.8 * s, pitch + 1.4 * s)
-
-    rows = min_rows
-    while rows < 24:
-        capacities = [
-            _max_arc_seats(inner_r + step * i, pitch)
-            for i in range(rows)
-        ]
-        if sum(capacities) >= total:
-            break
-        rows += 1
-
-    capacities = [
-        _max_arc_seats(inner_r + step * i, pitch)
-        for i in range(rows)
-    ]
-
-    # Distribute proportionally to row capacity, then fill remaining free slots
-    # from the outside in. Every row always stays under its geometric capacity.
-    cap_sum = max(1, sum(capacities))
-    counts = [max(1, min(cap, int(total * cap / cap_sum))) for cap in capacities]
-
-    # If mandatory one-per-row pushed us above total, remove from inner rows first.
-    while sum(counts) > total:
-        changed = False
-        for i in range(len(counts)):
-            if counts[i] > 1 and sum(counts) > total:
-                counts[i] -= 1
-                changed = True
-        if not changed:
-            break
-
-    remaining = total - sum(counts)
-    while remaining > 0:
-        changed = False
-        for i in range(len(counts) - 1, -1, -1):
-            if counts[i] < capacities[i]:
-                counts[i] += 1
-                remaining -= 1
-                changed = True
-                if remaining <= 0:
-                    break
-        if not changed:
-            # Defensive fallback: add another outer row rather than overlap.
-            rows += 1
-            rr = inner_r + step * (rows - 1)
-            cap = _max_arc_seats(rr, pitch)
-            capacities.append(cap)
-            take = min(cap, remaining)
-            counts.append(take)
-            remaining -= take
-
-    outer_r = inner_r + step * (len(counts) - 1)
-    diagram_h = int(outer_r + seat_r + 29 * s)
-    base_y = int(diagram_h - 19 * s)
-    return counts, inner_r, step, seat_r, diagram_h, base_y
-
 
 def _fit_contain(src: Image.Image, max_size: tuple[int, int], bg: str) -> Image.Image:
     img = src.copy()
@@ -810,7 +718,8 @@ def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) ->
 
     row_h = max(int(18 * s), llh)
     legend_h = len(display_parties) * row_h
-    counts, inner_r, step, seat_r, diagram_h, base_y_offset = _hemicycle_layout(total, s)
+    diagram = fitted_hemicycle(total, w, s)
+    diagram_h = diagram.height
     total_h = pad_y * 2 + diagram_h + len(meta_lines) * mlh + gap + legend_h
     if term_lines:
         total_h += len(term_lines) * tlh + gap
@@ -824,29 +733,18 @@ def _parliament_block(w: int, s: float, data: dict, root: Path, theme: Theme) ->
         _draw_lines(draw, term_lines, (pad_x, y), title_font, theme.text, tlh, w - pad_x * 2, 'center')
         y += len(term_lines) * tlh + gap
 
-    cx = w / 2
-    base_y = y + base_y_offset
     seat_shape = _seat_shape(data.get('seat_shape'))
-    colors: list[str] = []
-    for party in parties:
-        colors.extend([party['color']] * int(party['seats']))
-    if len(colors) < total:
-        colors.extend(['#C8CCD1'] * (total - len(colors)))
-    colors = colors[:total]
-    seat_i = 0
-    for row_i, count in enumerate(counts):
-        rr = inner_r + step * row_i
-        angles = [math.pi / 2] if count == 1 else [math.pi - (j + 0.5) * math.pi / count for j in range(count)]
-        for ang in angles:
-            x = cx + rr * math.cos(ang)
-            yy = base_y - rr * math.sin(ang)
-            fill = colors[seat_i] if seat_i < len(colors) else '#C8CCD1'
-            seat_i += 1
-            box = (x - seat_r, yy - seat_r, x + seat_r, yy + seat_r)
-            if seat_shape == 'square':
-                draw.rectangle(box, fill=fill, outline='#202122', width=max(1, int(1.05 * s)))
-            else:
-                draw.ellipse(box, fill=fill, outline='#202122', width=max(1, int(1.05 * s)))
+    colors = seat_colors(parties, total)
+    for seat, fill in zip(diagram.seats, colors):
+        radius = seat.radius
+        box = (seat.x - radius, y + seat.y - radius, seat.x + radius, y + seat.y + radius)
+        # A fixed thick outline swallows the colors in a large chamber.
+        outline = '#202122' if radius >= 2 else None
+        stroke = max(1, round(min(0.65 * s, radius * 0.3)))
+        if seat_shape == 'square':
+            draw.rectangle(box, fill=fill, outline=outline, width=stroke)
+        else:
+            draw.ellipse(box, fill=fill, outline=outline, width=stroke)
     y += diagram_h
     _draw_lines(draw, meta_lines, (pad_x, y), meta_font, theme.text, mlh, w - pad_x * 2, 'center')
     y += len(meta_lines) * mlh + gap

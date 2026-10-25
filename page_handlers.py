@@ -29,6 +29,7 @@ from media import (
 from models import Page
 from parser import parse_section
 from renderer import render_error_text, render_page
+from parliament_layout import PARLIAMENT_LAYOUT_VERSION
 from states import EditPage, clear_flow
 from drafts import park_flow
 from templates import get_template
@@ -133,6 +134,8 @@ async def render_saved(
     document: bool = False,
 ) -> Path | None:
     path = valid_preview(p.preview_path, cfg)
+    if p.type == "parliament" and p.data.get("_parliament_layout") != PARLIAMENT_LAYOUT_VERSION:
+        path = None
     wait = None
     if not path:
         wait = await msg.answer(progress_text(8))

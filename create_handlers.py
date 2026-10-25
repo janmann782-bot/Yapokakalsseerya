@@ -38,6 +38,7 @@ from media import (
 from models import Page
 from parser import ParsedPage, parse_section, parse_text
 from renderer import render_error_text, render_page
+from parliament_layout import PARLIAMENT_LAYOUT_VERSION
 from states import NewPage, clear_flow
 from stats import spawn_milestone_broadcast
 from templates import get_template
@@ -242,7 +243,7 @@ async def show_preview(
             ),
         )
         p.preview_path = path.name
-        await state.update_data(preview_path=path.name)
+        await state.update_data(preview_path=path.name, page_data=p.data)
 
         # Новая карточка считается один раз при первом успешном рендере.
         # Сохранение не требуется, а повторные предпросмотры этот счётчик не крутят.
@@ -1070,7 +1071,8 @@ async def export_draft(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config,
 
     raw = Path(d.get("preview_path") or "")
     path = raw.resolve() if raw.is_absolute() else (cfg.work_dir / raw).resolve()
-    if path.parent != cfg.work_dir.resolve() or not path.name.startswith("preview_") or not path.is_file():
+    stale_parliament = d.get("type") == "parliament" and (d.get("page_data") or {}).get("_parliament_layout") != PARLIAMENT_LAYOUT_VERSION
+    if stale_parliament or path.parent != cfg.work_dir.resolve() or not path.name.startswith("preview_") or not path.is_file():
         p = await show_preview(q.message, state, db, cfg, bot, q.from_user)
         if not p:
             return

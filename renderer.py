@@ -14,6 +14,7 @@ from templates import Field, Template, get_template
 from themes import Theme, get_theme
 from fonts_catalog import css_family_name, font_css_for_family
 from wiki_layout import country_groups
+from parliament_layout import fitted_hemicycle, hemicycle_layout, seat_colors, PARLIAMENT_LAYOUT_VERSION
 
 QUALITY_SCALE = {"standard": 1.5, "high": 2.0, "ultra": 2.5}
 _render_slots = asyncio.Semaphore(2)
@@ -287,56 +288,18 @@ def _parse_parliament_parties(value: object, total_seats: int | None = None) -> 
 
 
 def _hemicycle_counts(total: int) -> list[int]:
-    if total <= 0:
-        return []
-    rows = 4 if total <= 40 else 5 if total <= 90 else 6 if total <= 160 else 7
-    weights = [1.0 + i * 0.24 for i in range(rows)]
-    raw = [total * w / sum(weights) for w in weights]
-    counts = [max(1, int(x)) for x in raw]
-    diff = total - sum(counts)
-    order = list(range(rows - 1, -1, -1))
-    i = 0
-    while diff != 0:
-        idx = order[i % len(order)]
-        if diff > 0:
-            counts[idx] += 1
-            diff -= 1
-        elif counts[idx] > 1:
-            counts[idx] -= 1
-            diff += 1
-        i += 1
-    return counts
+    return hemicycle_layout(total, 1.0)[0] if total > 0 else []
 
 
 def _parliament_svg(parties: list[dict], total: int) -> str:
-    import math
     if total <= 0:
         return ''
-    colors: list[str] = []
-    for party in parties:
-        colors.extend([party['color']] * int(party['seats']))
-    if len(colors) < total:
-        colors.extend(['#C8CCD1'] * (total - len(colors)))
-    colors = colors[:total]
-    counts = _hemicycle_counts(total)
-    cx, base_y = 150.0, 126.0
-    inner_r, step = 30.0, 15.5
-    seat_r = 6.3 if total <= 60 else 5.5 if total <= 110 else 4.8 if total <= 170 else 4.2
-    circles = []
-    seat_i = 0
-    for row_i, count in enumerate(counts):
-        r = inner_r + step * row_i
-        if count == 1:
-            angles = [math.pi / 2]
-        else:
-            angles = [math.pi - (j + 0.5) * math.pi / count for j in range(count)]
-        for ang in angles:
-            x = cx + r * math.cos(ang)
-            y = base_y - r * math.sin(ang)
-            fill = colors[seat_i] if seat_i < len(colors) else '#C8CCD1'
-            seat_i += 1
-            circles.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{seat_r:.2f}" fill="{fill}" stroke="#202122" stroke-width="0.7" />')
-    return '<svg class="parliament-svg" viewBox="0 0 300 150" aria-hidden="true">' + ''.join(circles) + '</svg>'
+    diagram = fitted_hemicycle(total, 300.0)
+    shapes = []
+    for seat, color in zip(diagram.seats, seat_colors(parties, total)):
+        stroke = min(0.7, seat.radius * 0.25)
+        shapes.append(f'<circle cx="{seat.x:.4f}" cy="{seat.y:.4f}" r="{seat.radius:.4f}" fill="{esc(color)}" stroke="#202122" stroke-width="{stroke:.4f}" />')
+    return f'<svg class="parliament-svg" viewBox="0 0 300 {diagram.height}" aria-hidden="true">' + ''.join(shapes) + '</svg>'
 
 
 def parliament_block_html(data: dict, work_dir: str | Path) -> str:
@@ -1011,6 +974,8 @@ async def render_page(
         page.data = {}
     page.data["_font_key"] = font_key or "default"
     page.data["_font_user_id"] = user_id
+    if page.type == "parliament":
+        page.data["_parliament_layout"] = PARLIAMENT_LAYOUT_VERSION
 
     if page.theme == "olddoc":
         from olddoc import render_olddoc
