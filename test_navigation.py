@@ -47,7 +47,7 @@ class LocalTelegram(BaseSession):
             return Message(message_id=getattr(method, "message_id", None) or len(self.calls) + 10,
                            date=datetime.now(UTC), chat=Chat(id=int(method.chat_id), type="private"),
                            from_user=User(id=bot.id, is_bot=True, first_name="InfoBox"),
-                           text=getattr(method, "text", None), caption=getattr(method, "caption", None))
+                           text=getattr(method, "text", None), caption=getattr(method, "caption", None)).as_(bot)
         raise AssertionError(f"Unexpected Telegram method: {method}")
 
 
@@ -90,6 +90,59 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         msg = Message(message_id=10, date=datetime.now(UTC), chat=Chat(id=self.uid, type="private"), from_user=User(id=self.bot.id, is_bot=True, first_name="InfoBox"), text="Экран")
         q = CallbackQuery(id=str(self.updates), from_user=User(id=self.uid, is_bot=False, first_name="Тест"), chat_instance="test", message=msg, data=data)
         await self.dp.feed_update(self.bot, Update(update_id=self.updates, callback_query=q))
+
+    async def test_hoi4_selection_upload_resume_and_save(self):
+        await self.message("/start")
+        await self.callback("compose:superevent")
+        await self.callback("hoi4:style:new:tno")
+        await self.callback("hoi4:mode:new:tno:all")
+        await self.callback("build:superevent:editor")
+        await self.message("Кефирстан")
+        d=await self.state.get_data()
+        self.assertEqual(d["page_data"]["hoi4_mode"],"all")
+        self.assertEqual(d["theme"],"tno")
+        await self.callback("hoi4:media:d")
+        for role,color in (("flag","yellow"),("portrait","blue"),("event","red")):
+            await self.callback(f"hoi4:upload:d:{role}")
+            buf=BytesIO()
+            Image.new("RGB",(300,200),color).save(buf,"PNG")
+            self.session.download=buf.getvalue()
+            await self.message(document=Document(file_id="image",file_unique_id=role,file_name="image.png",mime_type="image/png",file_size=len(buf.getvalue())))
+        d=await self.state.get_data()
+        self.assertEqual(set(d["page_data"]["hoi4_media"]),{"flag","portrait","event"})
+        self.assertEqual(len(d["page_data"]["images"]),3)
+        await self.callback("menu:home")
+        await self.state.clear()
+        await self.callback("draft:resume")
+        self.assertEqual((await self.state.get_data())["page_data"]["hoi4_style"],"tno")
+        await self.callback("draft:back")
+        self.assertTrue(any(isinstance(c,SendPhoto) for c in self.session.calls))
+        await self.callback("draft:save")
+        pages=await self.db.get_user_pages(self.uid)
+        self.assertEqual(len(pages),1)
+        page=pages[0]
+        await self.callback(f"hoi4:options:p{page.id}")
+        await self.callback(f"hoi4:mode:p{page.id}:tfr:state")
+        page=await self.db.get_page(page.id,self.uid)
+        self.assertEqual(page.theme,"fire_rises")
+        self.assertEqual(page.data["hoi4_mode"],"state")
+        self.assertIsNone(page.preview_path)
+        self.assertEqual(len(page.data["hoi4_media"]),3)
+        # Another user's card cannot be changed through forged callbacks.
+        other=await self.db.save_page(Page(self.uid+1,"superevent","Чужая",data={"title":"Чужая"}))
+        await self.callback(f"hoi4:mode:p{other.id}:tno:all")
+        self.assertNotIn("hoi4_mode",(await self.db.get_page(other.id,self.uid+1)).data)
+
+    async def test_hoi4_paste_keeps_style_and_mode(self):
+        await self.message("/start")
+        await self.callback("hoi4:mode:new:tno:news")
+        await self.callback("build:superevent:paste")
+        await self.message("Название: Кефирстан\nЗаголовок газеты: Союз автономий\nТекст газеты: Проверка")
+        d=await self.state.get_data()
+        self.assertEqual(d["type"],"superevent")
+        self.assertEqual(d["theme"],"tno")
+        self.assertEqual(d["page_data"]["hoi4_mode"],"news")
+        self.assertEqual(d["page_data"]["news_body"],"Проверка")
 
     async def test_channel_recommendations_once_across_restarts(self):
         # Existing users also see the notice once after upgrading.

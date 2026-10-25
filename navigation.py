@@ -63,11 +63,11 @@ async def finish_wizard(q: CallbackQuery, state: FSMContext):
         return
     await q.answer()
     await state.set_state(NewPage.review)
-    await flow_show(q, state, tr("fields_title"), field_sections_kb(get_template(d["type"]), d["page_data"]))
+    await flow_show(q, state, tr("fields_title"), field_sections_kb(get_template(d["type"], d.get("page_data") or {}), d["page_data"]))
 
 
 @router.callback_query(F.data.startswith("compose:"))
-async def choose_method(q: CallbackQuery):
+async def choose_method(q: CallbackQuery, state: FSMContext):
     await q.answer()
     kind = q.data.split(":")[1]
     if kind == "more":
@@ -78,6 +78,14 @@ async def choose_method(q: CallbackQuery):
         return
     if kind not in TEMPLATES:
         return
+    if kind == "superevent":
+        from hoi4_handlers import style_kb
+        await screen(q, "<b>HOI4 Карточка (бета)</b>\nВыбери стиль", style_kb("new"))
+        return
+    await method_screen(q, kind)
+
+
+async def method_screen(q, kind):
     text = tr("method_choice", type=get_template(kind).label)
     await screen(q, text, InlineKeyboardMarkup(inline_keyboard=[
         [ib("Пройти по шагам", f"build:{kind}:wizard")],
@@ -94,6 +102,7 @@ async def begin_method(q: CallbackQuery, state: FSMContext, db, cfg):
     prefix, kind, method = q.data.split(":")
     if kind not in TEMPLATES or method not in {"wizard", "paste", "editor"}:
         return
+    selection = (await state.get_data()).get("hoi4_selection") if kind == "superevent" else None
     await checkpoint(state, db, q.from_user.id)
     draft = await db.get_draft(q.from_user.id)
     if draft and prefix != "replace":
@@ -111,11 +120,11 @@ async def begin_method(q: CallbackQuery, state: FSMContext, db, cfg):
         await state.clear()
     if method == "paste":
         await state.set_state(Navigation.paste)
-        await state.update_data(paste_type=kind)
+        await state.update_data(paste_type=kind, paste_hoi4=selection)
         await flow_show(q, state, tr("paste_prompt"), InlineKeyboardMarkup(inline_keyboard=[[ib("Другой способ", f"compose:{kind}"), ib("В меню", "menu:home")]]))
         return
     from create_handlers import begin_new_page
-    await begin_new_page(q.message, state, db, cfg, q.from_user.id, kind, user=q.from_user)
+    await begin_new_page(q.message, state, db, cfg, q.from_user.id, kind, user=q.from_user, initial_data=selection)
     if method == "editor":
         await state.update_data(creation_mode="editor")
 
@@ -129,12 +138,14 @@ async def paste_data(msg: Message, state: FSMContext, db, cfg):
     if not parsed.data.get("title"):
         await msg.answer(tr("paste_need_title"))
         return
+    if kind == "superevent":
+        parsed.data.update(d.get("paste_hoi4") or {})
     settings = await db.get_settings(msg.from_user.id)
     extra = tr("quick_unknown", lines="\n".join(parsed.unknown[:8])) if parsed.unknown else ""
     if parsed.warnings:
         extra += tr("quick_warnings", lines="\n".join(parsed.warnings[:6]))
     quick = tr("quick_found", count=parsed.recognized, type=get_template(parsed.type).label, summary=quick_summary(parsed), extra=extra)
-    await state.set_data(dict(type=parsed.type, page_data=parsed.data, theme=settings.theme if theme_allowed(settings.theme, parsed.type) else "light", quick_text=quick[:4000], max_image_mb=cfg.max_image_mb))
+    await state.set_data(dict(type=parsed.type, page_data=parsed.data, theme=("tno" if parsed.data.get("hoi4_style") == "tno" else "fire_rises") if kind == "superevent" else settings.theme if theme_allowed(settings.theme, parsed.type) else "light", quick_text=quick[:4000], max_image_mb=cfg.max_image_mb))
     await show_quick(msg, state)
 
 
@@ -148,7 +159,7 @@ async def resume_draft(q: CallbackQuery, state: FSMContext, db, cfg):
         return
     await state.set_data(draft)
     await state.set_state(NewPage.review)
-    tpl = get_template(draft["type"])
+    tpl = get_template(draft["type"], draft.get("page_data") or {})
     await flow_show(q, state, tr("draft_resumed"), field_sections_kb(tpl, draft.get("page_data") or {}))
 
 
@@ -175,14 +186,14 @@ async def show_group(q: CallbackQuery, state: FSMContext, db):
         if not d.get("type"):
             await screen(q, tr("draft_missing"), home_kb(bool(await db.get_draft(q.from_user.id))))
             return
-        tpl, values = get_template(d["type"]), d.get("page_data") or {}
+        tpl, values = get_template(d["type"], d.get("page_data") or {}), d.get("page_data") or {}
         await state.set_state(NewPage.review)
     else:
         page = await db.get_page(int(scope[1:]), q.from_user.id)
         if page is None:
             await screen(q, tr("page_not_found"), home_kb())
             return
-        tpl, values = get_template(page.type), page.data
+        tpl, values = get_template(page.type, page.data), page.data
     try:
         name, markup = field_group_kb(tpl, values, scope, kind, int(raw_index), int(raw_offset))
     except (ValueError, IndexError, KeyError):

@@ -6,6 +6,10 @@ from dataclasses import dataclass, field
 from templates import TEMPLATES, get_template
 
 TYPE_ALIASES = {
+    "hoi4 карточка (бета)": "superevent",
+    "hoi4": "superevent",
+    "superevent": "superevent",
+    "суперевент": "superevent",
     "страна": "country",
     "государство": "country",
     "country": "country",
@@ -261,6 +265,11 @@ def parse_text(text: str) -> ParsedPage:
             continue
 
         field_key = ALIASES.get(key)
+        if field_key is None:
+            for field in TEMPLATES["superevent"].fields:
+                if key == clean_key(field.label) or key == field.key:
+                    field_key = field.key
+                    break
         if field_key:
             pairs.append((field_key, k.strip(), v.strip()))
         else:

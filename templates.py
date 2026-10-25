@@ -242,18 +242,40 @@ NEWS = Template(
 
 
 SUPEREVENT = Template(
-    key="superevent",
-    label="Суперевент (БЕТА)",
-    emoji="‼️",
-    image_label="одна картинка к суперевенту",
+    key="superevent",  # Keep saved cards and old callback buttons readable.
+    label="HOI4 Карточка (бета)",
+    emoji="🎮",
+    image_label="флаг, портрет, картинка события и фото газеты",
     subtitle_key=None,
     wizard=("title", "body", "button_text"),
     fields=(
-        f("title", "Заголовок", "Суперевент"),
-        f("body", "Текст суперевента", "Суперевент", multiline=True),
-        f("button_text", "Текст на кнопке", "Суперевент"),
+        f("title", "Название карточки", "Основное"),
+        f("country_name", "Название государства", "Государство"),
+        f("leader", "Лидер", "Государство"),
+        f("alliance", "Альянс", "Государство"),
+        f("ruling_party", "Правящая партия", "Политика"),
+        f("ideology", "Идеология", "Политика"),
+        f("elections", "Выборы", "Политика"),
+        f("focus", "Национальный фокус", "Политика"),
+        f("parties", "Доли партий: название | доля | #цвет", "Политика", multiline=True),
+        f("event_title", "Заголовок события", "Событие"),
+        f("body", "Текст или цитата", "Событие", multiline=True),
+        f("quote_author", "Автор цитаты", "Событие"),
+        f("button_text", "Надпись на кнопке события", "Событие"),
+        f("newspaper_name", "Название газеты", "Газета"),
+        f("news_title", "Заголовок газеты", "Газета"),
+        f("news_body", "Текст газеты", "Газета", multiline=True),
+        f("news_date", "Дата газеты", "Газета"),
+        f("news_button", "Подпись внизу газеты", "Газета"),
     ),
 )
+
+HOI4_MODES = {"state": "Государство", "event": "Событие", "news": "Газета", "all": "Все в 1 фотке"}
+
+
+def hoi4_mode(data):
+    mode = (data or {}).get("hoi4_mode", "event")
+    return mode if mode in HOI4_MODES else "event"
 
 
 MIROTORETS = Template(
@@ -284,8 +306,28 @@ MIROTORETS = Template(
 TEMPLATES = {x.key: x for x in (COUNTRY, REGION, BATTLE, PERSON, PARLIAMENT, NEWS, SUPEREVENT, MIROTORETS)}
 
 
-def get_template(key: str) -> Template:
+def get_template(key: str, data: dict | None = None) -> Template:
     try:
-        return TEMPLATES[key]
+        tpl = TEMPLATES[key]
+        if key != "superevent" or data is None:
+            return tpl
+        from dataclasses import replace
+        mode = hoi4_mode(data)
+        sections = {"Основное"}
+        if mode in ("state", "all"):
+            sections.update(("Государство", "Политика"))
+        if mode in ("event", "all"):
+            sections.add("Событие")
+        if mode == "news" or (mode == "all" and data.get("hoi4_style") == "tno"):
+            sections.add("Газета")
+        fields = tuple(x for x in tpl.fields if x.section in sections)
+        if mode == "event":
+            # Historical df/pe buttons use these first three field indices.
+            order = {key: i for i, key in enumerate(("title", "body", "button_text", "event_title", "quote_author"))}
+            fields = tuple(sorted(fields, key=lambda x: order[x.key]))
+        wizard = tuple(x.key for x in fields if x.key not in ("parties", "quote_author", "alliance", "news_date", "newspaper_name", "news_button"))
+        if mode == "event":
+            wizard = ("title", "body", "button_text")
+        return replace(tpl, fields=fields, wizard=wizard)
     except KeyError as e:
         raise ValueError(f"Неизвестный шаблон: {key}") from e

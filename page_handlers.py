@@ -136,6 +136,10 @@ async def render_saved(
     path = valid_preview(p.preview_path, cfg)
     if p.type == "parliament" and p.data.get("_parliament_layout") != PARLIAMENT_LAYOUT_VERSION:
         path = None
+    if p.type == "superevent":
+        from hoi4_renderer import LAYOUT_VERSION
+        if p.data.get("_hoi4_layout") != LAYOUT_VERSION:
+            path = None
     wait = None
     if not path:
         wait = await msg.answer(progress_text(8))
@@ -223,7 +227,7 @@ async def edit_page(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) ->
         return
     await q.message.answer(
         tr("fields_title"),
-        reply_markup=field_sections_kb(get_template(p.type), p.data, p.id),
+        reply_markup=field_sections_kb(get_template(p.type, p.data), p.data, p.id),
         parse_mode="HTML",
     )
 
@@ -234,7 +238,7 @@ async def saved_fields_page(q: CallbackQuery, db: Db) -> None:
     _, _, page_id, offset = q.data.split(":")
     p = await get_owned(q, db, int(page_id))
     if p:
-        await q.message.answer(tr("fields_title"), reply_markup=fields_kb(get_template(p.type), p.data, p.id, int(offset)), parse_mode="HTML")
+        await q.message.answer(tr("fields_title"), reply_markup=fields_kb(get_template(p.type, p.data), p.data, p.id, int(offset)), parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("pe:"))
@@ -253,7 +257,7 @@ async def choose_page_field(q: CallbackQuery, state: FSMContext, db: Db) -> None
     edit: dict = {"page_id": page_id, "edit_kind": kind}
     if kind == "s":
         i = int(parts[3])
-        tpl = get_template(p.type)
+        tpl = get_template(p.type, p.data)
         if not 0 <= i < len(tpl.fields):
             return
         f = tpl.fields[i]
@@ -350,7 +354,7 @@ async def take_page_value(msg: Message, state: FSMContext, db: Db, cfg: Config) 
     safe_unlink(p.preview_path, cfg.work_dir, "preview_")
     p.preview_path = None
     await db.update_page(p)
-    await msg.answer(tr("field_saved") + "\n\n" + tr("fields_title"), reply_markup=field_sections_kb(get_template(p.type), p.data, p.id), parse_mode="HTML")
+    await msg.answer(tr("field_saved") + "\n\n" + tr("fields_title"), reply_markup=field_sections_kb(get_template(p.type, p.data), p.data, p.id), parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("pa:"))
@@ -380,7 +384,7 @@ async def page_add(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -> 
             await _show_page_parliament_assets(q.message, p, state)
             return
         await state.set_state(EditPage.image)
-        tpl = get_template(p.type)
+        tpl = get_template(p.type, p.data)
         count = len(page_images(p.data))
         max_c = 1 if p.type in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
         if p.type in ("news", "superevent", "mirotorets"):

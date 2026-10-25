@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,12 +175,15 @@ MIROTORETS = Theme(
 )
 
 
-THEMES = {x.key: x for x in (LIGHT, DARK, AURELIA, OLDDOC, FIRE_RISES, MIROTORETS)}
+TNO = replace(FIRE_RISES, key="tno", name="TNO")
+
+THEMES = {x.key: x for x in (LIGHT, DARK, AURELIA, OLDDOC, FIRE_RISES, TNO, MIROTORETS)}
 
 # Theme available only for these page types (missing key = all types)
 THEME_PAGE_TYPES: dict[str, set[str] | None] = {
     "olddoc": {"country", "region", "battle", "person"},
     "fire_rises": {"news", "superevent"},
+    "tno": {"superevent"},
     "mirotorets": {"mirotorets"},
     # ordinary themes not for news/superevent/mirotorets
     "light": {"country", "region", "battle", "person", "parliament"},

@@ -79,11 +79,15 @@ IMAGE_CAPTION_LIMIT = 500
 
 async def ask_field(msg: Message, state: FSMContext) -> None:
     d = await state.get_data()
-    tpl = get_template(d["type"])
+    tpl = get_template(d["type"], d.get("page_data") or {})
     i = int(d.get("i", 0))
 
     if i >= len(tpl.wizard):
         ptype = d.get("type") or ""
+        if ptype == "superevent":
+            from hoi4_handlers import show_media
+            await show_media(msg, state, "d", d.get("page_data") or {})
+            return
         if ptype in NO_IMAGE_TYPES:
             await state.set_state(NewPage.theme)
             await flow_show(
@@ -295,7 +299,7 @@ async def show_quick(msg: Message, state: FSMContext) -> None:
     await msg.answer(d.get("quick_text", tr("draft_missing")), reply_markup=quick_kb())
 
 
-async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, user_id: int, kind: str, user=None) -> None:
+async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, user_id: int, kind: str, user=None, initial_data=None) -> None:
     try:
         get_template(kind)
     except ValueError:
@@ -306,7 +310,9 @@ async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, u
     flow_mid = prev.get("flow_message_id") or (msg.message_id if msg else None)
     flow_cid = prev.get("flow_chat_id") or (msg.chat.id if msg else None)
     await clear_flow(state, user_id, db, cfg)
-    if kind in ("news", "superevent"):
+    if kind == "superevent" and (initial_data or {}).get("hoi4_style") == "tno":
+        theme = "tno"
+    elif kind in ("news", "superevent"):
         theme = "fire_rises"
     elif kind == "mirotorets":
         theme = "mirotorets"
@@ -316,7 +322,7 @@ async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, u
         theme = s.theme if theme_allowed(s.theme, kind) else "light"
     await state.update_data(
         type=kind,
-        page_data={},
+        page_data=dict(initial_data or {}),
         i=0,
         theme=theme,
         preview_path=None,
@@ -351,7 +357,7 @@ async def take_field(msg: Message, state: FSMContext) -> None:
         return
 
     d = await state.get_data()
-    tpl = get_template(d["type"])
+    tpl = get_template(d["type"], d.get("page_data") or {})
     i = int(d.get("i", 0))
     if i >= len(tpl.wizard):
         await ask_field(msg, state)
@@ -383,7 +389,7 @@ async def take_field(msg: Message, state: FSMContext) -> None:
 @router.callback_query(NewPage.field, F.data == "wiz:skip")
 async def skip_field(q: CallbackQuery, state: FSMContext) -> None:
     d = await state.get_data()
-    tpl = get_template(d["type"])
+    tpl = get_template(d["type"], d.get("page_data") or {})
     i = int(d.get("i", 0))
     f = tpl.get_field(tpl.wizard[i])
     if f.key == "title":
@@ -541,7 +547,7 @@ async def back_image(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, b
         await state.update_data(parliament_target=None, parliament_return=None)
         await show_preview(q.message, state, db, cfg, bot, q.from_user)
         return
-    tpl = get_template(d["type"])
+    tpl = get_template(d["type"], d.get("page_data") or {})
     await state.update_data(i=max(0, len(tpl.wizard) - 1), parliament_target=None, parliament_return=None)
     await ask_field(q.message, state)
 
@@ -759,7 +765,7 @@ async def draft_theme(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, 
         if cur == NewPage.field.state or not d.get("type"):
             return
         if cur == NewPage.theme.state:
-            tpl = get_template(d["type"])
+            tpl = get_template(d["type"], d.get("page_data") or {})
             ptype = d.get("type") or ""
             if ptype in NO_IMAGE_TYPES:
                 await state.update_data(i=max(0, len(tpl.wizard) - 1))
@@ -810,7 +816,7 @@ async def draft_fields(q: CallbackQuery, state: FSMContext, offset: int = 0) -> 
         return
     await q.message.answer(
         tr("fields_title"),
-        reply_markup=field_sections_kb(get_template(d["type"]), d.get("page_data") or {}),
+        reply_markup=field_sections_kb(get_template(d["type"], d.get("page_data") or {}), d.get("page_data") or {}),
         parse_mode="HTML",
     )
 
@@ -833,7 +839,7 @@ async def edit_draft_standard(q: CallbackQuery, state: FSMContext) -> None:
     if not d.get("type"):
         await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
-    tpl = get_template(d["type"])
+    tpl = get_template(d["type"], d.get("page_data") or {})
     i = int(q.data.split(":")[1])
     if not 0 <= i < len(tpl.fields):
         return
@@ -914,7 +920,7 @@ async def take_draft_edit(msg: Message, state: FSMContext, db: Db, cfg: Config, 
     safe_unlink(d.get("preview_path"), cfg.work_dir, "preview_")
     await state.update_data(preview_path=None)
     await state.set_state(NewPage.review)
-    await flow_show(msg, state, tr("field_saved") + "\n\n" + tr("fields_title"), field_sections_kb(get_template(d["type"]), data))
+    await flow_show(msg, state, tr("field_saved") + "\n\n" + tr("fields_title"), field_sections_kb(get_template(d["type"], d.get("page_data") or {}), data))
 
 
 @router.callback_query(F.data == "draft:custom")
@@ -1001,7 +1007,7 @@ async def replace_draft_image(q: CallbackQuery, state: FSMContext, cfg: Config) 
     if not d.get("type"):
         await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
-    tpl = get_template(d["type"])
+    tpl = get_template(d["type"], d.get("page_data") or {})
     ptype = d.get("type") or ""
     if ptype == "parliament":
         await _show_parliament_assets(q.message, state, return_to="preview")
@@ -1072,7 +1078,9 @@ async def export_draft(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config,
     raw = Path(d.get("preview_path") or "")
     path = raw.resolve() if raw.is_absolute() else (cfg.work_dir / raw).resolve()
     stale_parliament = d.get("type") == "parliament" and (d.get("page_data") or {}).get("_parliament_layout") != PARLIAMENT_LAYOUT_VERSION
-    if stale_parliament or path.parent != cfg.work_dir.resolve() or not path.name.startswith("preview_") or not path.is_file():
+    from hoi4_renderer import LAYOUT_VERSION
+    stale_hoi4 = d.get("type") == "superevent" and (d.get("page_data") or {}).get("_hoi4_layout") != LAYOUT_VERSION
+    if stale_parliament or stale_hoi4 or path.parent != cfg.work_dir.resolve() or not path.name.startswith("preview_") or not path.is_file():
         p = await show_preview(q.message, state, db, cfg, bot, q.from_user)
         if not p:
             return
@@ -1118,7 +1126,7 @@ async def quick_fields(q: CallbackQuery, state: FSMContext) -> None:
         return
     await q.message.answer(
         tr("fields_title"),
-        reply_markup=field_sections_kb(get_template(d["type"]), d.get("page_data") or {}),
+        reply_markup=field_sections_kb(get_template(d["type"], d.get("page_data") or {}), d.get("page_data") or {}),
         parse_mode="HTML",
     )
 
@@ -1331,7 +1339,7 @@ async def back_map_image(q: CallbackQuery, state: FSMContext) -> None:
     await q.answer()
     d = await state.get_data()
     await state.set_state(NewPage.image)
-    tpl = get_template(d["type"])
+    tpl = get_template(d["type"], d.get("page_data") or {})
     count = len(page_images(d.get("page_data") or {}))
     max_count = MAX_PAGE_IMAGES
     text = tr(

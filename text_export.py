@@ -20,9 +20,12 @@ def _clean(value: object) -> str:
 
 def page_to_text(page: Page) -> str:
     """Собирает только пользовательский текст страницы, без внутренних путей к файлам."""
-    tpl = get_template(page.type)
+    tpl = get_template(page.type, page.data)
     d = page.data
     lines = [tpl.label.upper()]
+    if page.type == "superevent":
+        from templates import HOI4_MODES, hoi4_mode
+        lines += ["Стиль: " + ("TNO" if page.theme == "tno" else "TFR"), "Формат: " + HOI4_MODES[hoi4_mode(d)]]
 
     for field in tpl.fields:
         if field.key == "image_caption":

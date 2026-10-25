@@ -974,6 +974,10 @@ async def render_page(
         page.data = {}
     page.data["_font_key"] = font_key or "default"
     page.data["_font_user_id"] = user_id
+    if page.type == "superevent":
+        from hoi4_renderer import LAYOUT_VERSION
+        page.data["_hoi4_layout"] = LAYOUT_VERSION
+        page.data["hoi4_style"] = "tno" if page.theme == "tno" else "tfr"
     if page.type == "parliament":
         page.data["_parliament_layout"] = PARLIAMENT_LAYOUT_VERSION
 
