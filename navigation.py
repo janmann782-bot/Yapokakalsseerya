@@ -93,6 +93,7 @@ async def choose_method(q: CallbackQuery, state: FSMContext):
 async def method_screen(q, kind):
     text = tr("method_choice", type=get_template(kind).label)
     await screen(q, text, InlineKeyboardMarkup(inline_keyboard=[
+        *([[ib("Готовые штампы", "stamp:presets:new")]] if kind == "stamp" else []),
         [ib("Пройти по шагам", f"build:{kind}:wizard")],
         [ib("Вставить готовый текст", f"build:{kind}:paste")],
         [ib("Открыть редактор", f"build:{kind}:editor")],

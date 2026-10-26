@@ -416,6 +416,68 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(any("Название суперэвента" in text for text in texts), style)
             self.assertFalse(any("Как назовем карточку" in text for text in texts), style)
 
+    async def test_stamp_button_wizard_options_presets_and_document(self):
+        from stamp_controls import OPTIONS
+        from states import StampDocument
+        await self.message("/start")
+        await self.callback("compose:stamp")
+        await self.callback("build:stamp:wizard")
+        for text in ("Печать","Кефирстан","Каменный Мост","ФНВ"):
+            await self.message(text)
+        buttons={b.callback_data for c in self.session.calls if getattr(c,"reply_markup",None) and hasattr(c.reply_markup,"inline_keyboard") for row in c.reply_markup.inline_keyboard for b in row}
+        self.assertIn("stamp:pick:d:stamp_color:0",buttons)
+        await self.callback("stamp:pick:d:stamp_color:2")
+        await self.callback("stamp:pick:d:stamp_shape:1")
+        await self.callback("stamp:pick:d:stamp_wear:1")
+        self.assertEqual(await self.state.get_state(),NewPage.image.state)
+        data=(await self.state.get_data())["page_data"]
+        self.assertEqual(data["stamp_shape"],"овальная")
+        self.assertEqual(data["stamp_color"],"красный")
+        await self.callback("img:done")
+        await self.callback("stamp:options:d")
+        for key,index in (("stamp_rings",0),("stamp_width",2),("stamp_separator",1),("stamp_angle",2),("stamp_logo_mode",0)):
+            await self.callback(f"stamp:option:d:{key}")
+            await self.callback(f"stamp:pick:d:{key}:{index}")
+            self.assertEqual((await self.state.get_data())["page_data"][key],OPTIONS[key][index][1])
+        await self.callback("stamp:custom:d:stamp_color")
+        await self.message("#456BBC")
+        self.assertEqual((await self.state.get_data())["page_data"]["stamp_color"],"#456BBC")
+        await self.callback("stamp:document:d")
+        self.assertEqual(await self.state.get_state(),StampDocument.wait.state)
+        doc=Document(file_id="sheet",file_unique_id="sheet",file_name="document.png",file_size=100)
+        self.session.download=b"bad image"
+        await self.message(document=doc)
+        self.assertEqual(await self.state.get_state(),StampDocument.wait.state)
+        buf=BytesIO();Image.new("RGB",(800,1100),"white").save(buf,"PNG")
+        self.session.download=buf.getvalue()
+        outputs=[]
+        async def capture(msg,path,caption,markup,document=False):
+            with Image.open(path) as image:
+                outputs.append((image.copy(),document))
+        with patch("ui.send_png",side_effect=capture):
+            await self.message(document=doc)
+            await self.callback("stamp:docpos:d:0")
+            await self.callback("stamp:docsize:d:45")
+            await self.callback("stamp:docpng:d")
+        self.assertTrue(outputs[-1][1])
+        self.assertEqual(outputs[-1][0].size,(800,1100))
+        self.assertEqual((await self.state.get_data())["stamp_document_size"],45)
+        filename=(await self.state.get_data())["stamp_document_file"]
+        await self.callback("stamp:back:d")
+        self.assertFalse((self.cfg.work_dir/filename).exists())
+        await self.callback("draft:save")
+        page=(await self.db.get_user_pages(self.uid))[0]
+        await self.callback(f"stamp:options:p{page.id}")
+        await self.callback(f"stamp:pick:p{page.id}:stamp_shape:2")
+        self.assertEqual((await self.db.get_page(page.id,self.uid)).data["stamp_shape"],"прямоугольная")
+        await self.callback(f"stamp:preset:p{page.id}:2")
+        self.assertEqual((await self.db.get_page(page.id,self.uid)).data["stamp_center"],"КОПИЯ ВЕРНА")
+        # Ready stamps can also be created straight from the main creation menu.
+        await self.callback("stamp:presets:new")
+        for index in range(4):
+            await self.callback(f"stamp:preset:new:{index}")
+            self.assertTrue((await self.state.get_data())["page_data"]["stamp_center"])
+
     async def test_stamp_fonts_and_reroll_for_draft_and_saved(self):
         from stamp_handlers import font_id
         from fonts_catalog import ROOT

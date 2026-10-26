@@ -138,7 +138,13 @@ async def ask_field(msg: Message, state: FSMContext) -> None:
         from html import escape
         s += "\n\n" + tr("current_value", value=str(current)[:500])
     await state.set_state(NewPage.field)
-    await flow_show(msg, state, s, wizard_kb(can_skip=f.key != "title"))
+    markup = wizard_kb(can_skip=f.key != "title")
+    if tpl.key == "stamp":
+        from stamp_controls import option_kb
+        markup = option_kb(f.key, "d", markup)
+        if f.key in ("stamp_shape", "stamp_color", "stamp_wear"):
+            s = f"{f.label}\n\nВыбери кнопкой или напиши свое значение" + field_prompt("stamp", f.key, current)
+    await flow_show(msg, state, s, markup)
 
 
 def _parse_parliament_party_names(data: dict) -> list[str]:
@@ -813,6 +819,10 @@ async def choose_draft_theme(q: CallbackQuery, state: FSMContext) -> None:
     if not d.get("type"):
         await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
+    if d["type"] == "stamp":
+        from stamp_controls import settings_kb
+        await q.message.answer("Оформление печати", reply_markup=settings_kb("d"))
+        return
     await q.message.answer(tr("choose_theme"), reply_markup=themes_kb("dt", d.get("theme", "light"), d.get("type", "")), parse_mode="HTML")
 
 
@@ -856,7 +866,11 @@ async def edit_draft_standard(q: CallbackQuery, state: FSMContext) -> None:
     f = tpl.fields[i]
     await state.update_data(edit_kind="standard", edit_key=f.key, edit_label=f.label)
     await state.set_state(NewPage.edit_value)
-    await flow_show(q, state, tr("edit_value", label=f.label)+field_prompt(d["type"],f.key,(d.get("page_data") or {}).get(f.key)), edit_value_kb("draft:fields"))
+    markup = edit_value_kb("draft:fields")
+    if d["type"] == "stamp":
+        from stamp_controls import option_kb
+        markup = option_kb(f.key, "d", markup)
+    await flow_show(q, state, tr("edit_value", label=f.label)+field_prompt(d["type"],f.key,(d.get("page_data") or {}).get(f.key)), markup)
 
 
 @router.callback_query(F.data.startswith("dc:"))
@@ -1165,6 +1179,10 @@ async def quick_theme(q: CallbackQuery, state: FSMContext) -> None:
     d = await state.get_data()
     if not d.get("type"):
         await q.message.answer(tr('draft_missing'), parse_mode='HTML')
+        return
+    if d["type"] == "stamp":
+        from stamp_controls import settings_kb
+        await q.message.answer("Оформление печати", reply_markup=settings_kb("d"))
         return
     await q.message.answer(tr("choose_theme"), reply_markup=themes_kb("dt", d.get("theme", "light"), d.get("type", "")), parse_mode="HTML")
 

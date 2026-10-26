@@ -295,7 +295,11 @@ async def choose_page_field(q: CallbackQuery, state: FSMContext, db: Db) -> None
     await state.update_data(**edit)
     await state.set_state(EditPage.value)
     prompt=tr("edit_value",label=label)+field_prompt(p.type,edit.get("edit_key"),(p.data or {}).get(edit.get("edit_key")))
-    await q.message.answer(prompt,reply_markup=edit_value_kb(f"p:e:{page_id}",f"p:o:{page_id}"),parse_mode="HTML")
+    markup = edit_value_kb(f"p:e:{page_id}",f"p:o:{page_id}")
+    if p.type == "stamp":
+        from stamp_controls import option_kb
+        markup = option_kb(edit.get("edit_key"), f"p{page_id}", markup)
+    await q.message.answer(prompt,reply_markup=markup,parse_mode="HTML")
 
 
 async def save_and_render(msg: Message, p: Page, db: Db, cfg: Config) -> None:
@@ -763,6 +767,10 @@ async def page_theme(q: CallbackQuery, db: Db) -> None:
     page_id = int(q.data.rsplit(":", 1)[1])
     p = await get_owned(q, db, page_id)
     if p:
+        if p.type == "stamp":
+            from stamp_controls import settings_kb
+            await q.message.answer("Оформление печати", reply_markup=settings_kb(f"p{page_id}"))
+            return
         await q.message.answer(tr("choose_theme"), reply_markup=themes_kb(f"pt:{page_id}", p.theme, p.type), parse_mode="HTML")
 
 

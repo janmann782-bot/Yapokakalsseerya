@@ -294,10 +294,11 @@ def olddoc_options_kb(
 def draft_kb(page_type: str | None = None, theme: str = "") -> InlineKeyboardMarkup:
     rows = [[ib("Сохранить карточку", "draft:save")],
             [ib("Добавить или править", "draft:fields")],
-            [ib("Картинки", "hoi4:media:d" if page_type == "superevent" else "draft:image"), ib("Оформление", "hoi4:options:d" if page_type == "superevent" else "draft:theme")],
+            [ib("Картинки", "hoi4:media:d" if page_type == "superevent" else "draft:image"), ib("Оформление", "hoi4:options:d" if page_type == "superevent" else "stamp:options:d" if page_type == "stamp" else "draft:theme")],
             [ib("Скачать PNG", "draft:export"), ib("Забрать текст", "draft:text")]]
     if page_type == "stamp":
         rows.insert(3, [ib("Шрифт печати", "stamp:fonts:d:0"), ib("Новая потертость", "stamp:reroll:d")])
+        rows.insert(4, [ib("На документ", "stamp:document:d"), ib("Готовые штампы", "stamp:presets:d")])
     if page_type == "battle":
         rows.insert(3, [ib("Стороны и участники", "draft:sides")])
     if theme == "olddoc":
@@ -391,11 +392,12 @@ def edit_value_kb(back: str, cancel: str = "menu:home") -> InlineKeyboardMarkup:
 
 def page_actions_kb(page_id: int, page_type: str | None = None, theme: str = "") -> InlineKeyboardMarkup:
     rows = [[ib("Добавить или править", f"p:e:{page_id}")],
-            [ib("Картинки", f"hoi4:media:p{page_id}" if page_type == "superevent" else f"pa:{page_id}:image"), ib("Оформление", f"hoi4:options:p{page_id}" if page_type == "superevent" else f"p:t:{page_id}")],
+            [ib("Картинки", f"hoi4:media:p{page_id}" if page_type == "superevent" else f"pa:{page_id}:image"), ib("Оформление", f"hoi4:options:p{page_id}" if page_type == "superevent" else f"stamp:options:p{page_id}" if page_type == "stamp" else f"p:t:{page_id}")],
             [ib("Скачать PNG", f"p:x:{page_id}"), ib("Забрать текст", f"p:txt:{page_id}")],
             [ib("Сделать копию", f"p:c:{page_id}"), ib("Удалить карточку", f"p:d:{page_id}")]]
     if page_type == "stamp":
         rows.insert(2, [ib("Шрифт печати", f"stamp:fonts:p{page_id}:0"), ib("Новая потертость", f"stamp:reroll:p{page_id}")])
+        rows.insert(3, [ib("На документ", f"stamp:document:p{page_id}"), ib("Готовые штампы", f"stamp:presets:p{page_id}")])
     if page_type == "battle":
         rows.insert(2, [ib("Стороны и участники", f"p:bs:{page_id}")])
     if theme == "olddoc":

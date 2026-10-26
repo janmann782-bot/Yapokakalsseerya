@@ -15,7 +15,7 @@ from PIL import ImageFont
 from config import Config
 from db import Db
 from fonts_catalog import all_font_choices, user_fonts_dir
-from states import StampFontUpload, NewPage
+from states import StampFontUpload, StampDocument, NewPage
 from stamp_renderer import stamp_image, wear_level
 from ui import ib
 
@@ -49,8 +49,7 @@ async def apply(msg, user, scope, p, state, db, cfg):
         from page_handlers import render_saved
         p.preview_path = None
         await db.update_page(p)
-        if await state.get_state() == StampFontUpload.wait.state:
-            await state.set_state(NewPage.review if (await state.get_data()).get("type") else None)
+        await state.set_state(NewPage.review if (await state.get_data()).get("type") else None)
         await state.update_data(stamp_font_scope=None)
         await render_saved(msg, p, db, cfg)
 
@@ -175,4 +174,240 @@ async def back(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config):
     p = await target(scope, state, db, q.from_user.id)
     await q.answer()
     if p:
+        doc = document_path(await state.get_data(),cfg,q.from_user.id)
+        if doc:
+            doc.unlink(missing_ok=True)
+        await state.update_data(stamp_document_file=None)
         await apply(q.message, q.from_user, scope, p, state, db, cfg)
+
+
+@router.callback_query(F.data.startswith("stamp:options:"))
+async def options(q: CallbackQuery, state: FSMContext, db: Db):
+    from stamp_controls import settings_kb
+    scope = q.data.split(":")[2]
+    if not await target(scope, state, db, q.from_user.id):
+        await q.answer("Печать не найдена", show_alert=True)
+        return
+    await q.answer()
+    await q.message.answer("Оформление печати", reply_markup=settings_kb(scope))
+
+
+@router.callback_query(F.data.startswith("stamp:option:"))
+async def option(q: CallbackQuery, state: FSMContext, db: Db):
+    from stamp_controls import option_kb, LABELS
+    _,_,scope,key = q.data.split(":")
+    if key not in LABELS or not await target(scope, state, db, q.from_user.id):
+        await q.answer("Печать не найдена", show_alert=True)
+        return
+    await q.answer()
+    text = LABELS[key]
+    if key == "stamp_logo_mode":
+        text += "\nЗагрузи PNG через «Картинки», затем выбери расположение герба"
+    base = InlineKeyboardMarkup(inline_keyboard=[[ib("К настройкам", f"stamp:options:{scope}")]])
+    if key in ("stamp_color", "stamp_wear", "stamp_width", "stamp_angle"):
+        base.inline_keyboard.insert(0, [ib("Свое значение", f"stamp:custom:{scope}:{key}")])
+    await q.message.answer(text, reply_markup=option_kb(key,scope,base))
+
+
+@router.callback_query(F.data.startswith("stamp:custom:"))
+async def custom_option(q: CallbackQuery, state: FSMContext, db: Db):
+    from states import EditPage
+    from field_validation import field_prompt
+    from stamp_controls import LABELS
+    _,_,scope,key = q.data.split(":")
+    p = await target(scope, state, db, q.from_user.id)
+    if not p or key not in ("stamp_color", "stamp_wear", "stamp_width", "stamp_angle"):
+        await q.answer("Открой настройки заново", show_alert=True)
+        return
+    await q.answer()
+    await state.update_data(edit_kind="standard" if scope == "d" else "s", edit_key=key,
+                            edit_label=LABELS[key], page_id=p.id)
+    await state.set_state(NewPage.edit_value if scope == "d" else EditPage.value)
+    hint = {"stamp_width":"От 1 до 16", "stamp_angle":"От -30 до 30 градусов"}.get(key, "")
+    await q.message.answer(LABELS[key]+"\n"+hint+field_prompt("stamp",key), reply_markup=back_kb(scope))
+
+
+@router.callback_query(F.data.startswith("stamp:pick:"))
+async def pick(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config):
+    from stamp_controls import OPTIONS
+    from templates import get_template
+    _,_,scope,key,index = q.data.split(":")
+    choices = OPTIONS.get(key, [])
+    if not index.isdigit() or not 0 <= int(index) < len(choices):
+        await q.answer("Открой настройки заново", show_alert=True)
+        return
+    p = await target(scope, state, db, q.from_user.id)
+    if not p:
+        await q.answer("Печать не найдена", show_alert=True)
+        return
+    value = choices[int(index)][1]
+    if scope == "d" and await state.get_state() == NewPage.field.state:
+        d = await state.get_data()
+        wizard = get_template("stamp").wizard
+        i = d.get("i",0)
+        if i >= len(wizard) or wizard[i] != key:
+            await q.answer("Эта кнопка от другого шага", show_alert=True)
+            return
+        await q.answer()
+        p.data[key] = value
+        await state.update_data(page_data=p.data, i=i+1)
+        from create_handlers import ask_field
+        await ask_field(q.message, state)
+        return
+    await q.answer()
+    candidate = dict(p.data, **{key:value})
+    try:
+        await asyncio.to_thread(stamp_image,candidate,cfg.work_dir)
+    except (ValueError,OSError):
+        await q.message.answer("Не получилось применить настройку. Проверь надписи и шрифт", reply_markup=back_kb(scope))
+        return
+    p.data = candidate
+    await apply(q.message,q.from_user,scope,p,state,db,cfg)
+
+
+@router.callback_query(F.data.startswith("stamp:presets:"))
+async def presets(q: CallbackQuery, state: FSMContext, db: Db):
+    from stamp_controls import PRESETS
+    scope=q.data.split(":")[2]
+    if scope != "new" and not await target(scope,state,db,q.from_user.id):
+        await q.answer("Печать не найдена",show_alert=True)
+        return
+    await q.answer()
+    rows=[[ib(name,f"stamp:preset:{scope}:{i}")] for i,name in enumerate(PRESETS)]
+    rows.append([ib("Назад", "compose:stamp" if scope=="new" else f"stamp:options:{scope}")])
+    await q.message.answer("Готовые штампы",reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+
+
+@router.callback_query(F.data.startswith("stamp:preset:"))
+async def preset(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config):
+    from stamp_controls import PRESETS
+    _,_,scope,index=q.data.split(":")
+    if not index.isdigit() or not 0 <= int(index) < len(PRESETS):
+        await q.answer()
+        return
+    p=await target(scope,state,db,q.from_user.id)
+    if scope!="new" and not p:
+        await q.answer("Печать не найдена",show_alert=True)
+        return
+    await q.answer()
+    name=PRESETS[int(index)]
+    if scope=="new":
+        from drafts import park_flow
+        await park_flow(state,q.from_user.id,db,cfg)
+        await state.update_data(type="stamp",theme="stamp",page_data={"title":name},max_image_mb=cfg.max_image_mb)
+        p=await target("d",state,db,q.from_user.id)
+        scope="d"
+    p.data.update(stamp_shape="прямоугольная", stamp_center=name.upper(), stamp_top="", stamp_bottom="",
+                  stamp_logo_mode="с текстом")
+    # Presets use a single label without unused headline/footer dividers.
+    p.data["stamp_preset"]=True
+    from media import set_page_images
+    set_page_images(p.data, [])
+    await apply(q.message,q.from_user,scope,p,state,db,cfg)
+
+
+def document_kb(scope, position=8, percent=25):
+    labels=["↖","↑","↗","←","●","→","↙","↓","↘"]
+    rows=[[ib(("✓ " if position==i else "")+labels[i],f"stamp:docpos:{scope}:{i}") for i in range(row*3,row*3+3)] for row in range(3)]
+    rows.append([ib(("✓ " if percent==size else "")+str(size)+"%",f"stamp:docsize:{scope}:{size}") for size in (15,25,35,45)])
+    rows.extend([[ib("Скачать PNG",f"stamp:docpng:{scope}")], [ib("Другой документ",f"stamp:document:{scope}"), ib("Назад к печати",f"stamp:back:{scope}")]])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def document_path(data,cfg,uid):
+    name=data.get("stamp_document_file") or ""
+    path=(cfg.work_dir/name).resolve()
+    if path.parent!=cfg.work_dir.resolve() or not path.name.startswith(f"stampdoc_{uid}_") or not path.is_file():
+        return None
+    return path
+
+
+async def show_document(msg,user,scope,state,db,cfg,export=False):
+    from PIL import Image
+    from stamp_document import place_stamp
+    from ui import send_png
+    d=await state.get_data()
+    source=document_path(d,cfg,user.id)
+    p=await target(scope,state,db,user.id)
+    if not source or not p or d.get("stamp_document_scope")!=scope:
+        await msg.answer("Пришли документ заново",reply_markup=back_kb(scope))
+        return
+    # Settings and seed come from the same page used by regular PNG export.
+    p.data.setdefault("stamp_seed",uuid4().hex)
+    settings=await db.get_settings(user.id)
+    stamp_data=dict(p.data,_font_key=settings.font or "default",_font_user_id=user.id)
+    stamp=await asyncio.to_thread(stamp_image,stamp_data,cfg.work_dir)
+    with Image.open(source) as document:
+        result=await asyncio.to_thread(place_stamp,document,stamp,d.get("stamp_document_pos",8),d.get("stamp_document_size",25))
+    path=cfg.work_dir/f"stamped_{user.id}_{uuid4().hex}.png"
+    try:
+        await asyncio.to_thread(result.save,path,"PNG")
+        await send_png(msg,path,"Печать на документе\nВыбери место и размер",document_kb(scope,d.get("stamp_document_pos",8),d.get("stamp_document_size",25)),export)
+    finally:
+        path.unlink(missing_ok=True)
+
+
+@router.callback_query(F.data.startswith("stamp:document:"))
+async def document_start(q: CallbackQuery,state:FSMContext,db:Db,cfg:Config):
+    scope=q.data.split(":")[2]
+    if not await target(scope,state,db,q.from_user.id):
+        await q.answer("Печать не найдена",show_alert=True)
+        return
+    await q.answer()
+    old=document_path(await state.get_data(),cfg,q.from_user.id)
+    if old:
+        old.unlink(missing_ok=True)
+    await state.update_data(stamp_document_scope=scope,stamp_document_file=None,stamp_document_pos=8,stamp_document_size=25)
+    await state.set_state(StampDocument.wait)
+    await q.message.answer("Пришли изображение документа\nДля исходного качества отправь PNG файлом",reply_markup=back_kb(scope))
+
+
+@router.message(StampDocument.wait)
+async def document_receive(msg:Message,state:FSMContext,db:Db,cfg:Config):
+    from stamp_document import read_document
+    scope=(await state.get_data()).get("stamp_document_scope","")
+    if not await target(scope,state,db,msg.from_user.id):
+        await msg.answer("Печать не найдена")
+        return
+    attachment=msg.document or (msg.photo[-1] if msg.photo else None)
+    if not attachment:
+        await msg.answer("Пришли изображение документа",reply_markup=back_kb(scope))
+        return
+    if (attachment.file_size or 0)>cfg.max_image_mb*1024*1024:
+        await msg.answer(f"Изображение должно быть не больше {cfg.max_image_mb} МБ",reply_markup=back_kb(scope))
+        return
+    buf=BytesIO()
+    await msg.bot.download(attachment,destination=buf)
+    try:
+        image=await asyncio.to_thread(read_document,buf.getvalue(),cfg.max_image_mb)
+    except ValueError as e:
+        await msg.answer(str(e),reply_markup=back_kb(scope))
+        return
+    path=cfg.work_dir/f"stampdoc_{msg.from_user.id}_{uuid4().hex}.png"
+    await asyncio.to_thread(image.save,path,"PNG")
+    await state.update_data(stamp_document_file=path.name)
+    await state.set_state(StampDocument.position)
+    await show_document(msg,msg.from_user,scope,state,db,cfg)
+
+
+@router.callback_query(F.data.startswith("stamp:docpos:"))
+@router.callback_query(F.data.startswith("stamp:docsize:"))
+@router.callback_query(F.data.startswith("stamp:docpng:"))
+async def document_action(q:CallbackQuery,state:FSMContext,db:Db,cfg:Config):
+    parts=q.data.split(":")
+    action,scope=parts[1:3]
+    d=await state.get_data()
+    if d.get("stamp_document_scope")!=scope or not document_path(d,cfg,q.from_user.id):
+        await q.answer("Пришли документ заново",show_alert=True)
+        return
+    if action!="docpng":
+        if len(parts)!=4 or not parts[3].isdigit():
+            await q.answer()
+            return
+        value=int(parts[3])
+        if (action=="docpos" and value not in range(9)) or (action=="docsize" and value not in (15,25,35,45)):
+            await q.answer()
+            return
+        await state.update_data(**{"stamp_document_pos" if action=="docpos" else "stamp_document_size":value})
+    await q.answer()
+    await show_document(q.message,q.from_user,scope,state,db,cfg,export=action=="docpng")

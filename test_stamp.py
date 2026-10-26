@@ -65,9 +65,9 @@ class StampTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(worn.tobytes(), stamp_image(data, root).tobytes())
             clean = stamp_image(dict(data, stamp_texture="четкий"), root)
             wa, ca = worn.getchannel("A"), clean.getchannel("A")
-            self.assertLess(sum(wa.getdata()), sum(ca.getdata()))
-            self.assertGreater(sum(wa.getdata()), sum(ca.getdata()) * .8)
-            self.assertTrue(all(w <= c for w, c in zip(wa.getdata(), ca.getdata())))
+            self.assertLess(sum(wa.tobytes()), sum(ca.tobytes()))
+            self.assertGreater(sum(wa.tobytes()), sum(ca.tobytes()) * .8)
+            self.assertTrue(all(w <= c for w, c in zip(wa.tobytes(), ca.tobytes())))
             self.assertEqual(wa.getbbox(), ca.getbbox())
             self.assertIsNotNone(stamp_field_error("stamp", "stamp_shape", "треугольник"))
             self.assertIsNotNone(data_error("stamp", dict(data, stamp_texture="мусор")))
@@ -133,6 +133,57 @@ class StampTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(resolve_user_font(root, 18, "user:MyFont.ttf"))
             with self.assertRaises(ValueError):
                 stamp_image(dict(data, stamp_font="user:missing.ttf"), root)
+
+    def test_oval_rings_separators_tilt_and_logo_only(self):
+        from PIL import ImageChops
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            oval=stamp_image({"stamp_shape":"овальная"},root)
+            self.assertEqual(oval.size,(1024,740))
+            one=stamp_image({"stamp_rings":"1","stamp_separator":"нет"},root)
+            two=stamp_image({"stamp_rings":"2","stamp_separator":"нет"},root)
+            self.assertEqual(one.getpixel((512,177))[3],0)
+            self.assertGreater(two.getpixel((512,177))[3],0)
+            dots=stamp_image({"stamp_separator":"точки"},root)
+            none=stamp_image({"stamp_separator":"нет"},root)
+            self.assertGreater(dots.getpixel((122,512))[3],0)
+            self.assertEqual(none.getpixel((122,512))[3],0)
+            tilted=stamp_image({"stamp_shape":"овальная","stamp_angle":"8"},root)
+            self.assertGreater(tilted.height,oval.height)
+            self.assertEqual(tilted.getpixel((0,0))[3],0)
+            symbol=Image.new("RGBA",(100,100));ImageDraw.Draw(symbol).ellipse((5,5,95,95),fill="black")
+            symbol.save(root/"media_logo.png")
+            for shape in ("круглая","овальная","прямоугольная"):
+                data={"stamp_shape":shape,"images":["media_logo.png"],"stamp_logo_mode":"вместо текста"}
+                only=stamp_image(data,root)
+                with_text=stamp_image(dict(data,stamp_center="ЭТОТ ТЕКСТ СКРЫТ"),root)
+                self.assertEqual(only.tobytes(),with_text.tobytes())
+            for key,value in (("stamp_rings","3"),("stamp_width","0"),("stamp_angle","31"),("stamp_separator","треугольник")):
+                self.assertIsNotNone(field_error("stamp",key,value))
+
+    def test_document_placement_is_lossless_outside_stamp(self):
+        from stamp_document import read_document, place_stamp
+        source=Image.new("RGBA",(1000,1400),(240,238,230,255))
+        buf=BytesIO();source.save(buf,"PNG")
+        document=read_document(buf.getvalue())
+        self.assertEqual(document.tobytes(),source.tobytes())
+        stamp=Image.new("RGBA",(200,100),(0,0,255,255))
+        for position in range(9):
+            result=place_stamp(document,stamp,position,25)
+            self.assertEqual(result.size,source.size)
+            self.assertEqual(document.tobytes(),source.tobytes())
+            self.assertEqual(result.getpixel((0,0)),source.getpixel((0,0)))
+            from PIL import ImageChops
+            bounds=ImageChops.difference(result.convert("RGB"),source.convert("RGB")).getbbox()
+            self.assertEqual(bounds[2]-bounds[0],250)
+            self.assertEqual(bounds[3]-bounds[1],125)
+            col,row=position%3,position//3
+            self.assertEqual(bounds[0],round(30+(1000-60-250)*col/2))
+            self.assertEqual(bounds[1],round(30+(1400-60-125)*row/2))
+        with self.assertRaises(ValueError):
+            read_document(b"not an image")
+        with self.assertRaises(ValueError):
+            place_stamp(document,stamp,9,25)
 
     def test_custom_symbol_is_tinted_and_white_paper_removed(self):
         with tempfile.TemporaryDirectory() as tmp:
