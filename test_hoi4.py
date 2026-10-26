@@ -260,3 +260,36 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(image.size, (618, 683))
             with self.assertRaisesRegex(Hoi4TextOverflow, "401/400"):
                 news_card({"news_body": "А" * 401}, tmp)
+
+    def test_tfr_keeps_native_flag_glass_and_event_type_scale(self):
+        from hoi4_renderer import asset, state_card, event_card
+        from PIL import ImageChops
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            Image.new("RGB", (600, 400), "red").save(root / "media_flag.png")
+            front = asset("tfr_state_front", 2)
+            point = (128, 68)
+            alpha = front.getpixel(point)[3]
+            self.assertGreater(alpha, 0, "Native flag glass was erased")
+            self.assertLess(alpha, 255, "Flag glass must remain transparent")
+            rendered = state_card(
+                {"hoi4_media": {"flag": "media_flag.png"}}, root, "tfr"
+            )
+            expected = Image.alpha_composite(
+                Image.new("RGBA", front.size, "red"), front
+            )
+            self.assertEqual(rendered.getpixel(point), expected.getpixel(point))
+            empty = event_card({}, root, "tfr").convert("RGB")
+            title = event_card({"event_title": "TEST"}, root, "tfr").convert("RGB")
+            bounds = ImageChops.difference(title, empty).getbbox()
+            self.assertIsNotNone(bounds)
+            self.assertLessEqual(bounds[3] - bounds[1], 22)
+            quote = event_card({"body": "TEST"}, root, "tfr").convert("RGB")
+            bounds = ImageChops.difference(quote, empty).getbbox()
+            self.assertLess(
+                bounds[1], 520, "Quote must start at the top of the native panel"
+            )
+            button = event_card({"button_text": "TEST"}, root, "tfr").convert("RGB")
+            bounds = ImageChops.difference(button, empty).getbbox()
+            self.assertLessEqual(bounds[3] - bounds[1], 20)

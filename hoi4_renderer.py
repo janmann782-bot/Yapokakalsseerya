@@ -11,7 +11,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 3
+LAYOUT_VERSION = 4
 INK = "#dbe4e5"
 
 
@@ -94,6 +94,7 @@ def text_box(
     align="left",
     role="body",
     valign="center",
+    line_height=None,
 ):
     text = str(text or "").strip()
     if not text:
@@ -104,7 +105,11 @@ def text_box(
         face = font(style, px, role)
         lines = wrap(text, face, width)
         ascent, descent = face.getmetrics()
-        step = ascent + descent + max(2, px // 6)
+        step = (
+            round(line_height * px / size)
+            if line_height
+            else ascent + descent + max(2, px // 6)
+        )
         if len(lines) * step <= height:
             break
     else:
@@ -276,8 +281,8 @@ def state_card(data, root, style):
         size = 25
     else:
         boxes = dict(
-            flag=(29, 12, 96, 54),
-            portrait=(13, 105, 118, 246),
+            flag=(28, 10, 101, 59),
+            portrait=(12, 104, 119, 247),
             title=(212, 4, 405, 22),
             alliance=(212, 23, 405, 40),
             leader=(212, 42, 405, 61),
@@ -367,19 +372,19 @@ def event_card(data, root, style):
         b = chosen[1]
         button = (b[0] + 18, b[1] + 5, b[2] - 18, b[3] - 5)
     else:
-        title = scaled((65, 4, 462, 35), factor)
-        body = scaled((112, 258, 413, 325), factor)
+        title = scaled((65, 10, 462, 33), factor)
+        body = scaled((112, 255, 413, 325), factor)
         button = scaled((200, 344, 336, 362), factor)
     text_box(
         canvas,
         data.get("event_title") or data.get("title"),
         title,
         style,
-        34,
+        20 if style == "tfr" else 34,
         "Заголовок события",
         role="title",
         align="center",
-        minimum=18,
+        minimum=16 if style == "tfr" else 18,
     )
     body_value = str(data.get("body") or "")
     if data.get("quote_author"):
@@ -389,17 +394,19 @@ def event_card(data, root, style):
         body_value,
         body,
         style,
-        28,
+        18 if style == "tfr" else 28,
         "Текст или цитата",
         align="right" if style == "tno" else "center",
         minimum=16,
+        valign="top" if style == "tfr" else "center",
+        line_height=24 if style == "tfr" else None,
     )
     text_box(
         canvas,
         data.get("button_text"),
         button,
         style,
-        24,
+        18 if style == "tfr" else 24,
         "Надпись на кнопке",
         align="center",
         minimum=14,

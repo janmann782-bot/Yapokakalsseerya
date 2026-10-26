@@ -120,8 +120,8 @@ def main(root):
     info = child(tfr, "Infobar")
     view = (0, 0, 470, 252)
     plate = raster(child(info, "Base"), view)
-    for box in ((29, 12, 96, 54), (13, 105, 118, 246)):
-        punch(plate, rectangle_mask(plate.size, box))
+    # Base already contains the native transparent flag glass and portrait
+    # aperture. Punching rectangles here destroys that glass and its curved mask.
     save(plate, "tfr_state_front")
     chart = child(child(info, "Pie chart"), "pol_piechart_overlay_63x63")
     save(raster(chart, view), "tfr_chart_front")
