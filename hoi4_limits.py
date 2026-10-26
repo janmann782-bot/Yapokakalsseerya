@@ -2,12 +2,13 @@
 
 # key: (label, characters, box, preferred font size, smallest readable font size)
 NEWS_FIELDS = {
-    "newspaper_name": ("Название газеты", 40, (99, 22, 571, 79), 34, 16),
-    "news_title": ("Заголовок газеты", 60, (37, 103, 584, 143), 23, 14),
-    "news_body": ("Текст газеты", 400, (237, 161, 578, 580), 20, 16),
-    "news_date": ("Дата газеты", 30, (241, 581, 578, 618), 16, 12),
-    "news_button": ("Подпись газеты", 40, (242, 622, 583, 666), 18, 12),
+    "newspaper_name": ("Название газеты", 40, (37, 22, 581, 79), 34, 16),
+    "news_title": ("Заголовок газеты", 60, (37, 103, 581, 143), 23, 14),
+    "news_body": ("Текст газеты", 400, (237, 161, 578, 550), 20, 16),
+    "news_date": ("Дата газеты", 30, (241, 560, 578, 584), 16, 12),
+    "news_button": ("Подпись газеты", 40, (242, 600, 583, 640), 18, 12),
 }
+NEWS_BODY_LINE_HEIGHT = 25
 
 
 def news_prompt(page_type, key, value=""):
@@ -40,7 +41,8 @@ def news_field_error(page_type, key, value):
     for px in range(size, minimum - 1, -1):
         face = font("tno", px, "news")
         a, d = face.getmetrics()
-        if len(wrap(value, face, width)) * (a + d + max(2, px // 6)) <= height:
+        step = round(NEWS_BODY_LINE_HEIGHT * px / size) if key == "news_body" else a + d + max(2, px // 6)
+        if len(wrap(value, face, width)) * step <= height:
             return None
     return f"{label}: {count}/{limit} символов, но строки не помещаются в окно. Убери лишние переносы или сократи текст"
 

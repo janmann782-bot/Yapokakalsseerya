@@ -19,6 +19,61 @@ from parser import parse_text
 
 
 class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
+    def test_tno_party_sectors_stay_under_native_clipped_shadow(self):
+        from hoi4_renderer import asset, state_card
+
+        overlay = asset("tno_chart_effects").convert("RGBA")
+        alpha = overlay.getchannel("A")
+        # Sample the original shadow inside the pie, away from its outer rim.
+        points = [(x,y) for x in range(250,338) for y in range(147,235)
+                  if (x-294)**2+(y-191)**2 < 45**2]
+        point = max(points, key=alpha.getpixel)
+        self.assertGreater(alpha.getpixel(point), 5)
+        with tempfile.TemporaryDirectory() as tmp:
+            rendered = state_card({"parties":"ЛПК, 100, yellow"}, Path(tmp), "tno")
+        expected = Image.alpha_composite(
+            Image.new("RGBA", (1,1), "yellow"),
+            Image.new("RGBA", (1,1), overlay.getpixel(point)),
+        ).getpixel((0,0))
+        self.assertEqual(rendered.getpixel(point), expected)
+        self.assertNotEqual(rendered.getpixel(point)[:3], (255,255,0))
+        self.assertEqual(alpha.getpixel((230,191)), 0)
+
+    def test_newspaper_date_is_on_paper_above_the_button(self):
+        from PIL import ImageChops
+        from hoi4_renderer import news_card
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base = news_card({}, root).convert("RGB")
+            date = news_card({"news_date":"18 июля 2057 года"}, root).convert("RGB")
+            button = news_card({"news_button":"Марш на Старовир завершен"}, root).convert("RGB")
+            date_bounds = ImageChops.difference(base, date).getbbox()
+            button_bounds = ImageChops.difference(base, button).getbbox()
+        self.assertIsNotNone(date_bounds)
+        self.assertIsNotNone(button_bounds)
+        # The original PSD button plate begins at y=588, not at y=622.
+        self.assertLess(date_bounds[3], 588)
+        self.assertGreaterEqual(button_bounds[1], 600)
+        self.assertLess(button_bounds[3], 650)
+        self.assertGreater(button_bounds[1] - date_bounds[3], 18)
+
+    def test_newspaper_masthead_and_headline_center_on_the_page(self):
+        from PIL import ImageChops
+        from hoi4_renderer import news_card
+        from hoi4_limits import NEWS_FIELDS
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base = news_card({"newspaper_name":" "}, root).convert("RGB")
+            for field, text in (("newspaper_name","Каменномостский Вечер"), ("news_title","Старовир занят федеральными силами")):
+                data = {"newspaper_name":" ", field:text}
+                rendered = news_card(data, root).convert("RGB")
+                bounds = ImageChops.difference(base, rendered).getbbox()
+                self.assertAlmostEqual((bounds[0]+bounds[2])/2, 309, delta=4)
+                box = NEWS_FIELDS[field][2]
+                self.assertEqual((box[0]+box[2])/2, 309)
+
     def test_party_input_matches_parliament_and_keeps_rgb_commas(self):
         from hoi4_limits import news_field_error, news_data_error, news_prompt
 

@@ -81,7 +81,13 @@ def main(root):
         glass = Image.alpha_composite(glass, overlay)
     save(glass, "tno_flag_glass")
     chart = child(state, "диаграмма")
-    save(raster(child(chart, "диаграмма"), view), "tno_chart_front")
+    chart_base = raster(child(chart, "диаграмма"), view)
+    save(chart_base, "tno_chart_front")
+    chart_effects = raster(child(chart, "тени"), view)
+    chart_effects.putalpha(ImageChops.multiply(
+        chart_effects.getchannel("A"), chart_base.getchannel("A")
+    ))
+    save(chart_effects, "tno_chart_effects")
 
     event = child(tno, "супер ивент")
     view = (868, 99, 1917, 1003)

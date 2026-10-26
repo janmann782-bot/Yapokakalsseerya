@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 6
+LAYOUT_VERSION = 7
 INK = "#dbe4e5"
 
 
@@ -337,8 +337,10 @@ def state_card(data, root, style):
     ):
         photo(canvas, data, root, role, boxes[key])
     if style == "tno":
+        # Native base below the sectors, clipped PSD shadows above them.
         canvas.alpha_composite(asset("tno_chart_front"))
         chart(canvas, data.get("parties"), boxes["chart"], style)
+        canvas.alpha_composite(asset("tno_chart_effects"))
     else:
         chart(canvas, data.get("parties"), boxes["chart"], style)
         canvas.alpha_composite(asset("tfr_chart_front", factor))
@@ -440,7 +442,7 @@ def event_card(data, root, style):
 
 
 def news_card(data, root):
-    from hoi4_limits import NEWS_FIELDS, news_data_error
+    from hoi4_limits import NEWS_FIELDS, NEWS_BODY_LINE_HEIGHT, news_data_error
 
     error = news_data_error("superevent", data)
     if error:
@@ -476,6 +478,7 @@ def news_card(data, root):
             minimum=minimum,
             fill="#25251f",
             valign="top" if key == "news_body" else "center",
+            line_height=NEWS_BODY_LINE_HEIGHT if key == "news_body" else None,
         )
     return canvas
 

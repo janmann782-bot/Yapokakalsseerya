@@ -11,6 +11,9 @@ Original artwork supplied by the repository owner in this session:
 The PNGs contain separate foreground plates, masks and clipped effects, with
 editable sample text and sample people removed. Image windows are transparent.
 The TFR event uses the actual partially transparent Super_event_bg sprite.
+The TNO pie keeps its native base beneath the colored sectors and the PSD's
+clipped shadow layer above them (`tno_chart_effects.png`). The source shadow
+opacity is applied once during extraction.
 TNO effects retain original pixel alpha and layer opacity, each applied once. Font files are copied unchanged. TFR uses the existing repository font
 PixeloidSans.otf. Attribution here records provenance, not a new license grant.
 
