@@ -44,7 +44,7 @@ def media_roles(data):
             focus="Значок фокуса",
         )
     if mode in ("event", "all"):
-        roles["event"] = "Картинка события"
+        roles["event"] = "Картинка суперевента"
     if mode == "news" or (mode == "all" and data.get("hoi4_style") == "tno"):
         roles["news"] = "Фото газеты"
     return roles
@@ -381,7 +381,7 @@ def event_card(data, root, style):
         title,
         style,
         20 if style == "tfr" else 34,
-        "Заголовок события",
+        "Заголовок суперевента",
         role="title",
         align="center",
         minimum=16 if style == "tfr" else 18,

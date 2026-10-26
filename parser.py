@@ -11,6 +11,7 @@ TYPE_ALIASES = {
     "hoi4": "superevent",
     "superevent": "superevent",
     "суперевент": "superevent",
+    "событие": "superevent",
     "страна": "country",
     "государство": "country",
     "country": "country",
@@ -83,6 +84,8 @@ TYPE_ALIASES = {
 
 
 ALIASES = {
+    "заголовок события": "event_title",
+    "надпись на кнопке события": "button_text",
     "название": "title",
     "надпись типа в карточке": "card_type_label",
     "тип в карточке": "card_type_label",

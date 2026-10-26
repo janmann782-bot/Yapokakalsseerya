@@ -12,7 +12,7 @@ from handlers import on_error
 from handlers import router as common_router
 from page_handlers import router as page_router
 from navigation import router as navigation_router
-from drafts import DraftCheckpointMiddleware
+from drafts import DraftCheckpointMiddleware, DraftPreviewRecoveryMiddleware
 from hoi4_handlers import router as hoi4_router
 
 
@@ -25,6 +25,7 @@ def make_dispatcher(db: Db, cfg: Config) -> Dispatcher:
     dp.callback_query.middleware(maintenance_middleware)
     dp.message.outer_middleware(DraftCheckpointMiddleware())
     dp.callback_query.outer_middleware(DraftCheckpointMiddleware())
+    dp.callback_query.outer_middleware(DraftPreviewRecoveryMiddleware())
     # Admin router first so /maint_* always reachable for admins
     dp.include_router(admin_router)
     dp.include_router(common_router)

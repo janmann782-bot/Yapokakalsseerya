@@ -293,3 +293,14 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             button = event_card({"button_text": "TEST"}, root, "tfr").convert("RGB")
             bounds = ImageChops.difference(button, empty).getbbox()
             self.assertLessEqual(bounds[3] - bounds[1], 20)
+
+    def test_superevent_name_and_legacy_input_alias(self):
+        from templates import HOI4_MODES, get_template
+        self.assertEqual(HOI4_MODES["event"],"Суперевент")
+        tpl=get_template("superevent",{"hoi4_mode":"event","hoi4_style":"tfr"})
+        self.assertTrue(any(f.section=="Суперевент" for f in tpl.fields))
+        self.assertFalse(any("событи" in f.label.lower() for f in tpl.fields))
+        parsed=parse_text("Тип: Суперевент\nНазвание: Тест\nЗаголовок суперевента: Новый")
+        self.assertEqual(parsed.data["event_title"],"Новый")
+        parsed=parse_text("Тип: Событие\nНазвание: Тест\nЗаголовок события: Старый")
+        self.assertEqual(parsed.data["event_title"],"Старый")

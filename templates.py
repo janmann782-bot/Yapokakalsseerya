@@ -245,7 +245,7 @@ SUPEREVENT = Template(
     key="superevent",  # Keep saved cards and old callback buttons readable.
     label="HOI4 Карточка (бета)",
     emoji="🎮",
-    image_label="флаг, портрет, картинка события и фото газеты",
+    image_label="флаг, портрет, картинка суперевента и фото газеты",
     subtitle_key=None,
     wizard=("title", "body", "button_text"),
     fields=(
@@ -258,10 +258,10 @@ SUPEREVENT = Template(
         f("elections", "Выборы", "Политика"),
         f("focus", "Национальный фокус", "Политика"),
         f("parties", "Доли партий: название | доля | #цвет", "Политика", multiline=True),
-        f("event_title", "Заголовок события", "Событие"),
-        f("body", "Текст или цитата", "Событие", multiline=True),
-        f("quote_author", "Автор цитаты", "Событие"),
-        f("button_text", "Надпись на кнопке события", "Событие"),
+        f("event_title", "Заголовок суперевента", "Суперевент"),
+        f("body", "Текст или цитата", "Суперевент", multiline=True),
+        f("quote_author", "Автор цитаты", "Суперевент"),
+        f("button_text", "Надпись на кнопке суперевента", "Суперевент"),
         f("newspaper_name", "Название газеты", "Газета"),
         f("news_title", "Заголовок газеты", "Газета"),
         f("news_body", "Текст газеты", "Газета", multiline=True),
@@ -270,7 +270,7 @@ SUPEREVENT = Template(
     ),
 )
 
-HOI4_MODES = {"state": "Государство", "event": "Событие", "news": "Газета", "all": "Все в 1 фотке"}
+HOI4_MODES = {"state": "Государство", "event": "Суперевент", "news": "Газета", "all": "Все в 1 фотке"}
 
 
 def hoi4_mode(data):
@@ -317,7 +317,7 @@ def get_template(key: str, data: dict | None = None) -> Template:
         if mode in ("state", "all"):
             sections.update(("Государство", "Политика"))
         if mode in ("event", "all"):
-            sections.add("Событие")
+            sections.add("Суперевент")
         if mode == "news" or (mode == "all" and data.get("hoi4_style") == "tno"):
             sections.add("Газета")
         fields = tuple(x for x in tpl.fields if x.section in sections)

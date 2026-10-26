@@ -207,7 +207,11 @@ async def upload(q, state, db):
         q,
         state,
         f"<b>{escape(media_roles(data)[role])}</b>\nПришли PNG, JPEG или WEBP. Файл сохранит качество лучше фотографии"
-        + ("\nЛучше вертикальный портрет по грудь. Впишу целиком, без автоматического обрезания головы" if role == "portrait" else ""),
+        + (
+            "\nЛучше вертикальный портрет по грудь. Впишу целиком, без автоматического обрезания головы"
+            if role == "portrait"
+            else ""
+        ),
         InlineKeyboardMarkup(
             inline_keyboard=[[ib("К картинкам", f"hoi4:media:{scope}")]]
         ),
@@ -379,9 +383,13 @@ async def crop_preview(q, state, db, cfg, scope, role, page, data):
                 return
             except TelegramBadRequest:
                 pass
-        await q.message.answer_photo(
+        sent = await q.message.answer_photo(
             FSInputFile(path), caption=caption, reply_markup=markup
         )
+        if scope == "d":
+            from drafts import remember_preview
+
+            await remember_preview(state, sent)
     except ValueError as exc:
         await q.message.answer(
             escape(str(exc)), reply_markup=crop_kb(scope, role, data), parse_mode="HTML"

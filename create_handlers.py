@@ -260,14 +260,16 @@ async def show_preview(
                 spawn_milestone_broadcast(bot, db, milestone)
 
         await state.set_state(NewPage.review)
-        await send_png(
+        sent_preview = await send_png(
             msg,
             path,
             tr("draft_caption", title=p.title, theme=get_theme(p.theme).name),
             draft_kb(p.type, p.theme),
         )
 
-        # каждый успешный рендер - в лог-группу
+        from drafts import remember_preview
+        await remember_preview(state,sent_preview)
+
         from log_sink import spawn_created_page_log
         spawn_created_page_log(bot, cfg, db, p, user, preview_path=path, stage="render")
         return p
@@ -1060,6 +1062,19 @@ async def save_draft(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config) -
     for path in list(page_images(p.data)) + list(map_images(p.data)):
         await db.attach_media(path, p.id, q.from_user.id)
     spawn_page_saved(q.bot, cfg, q.from_user, p)
+    markup=page_actions_kb(p.id,p.type,p.theme)
+    previews=list(d.get("preview_messages") or [])
+    clicked={"chat_id":q.message.chat.id,"message_id":q.message.message_id}
+    if clicked not in previews:
+        previews.append(clicked)
+    for preview in previews:
+        if preview.get("chat_id") != q.message.chat.id:
+            continue
+        try:
+            await q.bot.edit_message_reply_markup(chat_id=preview["chat_id"],message_id=preview["message_id"],reply_markup=markup)
+        except TelegramBadRequest:
+            # Deleted previews cannot be updated; the saved card is still valid.
+            pass
     await db.delete_draft(q.from_user.id)
     await state.clear()
     await q.message.answer(tr("saved", title=p.title), reply_markup=page_actions_kb(p.id, p.type, p.theme), parse_mode="HTML")

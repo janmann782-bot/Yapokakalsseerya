@@ -9,8 +9,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.client.session.base import BaseSession
-from aiogram.methods import AnswerCallbackQuery, DeleteMessage, EditMessageText, GetFile, SendMessage, SendPhoto, SendDocument, EditMessageMedia
+from aiogram.methods import AnswerCallbackQuery, DeleteMessage, EditMessageText, GetFile, SendMessage, SendPhoto, SendDocument, EditMessageMedia, EditMessageReplyMarkup
 from aiogram.types import Message, User, Chat, CallbackQuery, Update, File, Document, PhotoSize
 from PIL import Image
 
@@ -30,6 +31,9 @@ class LocalTelegram(BaseSession):
         super().__init__()
         self.calls = []
         self.download = b""
+        self.messages = {}
+        self.next_message_id=1000
+        self.reject_photos=False
 
     async def close(self):
         pass
@@ -39,17 +43,40 @@ class LocalTelegram(BaseSession):
 
     async def make_request(self, bot, method, timeout=None):
         self.calls.append(method)
+        if self.reject_photos and isinstance(method,SendPhoto):
+            raise TelegramBadRequest(method=method,message="Bad Request: photo is invalid")
         if isinstance(method, (AnswerCallbackQuery, DeleteMessage)):
             return True
         if isinstance(method, GetFile):
             return File(file_id=method.file_id, file_unique_id="test", file_path="local/file")
+        if isinstance(method, EditMessageReplyMarkup):
+            key=(int(method.chat_id),method.message_id)
+            old=self.messages.get(key)
+            if old is None:
+                old=Message(message_id=method.message_id,date=datetime.now(UTC),chat=Chat(id=int(method.chat_id),type="private"))
+            updated=old.model_copy(update={"reply_markup":method.reply_markup}).as_(bot)
+            self.messages[key]=updated
+            return updated
         if isinstance(method, EditMessageMedia):
-            return Message(message_id=method.message_id or 10,date=datetime.now(UTC),chat=Chat(id=int(method.chat_id),type="private"),photo=[PhotoSize(file_id="preview",file_unique_id="preview",width=800,height=600)]).as_(bot)
+            msg=Message(message_id=method.message_id or 10,date=datetime.now(UTC),chat=Chat(id=int(method.chat_id),type="private"),photo=[PhotoSize(file_id="preview",file_unique_id="preview",width=800,height=600)],reply_markup=method.reply_markup).as_(bot)
+            self.messages[(msg.chat.id,msg.message_id)]=msg
+            return msg
         if isinstance(method, (SendMessage, EditMessageText, SendPhoto, SendDocument)):
-            return Message(message_id=getattr(method, "message_id", None) or len(self.calls) + 10,
-                           date=datetime.now(UTC), chat=Chat(id=int(method.chat_id), type="private"),
-                           from_user=User(id=bot.id, is_bot=True, first_name="InfoBox"),
-                           text=getattr(method, "text", None), caption=getattr(method, "caption", None)).as_(bot)
+            mid=getattr(method,"message_id",None)
+            if isinstance(method,EditMessageText):
+                old=self.messages.get((int(method.chat_id),mid))
+                if old and (old.photo or old.document):
+                    raise TelegramBadRequest(method=method,message="Bad Request: there is no text in the message to edit")
+            if mid is None:
+                self.next_message_id+=1
+                mid=self.next_message_id
+            msg=Message(message_id=mid,date=datetime.now(UTC),chat=Chat(id=int(method.chat_id),type="private"),
+                from_user=User(id=bot.id,is_bot=True,first_name="InfoBox"),
+                text=getattr(method,"text",None),caption=getattr(method,"caption",None),reply_markup=getattr(method,"reply_markup",None) if hasattr(getattr(method,"reply_markup",None),"inline_keyboard") else None,
+                photo=[PhotoSize(file_id="preview",file_unique_id="preview",width=800,height=600)] if isinstance(method,SendPhoto) else None,
+                document=Document(file_id="document",file_unique_id="document",file_name="card.png") if isinstance(method,SendDocument) else None).as_(bot)
+            self.messages[(msg.chat.id,msg.message_id)]=msg
+            return msg
         raise AssertionError(f"Unexpected Telegram method: {method}")
 
 
@@ -92,6 +119,65 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         msg = Message(message_id=10, date=datetime.now(UTC), chat=Chat(id=self.uid, type="private"), from_user=User(id=self.bot.id, is_bot=True, first_name="InfoBox"), text=None if photo else "Экран", photo=[PhotoSize(file_id="preview",file_unique_id="preview",width=800,height=600)] if photo else None)
         q = CallbackQuery(id=str(self.updates), from_user=User(id=self.uid, is_bot=False, first_name="Тест"), chat_instance="test", message=msg, data=data)
         await self.dp.feed_update(self.bot, Update(update_id=self.updates, callback_query=q))
+
+    async def click_message(self, message, data):
+        self.updates+=1
+        current=self.session.messages[(message.chat.id,message.message_id)]
+        q=CallbackQuery(id=str(self.updates),from_user=User(id=self.uid,is_bot=False,first_name="Тест"),chat_instance="test",message=current,data=data)
+        await self.dp.feed_update(self.bot,Update(update_id=self.updates,callback_query=q))
+
+    async def test_preview_photo_buttons_survive_home_restart_and_save(self):
+        await self.message("/start")
+        await self.callback("hoi4:mode:new:tfr:event")
+        await self.callback("build:superevent:editor")
+        await self.message("Кефирстан")
+        await self.callback("draft:back")
+        photo=next(m for m in reversed(list(self.session.messages.values())) if m.photo)
+        self.assertIsNone(photo.text)
+        self.assertTrue(any(b.callback_data=="draft:save" for row in photo.reply_markup.inline_keyboard for b in row))
+        # Actually click the bot's emitted photo, not a fabricated text message.
+        for callback in ("draft:fields","hoi4:media:d","hoi4:options:d","draft:text","draft:export"):
+            before=len(self.session.calls)
+            await self.click_message(photo,callback)
+            self.assertGreater(len(self.session.calls),before+1,callback)
+        await self.message("/start")
+        await self.state.clear()
+        await self.click_message(photo,"draft:fields")
+        self.assertEqual((await self.state.get_data())["type"],"superevent")
+        await self.click_message(photo,"draft:back")
+        second=next(m for m in reversed(list(self.session.messages.values())) if m.photo)
+        await self.click_message(second,"draft:save")
+        page=(await self.db.get_user_pages(self.uid))[0]
+        self.assertIsNone(await self.state.get_state())
+        for preview in (photo,second):
+            keyboard=self.session.messages[(preview.chat.id,preview.message_id)].reply_markup
+            callbacks={b.callback_data for row in keyboard.inline_keyboard for b in row}
+            self.assertNotIn("draft:save",callbacks)
+            self.assertIn(f"p:e:{page.id}",callbacks)
+            self.assertIn(f"hoi4:media:p{page.id}",callbacks)
+        for callback in (f"p:e:{page.id}",f"hoi4:media:p{page.id}",f"hoi4:options:p{page.id}",f"p:txt:{page.id}",f"p:x:{page.id}",f"p:c:{page.id}"):
+            before=len(self.session.calls)
+            await self.click_message(photo,callback)
+            self.assertGreater(len(self.session.calls),before+1,callback)
+        self.assertEqual(len(await self.db.get_user_pages(self.uid)),2)
+
+    async def test_document_preview_keyboard_is_upgraded_on_save(self):
+        self.session.reject_photos=True
+        await self.message("/start")
+        await self.callback("hoi4:mode:new:tno:event")
+        await self.callback("build:superevent:editor")
+        await self.message("Карточка")
+        await self.callback("draft:back")
+        document=next(m for m in reversed(list(self.session.messages.values())) if m.document)
+        await self.state.clear()
+        await self.click_message(document,"hoi4:options:d")
+        self.assertEqual((await self.state.get_data())["type"],"superevent")
+        await self.click_message(document,"draft:save")
+        page=(await self.db.get_user_pages(self.uid))[0]
+        keyboard=self.session.messages[(document.chat.id,document.message_id)].reply_markup
+        self.assertIn(f"p:e:{page.id}",{b.callback_data for row in keyboard.inline_keyboard for b in row})
+        await self.click_message(document,f"p:x:{page.id}")
+        self.assertIsNone(await self.state.get_state())
 
     async def test_hoi4_selection_upload_resume_and_save(self):
         await self.message("/start")

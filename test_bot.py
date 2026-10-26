@@ -68,7 +68,7 @@ def fake_callback(data: str, msg, user_id: int = 10):
     return SimpleNamespace(
         data=data,
         message=msg,
-        bot=SimpleNamespace(),
+        bot=SimpleNamespace(edit_message_reply_markup=AsyncMock()),
         from_user=SimpleNamespace(id=user_id, full_name="Тест", username="test"),
         answer=AsyncMock(),
     )
