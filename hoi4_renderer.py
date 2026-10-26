@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 10
+LAYOUT_VERSION = 11
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -27,8 +27,8 @@ STATE_TEXT_SIZES = {
         "party": 29, "ideology": 29, "elections": 29, "focus": 34,
     },
 }
-EVENT_QUOTE_SIZE = {"tno": 34, "tfr": 22}
-EVENT_BUTTON_SIZE = {"tno": 29, "tfr": 23}
+EVENT_QUOTE_SIZE = {"tno": 44, "tfr": 27}
+EVENT_BUTTON_SIZE = {"tno": 38, "tfr": 32}
 
 
 class Hoi4TextOverflow(ValueError):
@@ -307,6 +307,27 @@ def chart(canvas, raw, box, style):
     canvas.alpha_composite(layer)
 
 
+def party_display_name(value, style, box, size):
+    """Keep the full party name in data; use initials only if it won't fit."""
+    value = str(value or "").strip()
+    if not value:
+        return value
+    role = "title" if style == "tno" else "body"
+    face = font(style, size, role)
+    if face.getlength(value) <= box[2] - box[0]:
+        return value
+    # An explicit acronym at the end of the name beats generated initials.
+    explicit = re.search(r"\\(([A-Za-zА-Яа-яЁё]{2,8})\\)$", value)
+    if explicit and face.getlength(explicit.group(1)) <= box[2] - box[0]:
+        return explicit.group(1)
+    words = re.findall(r"[^\\W\\d_][^\\W_]*", value, re.UNICODE)
+    if len(words) >= 3:
+        initials = "".join(word[0].upper() for word in words)
+        if len(initials) <= 8 and face.getlength(initials) <= box[2] - box[0]:
+            return initials
+    return value
+
+
 def state_card(data, root, style):
     factor = 2 if style == "tfr" else 1
     foreground = asset(style + "_state_front", factor).convert("RGBA")
@@ -376,9 +397,14 @@ def state_card(data, root, style):
         ("elections", "elections", ""),
         ("focus", "focus", "Фокус не выбран"),
     ):
+        value = data.get(field) or default
+        if key == "party":
+            value = party_display_name(
+                value, style, boxes[key], STATE_TEXT_SIZES[style][key]
+            )
         text_box(
             canvas,
-            data.get(field) or default,
+            value,
             boxes[key],
             style,
             STATE_TEXT_SIZES[style][key],
@@ -449,7 +475,7 @@ def event_card(data, root, style):
         align="right" if style == "tno" else "center",
         minimum=16,
         valign="top" if style == "tfr" else "center",
-        line_height=29 if style == "tfr" else None,
+        line_height=31 if style == "tfr" else None,
     )
     text_box(
         canvas,
@@ -460,6 +486,7 @@ def event_card(data, root, style):
         "Надпись на кнопке",
         align="center",
         minimum=14,
+        line_height=33 if style == "tfr" else None,
     )
     return canvas
 
