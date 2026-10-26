@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -25,6 +25,7 @@ class Config:
     log_level: str = "INFO"
     max_image_mb: int = 12
     log_chat_id: int = -1004368904200
+    google_drive: str = field(default="", repr=False)
 
 
 def load_config(require_token: bool = True) -> Config:
@@ -48,4 +49,5 @@ def load_config(require_token: bool = True) -> Config:
         log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
         max_image_mb=max(1, int(os.getenv("MAX_IMAGE_MB", "12"))),
         log_chat_id=int(os.getenv("INFOBOX_LOG_CHAT_ID", "-1004368904200")),
+        google_drive=os.getenv("INFOBOX_GOOGLE_DRIVE", "").strip(),
     )
