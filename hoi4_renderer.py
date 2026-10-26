@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 8
+LAYOUT_VERSION = 9
 INK = "#dbe4e5"
 
 
@@ -372,7 +372,7 @@ def state_card(data, root, style):
             field,
             minimum=14,
             align="center" if key == "focus" else "left",
-            role="title" if style == "tno" and key == "title" else "body",
+            role="title" if style == "tno" and key in ("party", "ideology", "elections", "focus") else "body",
         )
     return canvas
 
