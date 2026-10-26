@@ -66,6 +66,8 @@ def field_sections_kb(tpl: Template, data: dict, page_id: int | None = None) -> 
         rows.append([ib(str(sec.get("title", "Свой раздел"))[:45], f"group:{scope}:x:{i}:0")])
     if tpl.key not in TFR_SIMPLE_TYPES:
         rows.append([ib("Добавить поле", "draft:custom" if page_id is None else f"pa:{page_id}:custom"), ib("Добавить раздел", "draft:section" if page_id is None else f"pa:{page_id}:section")])
+    if tpl.key == "superevent":
+        rows.append([ib("Картинки", f"hoi4:media:{scope}"), ib("Оформление", f"hoi4:options:{scope}")])
     rows.append([ib("Посмотреть карточку", "draft:back" if page_id is None else f"p:o:{page_id}"), ib("В меню", "menu:home")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 

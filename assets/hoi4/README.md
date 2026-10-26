@@ -8,8 +8,10 @@ Original artwork supplied by the repository owner in this session:
 - Bombardier-Regular_0.ttf
 - a_OldTyperNr Regular.ttf
 
-The PNGs contain extracted panels, with editable sample text and sample people
-removed. Font files are copied unchanged. TFR uses the existing repository font
+The PNGs contain separate foreground plates, masks and clipped effects, with
+editable sample text and sample people removed. Image windows are transparent.
+The TFR event uses the actual partially transparent Super_event_bg sprite.
+TNO effects retain original pixel alpha and layer opacity, each applied once. Font files are copied unchanged. TFR uses the existing repository font
 PixeloidSans.otf. Attribution here records provenance, not a new license grant.
 
 To reproduce the extraction locally, install psd-tools as a development tool and

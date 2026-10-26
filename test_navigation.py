@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 from aiogram import Bot
 from aiogram.client.session.base import BaseSession
-from aiogram.methods import AnswerCallbackQuery, DeleteMessage, EditMessageText, GetFile, SendMessage, SendPhoto, SendDocument
-from aiogram.types import Message, User, Chat, CallbackQuery, Update, File, Document
+from aiogram.methods import AnswerCallbackQuery, DeleteMessage, EditMessageText, GetFile, SendMessage, SendPhoto, SendDocument, EditMessageMedia
+from aiogram.types import Message, User, Chat, CallbackQuery, Update, File, Document, PhotoSize
 from PIL import Image
 
 from bot import make_dispatcher
@@ -43,6 +43,8 @@ class LocalTelegram(BaseSession):
             return True
         if isinstance(method, GetFile):
             return File(file_id=method.file_id, file_unique_id="test", file_path="local/file")
+        if isinstance(method, EditMessageMedia):
+            return Message(message_id=method.message_id or 10,date=datetime.now(UTC),chat=Chat(id=int(method.chat_id),type="private"),photo=[PhotoSize(file_id="preview",file_unique_id="preview",width=800,height=600)]).as_(bot)
         if isinstance(method, (SendMessage, EditMessageText, SendPhoto, SendDocument)):
             return Message(message_id=getattr(method, "message_id", None) or len(self.calls) + 10,
                            date=datetime.now(UTC), chat=Chat(id=int(method.chat_id), type="private"),
@@ -85,9 +87,9 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         msg = Message(message_id=self.updates, date=datetime.now(UTC), chat=Chat(id=self.uid, type="private"), from_user=User(id=self.uid, is_bot=False, first_name="Тест"), text=text, document=document)
         await self.dp.feed_update(self.bot, Update(update_id=self.updates, message=msg))
 
-    async def callback(self, data):
+    async def callback(self, data, photo=False):
         self.updates += 1
-        msg = Message(message_id=10, date=datetime.now(UTC), chat=Chat(id=self.uid, type="private"), from_user=User(id=self.bot.id, is_bot=True, first_name="InfoBox"), text="Экран")
+        msg = Message(message_id=10, date=datetime.now(UTC), chat=Chat(id=self.uid, type="private"), from_user=User(id=self.bot.id, is_bot=True, first_name="InfoBox"), text=None if photo else "Экран", photo=[PhotoSize(file_id="preview",file_unique_id="preview",width=800,height=600)] if photo else None)
         q = CallbackQuery(id=str(self.updates), from_user=User(id=self.uid, is_bot=False, first_name="Тест"), chat_instance="test", message=msg, data=data)
         await self.dp.feed_update(self.bot, Update(update_id=self.updates, callback_query=q))
 
@@ -132,6 +134,88 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         other=await self.db.save_page(Page(self.uid+1,"superevent","Чужая",data={"title":"Чужая"}))
         await self.callback(f"hoi4:mode:p{other.id}:tno:all")
         self.assertNotIn("hoi4_mode",(await self.db.get_page(other.id,self.uid+1)).data)
+
+    async def test_hoi4_upload_back_commands_crop_and_saved_actions(self):
+        await self.message("/start")
+        await self.callback("hoi4:mode:new:tno:all")
+        await self.callback("build:superevent:editor")
+        await self.message("Кефирстан")
+        await self.callback("hoi4:upload:d:flag")
+        await self.message("/start")
+        self.assertIsNone(await self.state.get_state())
+        self.assertEqual((await self.db.get_draft(self.uid))["page_data"]["title"],"Кефирстан")
+        await self.callback("draft:resume")
+        await self.callback("hoi4:upload:d:flag")
+        await self.callback("hoi4:media:d")
+        self.assertEqual(await self.state.get_state(),NewPage.review.state)
+        buf=BytesIO()
+        Image.new("RGB",(500,100),"red").save(buf,"PNG")
+        self.session.download=buf.getvalue()
+        await self.callback("hoi4:upload:d:flag")
+        await self.message(document=Document(file_id="image",file_unique_id="flag",file_name="flag.png",mime_type="image/png",file_size=len(buf.getvalue())))
+        await self.callback("hoi4:crop:d:flag")
+        await self.callback("hoi4:adjust:d:flag:cover",photo=True)
+        await self.callback("hoi4:adjust:d:flag:in",photo=True)
+        self.assertTrue(any(isinstance(c,EditMessageMedia) for c in self.session.calls))
+        crop=(await self.state.get_data())["page_data"]["hoi4_crop"]["flag"]
+        self.assertEqual(crop["fit"],"cover")
+        self.assertEqual(crop["zoom"],110)
+        await self.callback("draft:back")
+        await self.callback("draft:export")
+        self.assertTrue(any(isinstance(c,SendDocument) for c in self.session.calls))
+        await self.callback("draft:save")
+        page=(await self.db.get_user_pages(self.uid))[0]
+        await self.callback(f"hoi4:upload:p{page.id}:portrait")
+        await self.message(document=Document(file_id="image",file_unique_id="portrait",file_name="portrait.png",mime_type="image/png",file_size=len(buf.getvalue())))
+        self.assertIsNone(await self.state.get_state())
+        page=await self.db.get_page(page.id,self.uid)
+        self.assertIn("portrait",page.data["hoi4_media"])
+        self.assertEqual(page.data["hoi4_crop"]["flag"]["zoom"],110)
+        await self.callback(f"hoi4:remove:p{page.id}:portrait")
+        self.assertNotIn("portrait",(await self.db.get_page(page.id,self.uid)).data["hoi4_media"])
+        await self.callback(f"p:e:{page.id}")
+        from templates import get_template
+        tpl=get_template("superevent",page.data)
+        index=next(i for i,f in enumerate(tpl.fields) if f.key=="leader")
+        await self.callback(f"pe:{page.id}:s:{index}")
+        await self.message("Тимофей Рализм")
+        self.assertEqual((await self.db.get_page(page.id,self.uid)).data["leader"],"Тимофей Рализм")
+        await self.callback(f"p:txt:{page.id}")
+        await self.callback(f"p:x:{page.id}")
+        await self.callback(f"p:c:{page.id}")
+        pages=await self.db.get_user_pages(self.uid)
+        self.assertEqual(len(pages),2)
+        copied=next(p for p in pages if p.id!=page.id)
+        self.assertEqual(copied.data["hoi4_crop"]["flag"]["zoom"],110)
+        await self.callback(f"pd:{copied.id}:yes")
+        self.assertIsNone(await self.db.get_page(copied.id,self.uid))
+        # Even the historical single-image buttons must use the role picker.
+        await self.callback(f"pa:{page.id}:image")
+        self.assertIsNone(await self.state.get_state())
+        self.assertTrue(any((getattr(c,"text",None) or "").startswith("<b>Картинки HOI4") for c in self.session.calls))
+        await self.callback(f"hoi4:upload:p{page.id}:flag")
+        await self.message("/cancel")
+        self.assertIsNone(await self.state.get_state())
+
+    async def test_hoi4_all_wizards_reach_preview(self):
+        from templates import get_template
+        await self.message("/start")
+        for style,mode in (("tno","state"),("tno","event"),("tno","news"),("tno","all"),("tfr","state"),("tfr","event"),("tfr","all")):
+            with self.subTest(style=style,mode=mode):
+                await self.callback(f"hoi4:mode:new:{style}:{mode}")
+                await self.callback("build:superevent:wizard")
+                await self.message("Кефирстан")
+                d=await self.state.get_data()
+                tpl=get_template("superevent",d["page_data"])
+                for key in tpl.wizard[1:]:
+                    await self.callback("wiz:skip")
+                self.assertEqual(await self.state.get_state(),NewPage.review.state)
+                self.assertEqual((await self.state.get_data())["i"], len(tpl.wizard))
+                await self.callback("draft:back")
+                self.assertEqual(await self.state.get_state(),NewPage.review.state)
+                self.assertTrue((await self.state.get_data())["preview_path"])
+                await self.callback("draft:save")
+                self.assertIsNone(await self.db.get_draft(self.uid))
 
     async def test_hoi4_paste_keeps_style_and_mode(self):
         await self.message("/start")

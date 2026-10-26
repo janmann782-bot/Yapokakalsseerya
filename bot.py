@@ -27,9 +27,9 @@ def make_dispatcher(db: Db, cfg: Config) -> Dispatcher:
     dp.callback_query.outer_middleware(DraftCheckpointMiddleware())
     # Admin router first so /maint_* always reachable for admins
     dp.include_router(admin_router)
+    dp.include_router(common_router)
     dp.include_router(hoi4_router)
     dp.include_router(navigation_router)
-    dp.include_router(common_router)
     dp.include_router(page_router)
     dp.include_router(create_router)
     dp.include_router(battle_router)

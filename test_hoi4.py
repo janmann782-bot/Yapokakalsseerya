@@ -70,7 +70,7 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                                 },
                             }
                             self.assertEqual(im.size, expected[style][mode])
-                        self.assertEqual(page.data["_hoi4_layout"], 1)
+                        self.assertEqual(page.data["_hoi4_layout"], 2)
 
     async def test_old_superevent_still_renders(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -129,3 +129,109 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(parsed.type, "superevent")
         self.assertEqual(parsed.data["leader"], "Тимофей Рализм")
         self.assertEqual(parsed.data["event_title"], "Проверка")
+
+    def test_psd_foreground_stays_above_photo(self):
+        from PIL import ImageChops, ImageDraw
+        from hoi4_renderer import asset, event_card, state_card, news_card
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            Image.new("RGB", (1600, 100), "#ff0000").save(root / "media_red.png")
+            for style in ("tno", "tfr"):
+                data = {
+                    "title": "",
+                    "hoi4_style": style,
+                    "hoi4_media": {
+                        "event": "media_red.png",
+                        "flag": "media_red.png",
+                        "portrait": "media_red.png",
+                    },
+                }
+                rendered = event_card(data, root, style)
+                factor = 1 if style == "tno" else 2
+                front = asset(style + "_event_front", factor)
+                opaque = front.getchannel("A").point(lambda a: 255 if a == 255 else 0)
+                if style == "tno":
+                    # The adaptive native button is intentionally composed later.
+                    ImageDraw.Draw(opaque).rectangle((0, 820, 1048, 879), fill=0)
+                self.assertGreater(sum(opaque.histogram()[1:]), 1000)
+                diff = ImageChops.difference(
+                    rendered.convert("RGB"), front.convert("RGB")
+                )
+                only_opaque = Image.composite(diff, Image.new("RGB", diff.size), opaque)
+                self.assertIsNone(
+                    only_opaque.getbbox(), style + " frame changed under photo"
+                )
+                state = state_card(data, root, style)
+                plate = asset(style + "_state_front", factor)
+                point = (11, 245) if style == "tfr" else (13, 378)
+                x, y = point[0] * factor, point[1] * factor
+                expected = Image.alpha_composite(
+                    Image.new("RGBA", plate.size, "black"), plate
+                )
+                self.assertEqual(
+                    state.getpixel((x, y))[:3], expected.getpixel((x, y))[:3]
+                )
+            news = news_card({"hoi4_media": {"news": "media_red.png"}}, root)
+            front = asset("tno_news_front")
+            for point in ((205, 624), (214, 642)):
+                self.assertEqual(news.getpixel(point)[:3], front.getpixel(point)[:3])
+
+    def test_flag_aspect_and_crop_controls(self):
+        from hoi4_renderer import picture
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            Image.new("RGB", (500, 100), "red").save(root / "media_wide.png")
+            canvas = Image.new("RGBA", (200, 200), "black")
+            picture(canvas, root, "media_wide.png", (0, 0, 200, 200), contain=True)
+            red = canvas.getchannel("R").point(lambda a: 255 if a > 200 else 0)
+            self.assertEqual(red.getbbox(), (0, 80, 200, 120))
+            src = Image.new("RGB", (400, 100), "red")
+            from PIL import ImageDraw
+
+            ImageDraw.Draw(src).rectangle((200, 0, 399, 99), fill="blue")
+            src.save(root / "media_halves.png")
+            for pan, expected in ((0, (255, 0, 0)), (100, (0, 0, 255))):
+                canvas = Image.new("RGBA", (100, 100), "black")
+                picture(
+                    canvas,
+                    root,
+                    "media_halves.png",
+                    (0, 0, 100, 100),
+                    settings={"fit": "cover", "x": pan, "y": 50, "zoom": 100},
+                )
+                self.assertEqual(canvas.getpixel((50, 50))[:3], expected)
+
+    def test_icons_use_their_own_cells_and_party_pie_is_visible(self):
+        from hoi4_renderer import state_card
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, color in [
+                ("alliance", "red"),
+                ("focus", "blue"),
+                ("ideology", "lime"),
+            ]:
+                Image.new("RGB", (100, 100), color).save(root / f"media_{name}.png")
+            for style in ("tno", "tfr"):
+                data = {
+                    "hoi4_media": {
+                        name: f"media_{name}.png"
+                        for name in ("alliance", "focus", "ideology")
+                    },
+                    "parties": "А | 1 | #ffff00",
+                }
+                rendered = state_card(data, root, style)
+                coords = {
+                    "tno": [(790, 60), (293, 322), (278, 60), (294, 191)],
+                    "tfr": [(872, 66), (328, 424), (328, 66), (332, 280)],
+                }[style]
+                for point, color in zip(
+                    coords[:3], [(255, 0, 0), (0, 0, 255), (0, 255, 0)]
+                ):
+                    self.assertEqual(rendered.getpixel(point)[:3], color)
+                yellow = rendered.getpixel(coords[3])
+                self.assertGreater(yellow[0], 180)
+                self.assertGreater(yellow[1], 180)
+                self.assertLess(yellow[2], 100)

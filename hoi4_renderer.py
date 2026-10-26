@@ -5,13 +5,13 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageChops
 
 from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 1
+LAYOUT_VERSION = 2
 INK = "#dbe4e5"
 
 
@@ -124,31 +124,89 @@ def text_box(
         y += step
 
 
-def picture(canvas, root, path, box, *, grayscale=False, contain=False):
+def asset(name, scale=1):
+    with Image.open(ASSETS / (name + ".png")) as source:
+        result = source.copy()
+    if scale != 1:
+        result = result.resize(
+            (result.width * scale, result.height * scale), Image.Resampling.LANCZOS
+        )
+    return result
+
+
+def scaled(box, scale):
+    return tuple(round(x * scale) for x in box)
+
+
+def crop_settings(data, role):
+    saved = (data.get("hoi4_crop") or {}).get(role) or {}
+    fit = saved.get(
+        "fit",
+        "contain" if role in ("flag", "ideology", "alliance", "focus") else "cover",
+    )
+    return dict(
+        fit=fit if fit in ("contain", "cover") else "cover",
+        x=max(0, min(100, int(saved.get("x", 50)))),
+        y=max(0, min(100, int(saved.get("y", 25 if role == "portrait" else 50)))),
+        zoom=max(100, min(300, int(saved.get("zoom", 100)))),
+    )
+
+
+def picture(
+    canvas, root, path, box, *, grayscale=False, contain=False, settings=None, mask=None
+):
     if not path:
         return False
     base = Path(root).resolve()
     src = (base / str(path)).resolve()
-    # Media must stay in this bot's work directory, same as ordinary cards.
     if src.parent != base or not src.is_file():
         return False
-    with Image.open(src) as im:
-        im = ImageOps.exif_transpose(im).convert("RGBA")
-        if grayscale:
-            alpha = im.getchannel("A")
-            im = ImageOps.grayscale(im).convert("RGBA")
-            im.putalpha(alpha)
-        size = (box[2] - box[0], box[3] - box[1])
-        im = (
-            ImageOps.contain(im, size, Image.Resampling.LANCZOS)
-            if contain
-            else ImageOps.fit(im, size, Image.Resampling.LANCZOS)
-        )
-        canvas.alpha_composite(
-            im,
-            (box[0] + (size[0] - im.width) // 2, box[1] + (size[1] - im.height) // 2),
-        )
+    settings = settings or dict(
+        fit="contain" if contain else "cover", x=50, y=50, zoom=100
+    )
+    with Image.open(src) as source:
+        image = ImageOps.exif_transpose(source).convert("RGBA")
+    if grayscale:
+        alpha = image.getchannel("A")
+        image = ImageOps.grayscale(image).convert("RGBA")
+        image.putalpha(alpha)
+    w, h = box[2] - box[0], box[3] - box[1]
+    ratios = (w / image.width, h / image.height)
+    ratio = (
+        (min(ratios) if settings["fit"] == "contain" else max(ratios))
+        * settings["zoom"]
+        / 100
+    )
+    image = image.resize(
+        (max(1, round(image.width * ratio)), max(1, round(image.height * ratio))),
+        Image.Resampling.LANCZOS,
+    )
+    viewport = Image.new("RGBA", (w, h), (0, 0, 0, 255))
+    viewport.alpha_composite(
+        image,
+        (
+            round((w - image.width) * settings["x"] / 100),
+            round((h - image.height) * settings["y"] / 100),
+        ),
+    )
+    layer = Image.new("RGBA", canvas.size)
+    layer.paste(viewport, (box[0], box[1]))
+    if mask is not None:
+        layer.putalpha(ImageChops.multiply(layer.getchannel("A"), mask))
+    canvas.alpha_composite(layer)
     return True
+
+
+def photo(canvas, data, root, role, box, *, mask=None, grayscale=False):
+    return picture(
+        canvas,
+        root,
+        image_roles(data).get(role),
+        box,
+        settings=crop_settings(data, role),
+        mask=mask,
+        grayscale=grayscale,
+    )
 
 
 def party_data(raw):
@@ -178,104 +236,87 @@ def party_data(raw):
 
 
 def chart(canvas, raw, box, style):
-    draw = ImageDraw.Draw(canvas)
     parties = party_data(raw)
-    draw.ellipse(box, fill="#32393b", outline="#77888a", width=2)
     if not parties:
-        text_box(canvas, "?", box, style, 34, "Диаграмма", align="center")
         return
+    # Relative shares stay finite even for very large numeric values.
+    largest = max(p[1] for p in parties)
+    total = sum(p[1] / largest for p in parties)
     start = -90
-    total = sum(p[1] for p in parties)
     for _, value, color in parties:
-        end = start + 360 * value / total
-        draw.pieslice(box, start, end, fill=color, outline="#26282b", width=1)
+        end = start + 360 * (value / largest) / total
+        ImageDraw.Draw(canvas).pieslice(box, start, end, fill=color)
         start = end
 
 
 def state_card(data, root, style):
-    # TFR's source panel is 470px wide; render at 2x so Cyrillic stays readable.
     factor = 2 if style == "tfr" else 1
-    with Image.open(ASSETS / f"{style}_state.png") as src:
-        canvas = src.convert("RGBA").resize(
-            (src.width * factor, src.height * factor), Image.Resampling.NEAREST
-        )
-    roles = image_roles(data)
+    foreground = asset(style + "_state_front", factor).convert("RGBA")
+    canvas = Image.new("RGBA", foreground.size, "black")
     if style == "tno":
         boxes = dict(
-            flag=(42, 22, 177, 98),
-            portrait=(17, 125, 198, 374),
-            title=(353, 15, 838, 47),
-            alliance=(353, 47, 838, 75),
-            leader=(353, 77, 838, 109),
-            party=(389, 143, 837, 188),
-            ideology=(389, 185, 837, 225),
+            flag=(36, 12, 184, 104),
+            portrait=(16, 124, 201, 376),
+            title=(356, 15, 739, 47),
+            alliance=(356, 48, 739, 75),
+            leader=(356, 77, 739, 109),
+            party=(389, 142, 837, 187),
+            ideology=(389, 184, 837, 226),
             elections=(389, 226, 837, 263),
-            focus=(401, 282, 824, 345),
-            chart=(241, 138, 347, 244),
-            icon=(224, 19, 321, 103),
-            alliance_icon=(230, 276, 355, 369),
+            focus=(399, 280, 827, 344),
+            chart=(242, 139, 346, 243),
+            icon=(225, 15, 331, 106),
+            alliance_icon=(746, 15, 837, 105),
+            focus_icon=(228, 270, 359, 374),
         )
         size = 25
     else:
         boxes = dict(
-            flag=(30, 20, 190, 108),
-            portrait=(28, 214, 230, 484),
-            title=(420, 9, 917, 48),
-            alliance=(420, 48, 917, 83),
-            leader=(420, 84, 917, 122),
-            party=(450, 223, 913, 268),
-            ideology=(450, 266, 913, 307),
-            elections=(450, 307, 913, 350),
-            focus=(474, 392, 879, 458),
-            chart=(276, 225, 389, 338),
-            icon=(272, 13, 381, 118),
-            alliance_icon=(260, 365, 400, 474),
+            flag=(29, 12, 96, 54),
+            portrait=(13, 105, 118, 246),
+            title=(212, 4, 405, 22),
+            alliance=(212, 23, 405, 40),
+            leader=(212, 42, 405, 61),
+            party=(228, 115, 458, 133),
+            ideology=(228, 133, 458, 151),
+            elections=(228, 151, 458, 172),
+            focus=(241, 196, 439, 229),
+            chart=(138, 112, 194, 168),
+            icon=(137, 5, 192, 61),
+            alliance_icon=(411, 8, 461, 58),
+            focus_icon=(128, 185, 200, 240),
         )
         size = 23
-        # These labels are baked into the PSD's Base layer; localize them.
-        draw = ImageDraw.Draw(canvas)
-        for box, label in [
-            ((32, 142, 449, 190), "Дипломатия"),
-            ((492, 142, 901, 190), "Сведения"),
-        ]:
-            draw.rectangle(box, fill="#171a1c")
-            text_box(canvas, label, box, style, 20, label, align="center")
-    for role, key in [
-        ("flag", "flag"),
-        ("portrait", "portrait"),
+    boxes = {k: scaled(v, factor) for k, v in boxes.items()}
+    # Image windows are behind the original bezels; the flag uses its PSD alpha.
+    flag_mask = asset("tno_flag_mask") if style == "tno" else None
+    photo(canvas, data, root, "flag", boxes["flag"], mask=flag_mask)
+    photo(canvas, data, root, "portrait", boxes["portrait"])
+    canvas.alpha_composite(foreground)
+    if style == "tno":
+        canvas.alpha_composite(asset("tno_flag_glass"))
+    # Icons belong to their original PSD cells, not to each other's slots.
+    for role, key in (
         ("ideology", "icon"),
         ("alliance", "alliance_icon"),
-    ]:
-        picture(
-            canvas,
-            root,
-            roles.get(role),
-            boxes[key],
-            contain=role in ("flag", "ideology", "alliance"),
-        )
-    if not roles.get("portrait"):
-        # A missing portrait is neutral, never a real person from the template.
-        b = boxes["portrait"]
-        ImageDraw.Draw(canvas).rectangle(b, fill="#202629")
-        text_box(
-            canvas,
-            "Нет портрета",
-            (b[0] + 8, b[1], b[2] - 8, b[3]),
-            style,
-            18,
-            "Портрет",
-            align="center",
-        )
-    chart(canvas, data.get("parties"), boxes["chart"], style)
-    for key, field, default in [
+        ("focus", "focus_icon"),
+    ):
+        photo(canvas, data, root, role, boxes[key])
+    if style == "tno":
+        canvas.alpha_composite(asset("tno_chart_front"))
+        chart(canvas, data.get("parties"), boxes["chart"], style)
+    else:
+        chart(canvas, data.get("parties"), boxes["chart"], style)
+        canvas.alpha_composite(asset("tfr_chart_front", factor))
+    for key, field, default in (
         ("title", "country_name", data.get("title", "")),
-        ("alliance", "alliance", "Альянс не указан"),
-        ("leader", "leader", "Лидер не указан"),
-        ("party", "ruling_party", "Партия не указана"),
-        ("ideology", "ideology", "Идеология не указана"),
-        ("elections", "elections", "Выборы не указаны"),
+        ("alliance", "alliance", ""),
+        ("leader", "leader", ""),
+        ("party", "ruling_party", ""),
+        ("ideology", "ideology", ""),
+        ("elections", "elections", ""),
         ("focus", "focus", "Фокус не выбран"),
-    ]:
+    ):
         text_box(
             canvas,
             data.get(field) or default,
@@ -283,61 +324,51 @@ def state_card(data, root, style):
             style,
             size,
             field,
+            minimum=14,
             align="center" if key == "focus" else "left",
             role="title" if style == "tno" and key == "title" else "body",
         )
-    # Custom focus icon stays separate from the country's portrait and flag.
-    if roles.get("focus"):
-        focus_box = (227, 270, 360, 373) if style == "tno" else (270, 370, 390, 480)
-        picture(canvas, root, roles["focus"], focus_box, contain=True)
     return canvas
 
 
 def event_card(data, root, style):
-    with Image.open(ASSETS / f"{style}_event.png") as im:
-        factor = 2 if style == "tfr" else 1
-        canvas = im.convert("RGBA").resize(
-            (im.width * factor, im.height * factor), Image.Resampling.NEAREST
-        )
-    roles = image_roles(data)
+    factor = 2 if style == "tfr" else 1
+    foreground = asset(style + "_event_front", factor).convert("RGBA")
+    canvas = Image.new("RGBA", foreground.size, "black")
+    mask = asset(style + "_event_mask", factor).convert("L")
+    # Bounding boxes are measured from the actual image placeholders in the PSD.
+    box = (8, 91, 1040, 795) if style == "tno" else scaled((4, 18, 521, 368), factor)
+    photo(canvas, data, root, "event", box, mask=mask, grayscale=style == "tno")
     if style == "tno":
-        img = (9, 94, 1040, 793)
-        title = (33, 17, 1017, 69)
-        body = (65, 550, 985, 770)
-        button = (345, 829, 705, 877)
+        canvas.alpha_composite(asset("tno_event_effects"))
+    # TFR's real gradient, quote panel and button are ONE partially transparent
+    # foreground. Compositing this last preserves their original alpha and shape.
+    canvas.alpha_composite(foreground)
+    if style == "tno":
+        title = (33, 16, 1017, 72)
+        body = (85, 553, 1024, 781)
+        buttons = [
+            ("normal", (328, 821, 723, 878)),
+            ("large", (288, 821, 763, 878)),
+            ("wide", (248, 821, 803, 878)),
+            ("full", (38, 821, 1014, 878)),
+        ]
+        button_text = str(data.get("button_text") or "")
+        chosen = buttons[-1]
+        for name, bounds in buttons:
+            if font(style, 27).getlength(button_text) <= bounds[2] - bounds[0] - 36:
+                chosen = (name, bounds)
+                break
+        canvas.alpha_composite(asset("tno_button_" + chosen[0]))
+        b = chosen[1]
+        button = (b[0] + 18, b[1] + 5, b[2] - 18, b[3] - 5)
     else:
-        img = (16, 73, 1039, 688)
-        title = (115, 13, 945, 65)
-        body = (202, 500, 850, 658)
-        button = (397, 699, 685, 739)
-    original = canvas.copy()
-    has_photo = picture(canvas, root, roles.get("event"), img, grayscale=style == "tno")
-    if has_photo and style == "tfr":
-        from PIL import ImageChops
-
-        region = canvas.crop(img).convert("RGB")
-        gradient = original.crop((20, 80, 1020, 470)).resize(region.size).convert("RGB")
-        mixed = Image.blend(region, ImageChops.screen(region, gradient), 0.45)
-        canvas.paste(mixed, (img[0], img[1]))
-    # Preserve original PSD scanlines, coloring and borders above the image.
-    draw = ImageDraw.Draw(canvas)
-    shade = Image.new("RGBA", canvas.size)
-    sd = ImageDraw.Draw(shade)
-    for y in range(img[1], img[3], 3):
-        sd.line((img[0], y, img[2], y), fill=(0, 20, 24, 32 if style == "tno" else 14))
-    if style == "tno":
-        sd.rectangle(img, fill=(0, 45, 49, 42))
-    if data.get("body") or data.get("quote_author"):
-        sd.rectangle(body, fill=(0, 0, 0, 172))
-    canvas = Image.alpha_composite(canvas, shade)
-    # Restore the border of the quotation panel for TFR.
-    if style == "tfr":
-        draw = ImageDraw.Draw(canvas)
-        draw.rectangle(body, outline="#af75b9", width=3)
-    title_value = data.get("event_title") or data.get("title")
+        title = scaled((65, 4, 462, 35), factor)
+        body = scaled((112, 258, 413, 325), factor)
+        button = scaled((200, 344, 336, 362), factor)
     text_box(
         canvas,
-        title_value,
+        data.get("event_title") or data.get("title"),
         title,
         style,
         34,
@@ -352,7 +383,7 @@ def event_card(data, root, style):
     text_box(
         canvas,
         body_value,
-        (body[0] + 16, body[1] + 8, body[2] - 16, body[3] - 8),
+        body,
         style,
         28,
         "Текст или цитата",
@@ -373,15 +404,24 @@ def event_card(data, root, style):
 
 
 def news_card(data, root):
-    canvas = Image.open(ASSETS / "tno_news.png").convert("RGBA")
-    # Cover the sample masthead with the paper's own texture, not a flat rectangle.
+    foreground = asset("tno_news_front").convert("RGBA")
+    canvas = Image.new("RGBA", foreground.size, "black")
+    photo(
+        canvas,
+        data,
+        root,
+        "news",
+        (22, 143, 223, 652),
+        mask=asset("tno_news_mask"),
+        grayscale=True,
+    )
+    canvas.alpha_composite(asset("tno_news_effects"))
+    canvas.alpha_composite(foreground)
     if data.get("newspaper_name"):
-        patch = canvas.crop((230, 120, 580, 195)).resize((475, 75))
-        canvas.paste(patch, (96, 20))
         text_box(
             canvas,
             data["newspaper_name"],
-            (99, 24, 571, 91),
+            (99, 22, 571, 79),
             "tno",
             34,
             "Название газеты",
@@ -390,6 +430,8 @@ def news_card(data, root):
             minimum=16,
             fill="#25251f",
         )
+    else:
+        canvas.alpha_composite(asset("tno_news_masthead"))
     text_box(
         canvas,
         data.get("news_title") or data.get("title"),
@@ -401,9 +443,6 @@ def news_card(data, root):
         align="center",
         minimum=14,
         fill="#25251f",
-    )
-    picture(
-        canvas, root, image_roles(data).get("news"), (26, 146, 222, 648), grayscale=True
     )
     text_box(
         canvas,
@@ -474,5 +513,20 @@ def render_hoi4(page, root, output, quality="high"):
         result = result.resize(
             (result.width * 2, result.height * 2), Image.Resampling.LANCZOS
         )
-    result.convert("RGB").save(output, "PNG", compress_level=6)
-    return Path(output)
+    # Publish only a complete file; previews may be opened as soon as returned.
+    import os
+    from uuid import uuid4
+
+    destination = Path(output)
+    temporary = destination.with_name(destination.name + "." + uuid4().hex + ".tmp")
+    try:
+        with temporary.open("wb") as stream:
+            result.convert("RGB").save(stream, "PNG", compress_level=6)
+            stream.flush()
+            os.fsync(stream.fileno())
+        with Image.open(temporary) as check:
+            check.verify()
+        temporary.replace(destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return destination
