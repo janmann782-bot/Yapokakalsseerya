@@ -447,8 +447,30 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             self.assertGreater(size, 25, key)
         for key, size in STATE_TEXT_SIZES["tfr"].items():
             self.assertGreater(size, 23, key)
-        self.assertEqual(EVENT_QUOTE_SIZE, {"tno": 34, "tfr": 22})
-        self.assertEqual(EVENT_BUTTON_SIZE, {"tno": 29, "tfr": 23})
+        self.assertEqual(EVENT_QUOTE_SIZE, {"tno": 44, "tfr": 27})
+        self.assertEqual(EVENT_BUTTON_SIZE, {"tno": 38, "tfr": 32})
+
+    def test_long_ruling_party_is_displayed_as_abbreviation_without_changing_data(self):
+        from hoi4_renderer import party_display_name
+
+        data = {"ruling_party": "Либертарианская партия Кефирстана"}
+        full = data["ruling_party"]
+        tno_party_box = (389, 142, 837, 187)
+        tfr_party_box = (456, 230, 916, 266)
+        self.assertEqual(
+            party_display_name(full, "tno", tno_party_box, 31), "ЛПК"
+        )
+        self.assertEqual(
+            party_display_name(full, "tfr", tfr_party_box, 29), "ЛПК"
+        )
+        self.assertEqual(data["ruling_party"], full)
+        self.assertEqual(
+            party_display_name("ЛПК", "tfr", tfr_party_box, 29), "ЛПК"
+        )
+        self.assertEqual(
+            party_display_name("Народная партия (НП)", "tno", (0, 0, 80, 40), 31),
+            "НП",
+        )
 
     def test_superevent_name_and_legacy_input_alias(self):
         from templates import HOI4_MODES, get_template
