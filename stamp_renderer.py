@@ -11,7 +11,7 @@ from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFont, ImageOps
 
 from media import page_images
 
-STAMP_LAYOUT_VERSION = 2
+STAMP_LAYOUT_VERSION = 3
 ROOT = Path(__file__).resolve().parent
 LIMITS = {"stamp_top": 60, "stamp_bottom": 60, "stamp_center": 100}
 COLORS = {"синий": "#164a9b", "синяя": "#164a9b", "черный": "#111111",
@@ -46,20 +46,32 @@ def stamp_option(key, value):
     return choices[key][text]
 
 
-def worn_ink(canvas):
-    # Fixed seed keeps a saved stamp stable across previews and restarts.
+def wear_level(data):
+    value = data.get("stamp_wear")
+    if value is None or str(value).strip() == "":
+        return 35 if stamp_option("stamp_texture", data.get("stamp_texture")) == "worn" else 0
+    text = str(value).strip().removesuffix("%").strip()
+    if not text.isascii() or not text.isdecimal() or not 0 <= int(text) <= 100:
+        raise ValueError("Укажи потертость от 0 до 100. 0 - четкий оттиск, 100 - сильная потертость")
+    return int(text)
+
+
+def worn_ink(canvas, level=35):
+    # Separate stable random streams make increasing wear remove more ink only.
     rng = random.Random(180)
     wear = Image.new("L", canvas.size, 255)
     draw = ImageDraw.Draw(wear)
-    for _ in range(5200):
+    for _ in range(round(14857 * level / 100)):
         x, y = rng.randrange(canvas.width), rng.randrange(canvas.height)
         radius = rng.choice((1, 1, 2, 3))
-        draw.ellipse((x, y, x+radius, y+radius), fill=rng.choice((0, 0, 65, 120)))
-    for _ in range(45):
+        draw.ellipse((x, y, x+radius, y+radius), fill=0)
+    rng = random.Random(181)
+    for _ in range(round(129 * level / 100)):
         x, y = rng.randrange(canvas.width), rng.randrange(canvas.height)
-        draw.line((x, y, x+rng.randrange(8, 35), y+rng.randrange(-3, 4)), fill=50, width=1)
+        draw.line((x, y, x+rng.randrange(8, 35), y+rng.randrange(-3, 4)), fill=0, width=1)
     canvas.putalpha(ImageChops.multiply(canvas.getchannel("A"), wear))
     return canvas
+
 
 def face(size):
     return ImageFont.truetype(str(ROOT / "DejaVuSans-Bold.ttf"), size)
@@ -80,6 +92,8 @@ def stamp_field_error(page_type, key, value):
     if key in LIMITS and len(text) > LIMITS[key]:
         return f"Символов: {len(text)}/{LIMITS[key]}. Сократи надпись"
     try:
+        if key == "stamp_wear":
+            wear_level({"stamp_wear": value})
         if key in ("stamp_shape", "stamp_texture"):
             stamp_option(key, text)
         if key == "stamp_color":
@@ -140,7 +154,7 @@ def center_text(canvas, text, box, color):
 
 
 def stamp_image(data, root):
-    for key in (*LIMITS, "stamp_color", "stamp_shape", "stamp_texture"):
+    for key in (*LIMITS, "stamp_color", "stamp_shape", "stamp_texture", "stamp_wear"):
         error = stamp_field_error("stamp", key, data.get(key))
         if error:
             raise ValueError(error)
@@ -186,7 +200,8 @@ def stamp_image(data, root):
     if rectangular:
         box = (85, 375, 939, 485) if has_logo else (85, 215, 939, 480)
     center_text(canvas, data.get("stamp_center"), box, color)
-    return worn_ink(canvas) if stamp_option("stamp_texture", data.get("stamp_texture")) == "worn" else canvas
+    level = wear_level(data)
+    return worn_ink(canvas, level) if level else canvas
 
 
 def render_stamp(page, root, output, quality="high"):

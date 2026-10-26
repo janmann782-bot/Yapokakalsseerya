@@ -12,7 +12,7 @@ def field_error(page_type, key, value):
 def data_error(page_type, data):
     if page_type == "stamp":
         from stamp_renderer import LIMITS
-        for key in (*LIMITS, "stamp_color", "stamp_shape", "stamp_texture"):
+        for key in (*LIMITS, "stamp_color", "stamp_shape", "stamp_texture", "stamp_wear"):
             error = field_error(page_type, key, data.get(key))
             if error:
                 return error
@@ -27,6 +27,8 @@ def field_prompt(page_type, key, value=""):
             return f"\n\nСимволов: {len(str(value or ''))}/{LIMITS[key]}"
         if key == "stamp_shape":
             return "\n\nКруглая или прямоугольная. По умолчанию круглая"
+        if key == "stamp_wear":
+            return "\n\nОт 0 до 100: 0 - четкий, 25 - легкая потертость, 50 - средняя, 100 - сильная. По умолчанию 0"
         if key == "stamp_texture":
             return "\n\nЧеткий или потертый. По умолчанию четкий"
         if key == "stamp_color":

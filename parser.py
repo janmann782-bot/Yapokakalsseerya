@@ -94,6 +94,8 @@ ALIASES = {
     "цвет печати": "stamp_color",
     "форма печати": "stamp_shape",
     "оттиск": "stamp_texture",
+    "уровень потертости": "stamp_wear",
+    "потертость": "stamp_wear",
     "заголовок новости": "news_title",
     "текст новости": "news_body",
     "текст на кнопке новости": "news_button",
@@ -248,7 +250,7 @@ def infer_type(keys: set[str]) -> str:
         "administrative_divisions", "head_of_region", "legislature", "executive_body",
         "region_code", "website",
     }
-    if keys & {"stamp_top", "stamp_bottom", "stamp_center", "stamp_color", "stamp_shape", "stamp_texture"}:
+    if keys & {"stamp_top", "stamp_bottom", "stamp_center", "stamp_color", "stamp_shape", "stamp_texture", "stamp_wear"}:
         return "stamp"
     scores = {
         "country": 2 * len(keys & {"capital", "government", "currency", "head_of_state", "head_of_government"})
@@ -309,6 +311,8 @@ def parse_text(text: str) -> ParsedPage:
 
     tpl = get_template(page_type)
     allowed = {f.key for f in tpl.fields}
+    if page_type == "stamp":
+        allowed.add("stamp_texture")  # Legacy paste input remains supported.
     data: dict = {"custom_fields": []}
     warnings: list[str] = []
 
@@ -318,7 +322,7 @@ def parse_text(text: str) -> ParsedPage:
         limit = 3800 if key == "description" else 1000
         if key == "title":
             limit = 250
-        if page_type == "stamp" and key in ("stamp_top", "stamp_bottom", "stamp_center", "stamp_color", "stamp_shape", "stamp_texture"):
+        if page_type == "stamp" and key in ("stamp_top", "stamp_bottom", "stamp_center", "stamp_color", "stamp_shape", "stamp_texture", "stamp_wear"):
             limit = None
         if page_type == "superevent" and key in (*NEWS_FIELDS, "parties"):
             limit = None  # The input handlers reject overflow without losing any text.

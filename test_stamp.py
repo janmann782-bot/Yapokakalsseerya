@@ -74,6 +74,30 @@ class StampTests(unittest.IsolatedAsyncioTestCase):
             parsed = parse_text("Тип: печать\nФорма печати: прямоугольная\nОттиск: потертый")
             self.assertEqual(parsed.data["stamp_texture"], "потертый")
 
+    def test_wear_levels_are_validated_stable_and_progressive(self):
+        from stamp_renderer import wear_level
+        self.assertEqual(wear_level({}), 0)
+        self.assertEqual(wear_level({"stamp_texture": "потертый"}), 35)
+        self.assertEqual(wear_level({"stamp_wear": "0", "stamp_texture": "потертый"}), 0)
+        self.assertEqual(wear_level({"stamp_wear": "75%"}), 75)
+        for value in ("-1", "101", "50.5", "много", "nan"):
+            self.assertIsNotNone(field_error("stamp", "stamp_wear", value))
+            self.assertIsNotNone(data_error("stamp", {"stamp_wear": value}))
+        parsed = parse_text("Тип: печать\nУровень потертости: 50")
+        self.assertEqual(parsed.data["stamp_wear"], "50")
+        with tempfile.TemporaryDirectory() as tmp:
+            for shape in ("круглая", "прямоугольная"):
+                previous = None
+                for level in (0, 25, 50, 75, 100):
+                    data = {"stamp_shape": shape, "stamp_center": "ФНВ", "stamp_wear": str(level)}
+                    im = stamp_image(data, Path(tmp))
+                    alpha = im.getchannel("A").tobytes()
+                    self.assertEqual(im.tobytes(), stamp_image(data, Path(tmp)).tobytes())
+                    if previous is not None:
+                        self.assertLess(sum(alpha), sum(previous))
+                        self.assertTrue(all(a <= b for a, b in zip(alpha, previous)))
+                    previous = alpha
+
     def test_custom_symbol_is_tinted_and_white_paper_removed(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
