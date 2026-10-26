@@ -318,9 +318,13 @@ def get_template(key: str, data: dict | None = None) -> Template:
             sections.update(("Государство", "Политика"))
         if mode in ("event", "all"):
             sections.add("Суперевент")
-        if mode == "news" or (mode == "all" and data.get("hoi4_style") == "tno"):
+        if mode in ("news", "all"):
             sections.add("Газета")
         fields = tuple(x for x in tpl.fields if x.section in sections)
+        if data.get("hoi4_style") == "tfr":
+            labels = {"news_title": "Заголовок новости", "news_body": "Текст новости", "news_button": "Текст на кнопке новости"}
+            fields = tuple(replace(x, label=labels.get(x.key, x.label), section="Новости" if x.section == "Газета" else x.section)
+                           for x in fields if x.key not in ("newspaper_name", "news_date"))
         if mode == "event":
             # Historical df/pe buttons use these first three field indices.
             order = {key: i for i, key in enumerate(("title", "body", "button_text", "event_title", "quote_author"))}

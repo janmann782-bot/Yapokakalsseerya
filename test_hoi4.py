@@ -154,8 +154,6 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             Image.new("RGB", (800, 400), "#edbd25").save(root / "media_test.png")
             for style in ("tno", "tfr"):
                 for mode in ("state", "event", "all", "news"):
-                    if mode == "news" and style == "tfr":
-                        continue
                     with self.subTest(style=style, mode=mode):
                         data = {
                             "title": "Кефирстан",
@@ -196,7 +194,8 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                                 "tfr": {
                                     "state": (940, 504),
                                     "event": (1050, 748),
-                                    "all": (2006, 1128),
+                                    "all": (2006, 1640),
+                                    "news": (1274, 1562),
                                 },
                             }
                             self.assertEqual(im.size, expected[style][mode])
@@ -234,6 +233,34 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(image_roles({"images": ["old.png"]}), {"event": "old.png"})
         self.assertEqual(image_roles({"images": ["old.png"], "hoi4_media": {}}), {})
 
+    def test_tfr_news_paste_labels_match_the_editor(self):
+        parsed = parse_text("Тип: HOI4 Карточка (бета)\nНазвание: Новость\nЗаголовок новости: Старовир\nТекст новости: Заметка\nТекст на кнопке новости: Читать")
+        self.assertEqual(parsed.data["news_title"], "Старовир")
+        self.assertEqual(parsed.data["news_body"], "Заметка")
+        self.assertEqual(parsed.data["news_button"], "Читать")
+
+    def test_tfr_news_uses_browser_frame_and_assigned_photo(self):
+        from hoi4_renderer import tfr_news_card, media_roles
+        from PIL import ImageChops
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            Image.new("RGB", (300, 100), "red").save(root / "news.png")
+            Image.new("RGB", (300, 100), "blue").save(root / "event.png")
+            data = {"hoi4_style": "tfr", "hoi4_mode": "all",
+                    "hoi4_media": {"news": "news.png", "event": "event.png"}}
+            base = tfr_news_card(data, root).convert("RGB")
+            # Original image window coordinates minus cropped frame origin.
+            self.assertEqual(base.getpixel((600-136, 740-307)), (255, 0, 0))
+            title = tfr_news_card({**data, "news_title": "Старовир занят федеральными силами"}, root).convert("RGB")
+            bounds = ImageChops.difference(base, title).getbbox()
+            self.assertGreaterEqual(bounds[1], 480-307)
+            self.assertLess(bounds[3], 599-307)
+            self.assertIn("news", media_roles(data))
+            fields = {f.key for f in get_template("superevent", data).fields}
+            self.assertTrue({"news_title", "news_body", "news_button"} <= fields)
+            self.assertFalse({"news_date", "newspaper_name"} & fields)
+
     def test_editor_fields_follow_format(self):
         for mode in ("state", "event", "news", "all"):
             tpl = get_template("superevent", {"hoi4_style": "tno", "hoi4_mode": mode})
@@ -242,7 +269,7 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("body" in keys, mode in ("event", "all"))
             self.assertEqual("news_body" in keys, mode in ("news", "all"))
             self.assertTrue(set(tpl.wizard) <= keys)
-        self.assertNotIn(
+        self.assertIn(
             "news_body",
             {
                 x.key

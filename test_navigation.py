@@ -375,10 +375,36 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         await self.message("/cancel")
         self.assertIsNone(await self.state.get_state())
 
+    async def test_news_creation_moves_under_hoi4_tfr(self):
+        from hoi4_handlers import mode_kb
+        await self.message("/start")
+        await self.callback("compose:more")
+        methods = [c for c in self.session.calls if isinstance(c, (SendMessage, EditMessageText))]
+        callbacks = {b.callback_data for row in methods[-1].reply_markup.inline_keyboard for b in row}
+        self.assertNotIn("compose:news", callbacks)
+        self.assertIn("hoi4:mode:new:tfr:news", {b.callback_data for row in mode_kb("new", "tfr").inline_keyboard for b in row})
+        await self.callback("compose:news")  # Historical entry button.
+        await self.callback("build:superevent:editor")
+        await self.message("Тест новости")
+        d = await self.state.get_data()
+        self.assertEqual(d["type"], "superevent")
+        self.assertEqual(d["page_data"]["hoi4_style"], "tfr")
+        self.assertEqual(d["page_data"]["hoi4_mode"], "news")
+        await self.callback("draft:back")
+        self.assertTrue((await self.state.get_data())["preview_path"])
+        await self.callback("draft:save")
+        page = (await self.db.get_user_pages(self.uid))[0]
+        self.assertEqual(page.type, "superevent")
+        self.assertEqual(page.data["hoi4_mode"], "news")
+        await self.callback(f"hoi4:media:p{page.id}")
+        self.assertTrue(any("Фото новости" in (getattr(b, "text", ""))
+                            for c in self.session.calls if getattr(c, "reply_markup", None)
+                            for row in c.reply_markup.inline_keyboard for b in row))
+
     async def test_hoi4_all_wizards_reach_preview(self):
         from templates import get_template
         await self.message("/start")
-        for style,mode in (("tno","state"),("tno","event"),("tno","news"),("tno","all"),("tfr","state"),("tfr","event"),("tfr","all")):
+        for style,mode in (("tno","state"),("tno","event"),("tno","news"),("tno","all"),("tfr","state"),("tfr","event"),("tfr","news"),("tfr","all")):
             with self.subTest(style=style,mode=mode):
                 await self.callback(f"hoi4:mode:new:{style}:{mode}")
                 await self.callback("build:superevent:wizard")

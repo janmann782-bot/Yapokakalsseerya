@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 11
+LAYOUT_VERSION = 12
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -61,8 +61,8 @@ def media_roles(data):
         )
     if mode in ("event", "all"):
         roles["event"] = "Картинка суперевента"
-    if mode == "news" or (mode == "all" and data.get("hoi4_style") == "tno"):
-        roles["news"] = "Фото газеты"
+    if mode in ("news", "all"):
+        roles["news"] = "Фото газеты" if data.get("hoi4_style") == "tno" else "Фото новости"
     return roles
 
 
@@ -533,20 +533,42 @@ def news_card(data, root):
     return canvas
 
 
+def tfr_news_card(data, root):
+    """The former standalone TFR news frame, with HOI4 fields and media roles."""
+    from hoi4_limits import news_data_error
+
+    error = news_data_error("superevent", data)
+    if error:
+        raise Hoi4TextOverflow(error)
+    with Image.open(Path(__file__).resolve().parent / "tfr_frame.png") as source:
+        foreground = source.convert("RGBA")
+    canvas = Image.new("RGBA", foreground.size, "black")
+    photo(canvas, data, root, "news", (362, 599, 1159, 898))
+    canvas.alpha_composite(foreground)
+    for key, box, size, fill, align in (
+        ("news_title", (280, 480, 1256, 585), 48, "#141414", "center"),
+        ("news_body", (280, 930, 1256, 1560), 32, "#191919", "left"),
+        ("news_button", (443, 1610, 1100, 1677), 32, "#d2e6c8", "center"),
+    ):
+        text_box(canvas, data.get(key), box, "tfr", size, key,
+                 minimum=22, fill=fill, align=align,
+                 valign="top" if key == "news_body" else "center")
+    # Remove the transparent margins around the original browser frame.
+    return canvas.crop(foreground.getchannel("A").getbbox())
+
+
 def render_hoi4(page, root, output, quality="high"):
     style = style_for(page)
     data = dict(page.data or {})
     data.setdefault("title", page.title)
     data["hoi4_style"] = style
     mode = hoi4_mode(data)
-    if mode == "news" and style != "tno":
-        raise ValueError("Газета доступна в TNO. Выбери оформление TNO")
     if mode == "state":
         result = state_card(data, root, style)
     elif mode == "event":
         result = event_card(data, root, style)
     elif mode == "news":
-        result = news_card(data, root)
+        result = news_card(data, root) if style == "tno" else tfr_news_card(data, root)
     else:
         state = state_card(data, root, style)
         event = event_card(data, root, style)
@@ -556,12 +578,15 @@ def render_hoi4(page, root, output, quality="high"):
             result.alpha_composite(event, (868, 99))
             result.alpha_composite(news_card(data, root), (244, 397))
         else:
-            result = Image.new("RGBA", (2006, 1128), "black")
+            result = Image.new("RGBA", (2006, 1640), "black")
             result.alpha_composite(state, (0, 0))
             result.alpha_composite(event, (954, 374))
+            news = tfr_news_card(data, root)
+            news.thumbnail((900, 1104), Image.Resampling.LANCZOS)
+            result.alpha_composite(news, (20, 518))
         # Both combined layouts leave this corner black and clear of cards.
         ImageDraw.Draw(result).text(
-            (32, result.height - 48), "Aurelia INFOBOX",
+            (32 if style == "tno" else 1000, result.height - 48), "Aurelia INFOBOX",
             font=font(style, 24), fill="#737b80",
         )
     if quality == "standard" and result.width > 1280:

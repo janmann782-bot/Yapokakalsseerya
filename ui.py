@@ -121,7 +121,7 @@ def main_menu() -> ReplyKeyboardMarkup:
 
 
 def types_kb(*, admin: bool = False) -> InlineKeyboardMarkup:
-    ordinary = [ib(x.label, f"compose:{x.key}") for x in TEMPLATES.values() if x.key not in SPECIAL_TYPES]
+    ordinary = [ib(x.label, f"compose:{x.key}") for x in TEMPLATES.values() if x.key not in SPECIAL_TYPES and x.key != "news"]
     rows = [ordinary[i:i + 2] for i in range(0, len(ordinary), 2)]
     rows.append([ib("Еще форматы", "compose:more")])
     rows.append([ib("В меню", "menu:home")])

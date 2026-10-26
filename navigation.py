@@ -73,11 +73,15 @@ async def choose_method(q: CallbackQuery, state: FSMContext):
     kind = q.data.split(":")[1]
     if kind == "more":
         from ui import SPECIAL_TYPES
-        rows = [[ib(TEMPLATES[k].label, f"compose:{k}")] for k in TEMPLATES if k in SPECIAL_TYPES]
+        rows = [[ib(TEMPLATES[k].label, f"compose:{k}")] for k in TEMPLATES if k in SPECIAL_TYPES and k != "news"]
         rows.append([ib("К основным форматам", "nav:create")])
         await screen(q, "<b>Еще форматы</b>\nВыбери что собираешь", InlineKeyboardMarkup(inline_keyboard=rows))
         return
     if kind not in TEMPLATES:
+        return
+    if kind == "news":
+        await state.update_data(hoi4_selection={"hoi4_style": "tfr", "hoi4_mode": "news"})
+        await method_screen(q, "superevent")
         return
     if kind == "superevent":
         from hoi4_handlers import style_kb
@@ -101,6 +105,9 @@ async def method_screen(q, kind):
 async def begin_method(q: CallbackQuery, state: FSMContext, db, cfg):
     await q.answer()
     prefix, kind, method = q.data.split(":")
+    if kind == "news":
+        kind = "superevent"
+        await state.update_data(hoi4_selection={"hoi4_style": "tfr", "hoi4_mode": "news"})
     if kind not in TEMPLATES or method not in {"wizard", "paste", "editor"}:
         return
     selection = (await state.get_data()).get("hoi4_selection") if kind == "superevent" else None

@@ -45,9 +45,8 @@ def style_kb(prefix):
 
 def mode_kb(prefix, style):
     rows = [
-        [ib(label, f"hoi4:mode:{prefix}:{style}:{key}")]
+        [ib("Новости" if key == "news" and style == "tfr" else label, f"hoi4:mode:{prefix}:{style}:{key}")]
         for key, label in HOI4_MODES.items()
-        if key != "news" or style == "tno"
     ]
     rows.append([ib("Другой стиль", f"hoi4:options:{prefix}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -154,7 +153,6 @@ async def choose_mode(q, state, db):
     if (
         style not in ("tno", "tfr")
         or mode not in HOI4_MODES
-        or (mode == "news" and style != "tno")
     ):
         return
     page, data = await target_data(scope, state, db, q.from_user.id)
