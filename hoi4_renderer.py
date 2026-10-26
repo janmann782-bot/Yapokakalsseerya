@@ -317,10 +317,10 @@ def party_display_name(value, style, box, size):
     if face.getlength(value) <= box[2] - box[0]:
         return value
     # An explicit acronym at the end of the name beats generated initials.
-    explicit = re.search(r"\\(([A-Za-zА-Яа-яЁё]{2,8})\\)$", value)
+    explicit = re.search(r"\(([A-Za-zА-Яа-яЁё]{2,8})\)$", value)
     if explicit and face.getlength(explicit.group(1)) <= box[2] - box[0]:
         return explicit.group(1)
-    words = re.findall(r"[^\\W\\d_][^\\W_]*", value, re.UNICODE)
+    words = re.findall(r"[^\W\d_][^\W_]*", value, re.UNICODE)
     if len(words) >= 3:
         initials = "".join(word[0].upper() for word in words)
         if len(initials) <= 8 and face.getlength(initials) <= box[2] - box[0]:
