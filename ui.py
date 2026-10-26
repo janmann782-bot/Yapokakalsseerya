@@ -31,7 +31,7 @@ SUPEREVENT = "🎮 HOI4 Карточка (бета)"
 T = TypeVar("T")
 
 # типы с одной картинкой без своих полей
-TFR_SIMPLE_TYPES = frozenset({"news", "superevent", "mirotorets"})
+TFR_SIMPLE_TYPES = frozenset({"news", "superevent", "mirotorets", "stamp"})
 SPECIAL_TYPES = frozenset({"news", "mirotorets"})
 NO_IMAGE_TYPES = frozenset()
 
@@ -545,6 +545,21 @@ async def send_png(
     f = FSInputFile(path)
     if document:
         return await msg.answer_document(f, caption=caption[:1024], reply_markup=markup)
+    # Telegram photos flatten alpha; put a white page behind the preview only.
+    # The download above continues to send the original transparent PNG.
+    from PIL import Image
+    from io import BytesIO
+    from aiogram.types import BufferedInputFile
+    try:
+        with Image.open(path) as source:
+            if "A" in source.getbands() and source.getchannel("A").getextrema()[0] < 255:
+                preview = Image.new("RGBA", source.size, "white")
+                preview.alpha_composite(source.convert("RGBA"))
+                stream = BytesIO()
+                preview.convert("RGB").save(stream, "PNG")
+                f = BufferedInputFile(stream.getvalue(), filename="preview.png")
+    except OSError:
+        pass
     try:
         return await msg.answer_photo(f, caption=caption[:1024], reply_markup=markup)
     except TelegramBadRequest:

@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup
 
 from drafts import checkpoint, park_flow
 from locales import tr
-from hoi4_limits import news_data_error
+from field_validation import data_error
 from parser import parse_text
 from states import Navigation, NewPage, clear_flow
 from templates import TEMPLATES, get_template
@@ -143,7 +143,7 @@ async def paste_data(msg: Message, state: FSMContext, db, cfg):
     d = await state.get_data()
     kind = d["paste_type"]
     parsed = parse_text("Тип: " + get_template(kind).label + "\n" + msg.text)
-    error = news_data_error(parsed.type,parsed.data)
+    error = data_error(parsed.type,parsed.data)
     if error:
         await msg.answer(error)
         return
@@ -157,7 +157,7 @@ async def paste_data(msg: Message, state: FSMContext, db, cfg):
     if parsed.warnings:
         extra += tr("quick_warnings", lines="\n".join(parsed.warnings[:6]))
     quick = tr("quick_found", count=parsed.recognized, type=get_template(parsed.type).label, summary=quick_summary(parsed), extra=extra)
-    await state.set_data(dict(type=parsed.type, page_data=parsed.data, theme=("tno" if parsed.data.get("hoi4_style") == "tno" else "fire_rises") if kind == "superevent" else settings.theme if theme_allowed(settings.theme, parsed.type) else "light", quick_text=quick[:4000], max_image_mb=cfg.max_image_mb))
+    await state.set_data(dict(type=parsed.type, page_data=parsed.data, theme=("tno" if parsed.data.get("hoi4_style") == "tno" else "fire_rises") if kind == "superevent" else "stamp" if kind == "stamp" else settings.theme if theme_allowed(settings.theme, parsed.type) else "light", quick_text=quick[:4000], max_image_mb=cfg.max_image_mb))
     await show_quick(msg, state)
 
 

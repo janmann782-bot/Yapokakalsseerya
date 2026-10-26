@@ -14,7 +14,7 @@ from aiogram.types import CallbackQuery, Message
 from config import Config
 from db import Db
 from locales import tr
-from hoi4_limits import news_field_error, news_data_error, news_prompt
+from field_validation import field_error, data_error, field_prompt
 from log_sink import (
     send_created_page_log,
     spawn_cancel,
@@ -105,8 +105,8 @@ async def ask_field(msg: Message, state: FSMContext) -> None:
             return
         await state.update_data(image_mode="initial")
         count = len(page_images(d.get("page_data") or {}))
-        max_count = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
-        if ptype in ("news", "superevent", "mirotorets"):
+        max_count = 1 if ptype in ("news", "superevent", "mirotorets", "stamp") else MAX_PAGE_IMAGES
+        if ptype in ("news", "superevent", "mirotorets", "stamp"):
             text = (
                 f""
                 f"Картинка\n"
@@ -130,9 +130,9 @@ async def ask_field(msg: Message, state: FSMContext) -> None:
     hint = tr("field_hint") if f.multiline else ""
     s = tr("field_prompt", label=f.label, hint=hint, step=i + 1, total=len(tpl.wizard))
     if f.key == "title":
-        s = tr("superevent_name_prompt" if tpl.key == "superevent" else "name_prompt")
+        s = tr("superevent_name_prompt" if tpl.key == "superevent" else "stamp_name_prompt" if tpl.key == "stamp" else "name_prompt")
     current = (d.get("page_data") or {}).get(f.key)
-    s += news_prompt(d["type"],f.key,current)
+    s += field_prompt(d["type"],f.key,current)
     if current:
         # value в current_value уже в blockquote - экранируем HTML
         from html import escape
@@ -320,6 +320,8 @@ async def begin_new_page(msg: Message, state: FSMContext, db: Db, cfg: Config, u
         theme = "fire_rises"
     elif kind == "mirotorets":
         theme = "mirotorets"
+    elif kind == "stamp":
+        theme = "stamp"
     elif kind == "parliament":
         theme = "light"
     else:
@@ -369,7 +371,7 @@ async def take_field(msg: Message, state: FSMContext) -> None:
 
     f = tpl.get_field(tpl.wizard[i])
     s = msg.text.strip()
-    error = news_field_error(d["type"], f.key, s)
+    error = field_error(d["type"], f.key, s)
     if error:
         await flow_show(msg,state,error,wizard_kb(can_skip=f.key != "title"))
         return
@@ -603,14 +605,14 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
     data = d.get("page_data") or {}
     images = page_images(data)
     ptype = d.get("type") or ""
-    max_count = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
+    max_count = 1 if ptype in ("news", "superevent", "mirotorets", "stamp") else MAX_PAGE_IMAGES
     if ptype == "parliament" and d.get("image_mode") == "parliament_assets":
         target = str(d.get("parliament_target") or "").strip()
         if not target:
             await _show_parliament_assets(msg, state, "Сначала выбери флаг страны или партию")
             return
     # для news/superevent при новой фотке просто заменяем, не блокируем
-    if len(images) >= max_count and ptype not in ("news", "superevent", "mirotorets"):
+    if len(images) >= max_count and ptype not in ("news", "superevent", "mirotorets", "stamp"):
         if ptype == "parliament" and d.get("image_mode") == "parliament_assets":
             await _show_parliament_assets(msg, state, f"Достигнут лимит {max_count}")
         else:
@@ -653,7 +655,7 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
 
     await db.add_media(msg.from_user.id, info.path.name, info.width, info.height)
     # news - только одна картинка, старую выкидываем
-    if ptype in ("news", "superevent", "mirotorets"):
+    if ptype in ("news", "superevent", "mirotorets", "stamp"):
         images = [info.path.name]
     else:
         images.append(info.path.name)
@@ -689,7 +691,7 @@ async def take_image(msg: Message, state: FSMContext, bot: Bot, db: Db, cfg: Con
         await _show_parliament_assets(msg, state, f"Сохранил\n{label}")
         return
 
-    if ptype in ("news", "superevent", "mirotorets"):
+    if ptype in ("news", "superevent", "mirotorets", "stamp"):
         await state.update_data(caption_path=None, caption_i=None)
         await flow_show(
             msg,
@@ -785,7 +787,7 @@ async def draft_theme(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config, 
                 return
             await state.update_data(image_mode="initial")
             cnt = len(page_images(d.get("page_data") or {}))
-            max_c = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
+            max_c = 1 if ptype in ("news", "superevent", "mirotorets", "stamp") else MAX_PAGE_IMAGES
             await q.message.answer(tr('send_image', label=tpl.image_label.lower(), max_mb=cfg.max_image_mb, count=cnt, max_count=max_c), reply_markup=image_kb(cnt, ptype), parse_mode='HTML')
         elif cur == NewPage.quick.state:
             await show_quick(q.message, state)
@@ -854,7 +856,7 @@ async def edit_draft_standard(q: CallbackQuery, state: FSMContext) -> None:
     f = tpl.fields[i]
     await state.update_data(edit_kind="standard", edit_key=f.key, edit_label=f.label)
     await state.set_state(NewPage.edit_value)
-    await flow_show(q, state, tr("edit_value", label=f.label)+news_prompt(d["type"],f.key,(d.get("page_data") or {}).get(f.key)), edit_value_kb("draft:fields"))
+    await flow_show(q, state, tr("edit_value", label=f.label)+field_prompt(d["type"],f.key,(d.get("page_data") or {}).get(f.key)), edit_value_kb("draft:fields"))
 
 
 @router.callback_query(F.data.startswith("dc:"))
@@ -902,7 +904,7 @@ async def take_draft_edit(msg: Message, state: FSMContext, db: Db, cfg: Config, 
     data = d.get("page_data") or {}
     kind = d.get("edit_kind")
     value = "" if s == "-" else s
-    error = news_field_error(d.get("type"),d.get("edit_key") if kind=="standard" else None,value)
+    error = field_error(d.get("type"),d.get("edit_key") if kind=="standard" else None,value)
     if error:
         await msg.answer(error,reply_markup=edit_value_kb("draft:fields"))
         return
@@ -941,7 +943,7 @@ async def add_draft_custom(q: CallbackQuery, state: FSMContext) -> None:
     if not d.get("type"):
         await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
-    if d.get("type") in ("news", "superevent", "mirotorets"):
+    if d.get("type") in ("news", "superevent", "mirotorets", "stamp"):
         await q.message.answer("Тут свои поля не нужны")
         return
     if len((d.get("page_data") or {}).get("custom_fields") or []) >= 20:
@@ -983,7 +985,7 @@ async def add_draft_section(q: CallbackQuery, state: FSMContext) -> None:
     if not d.get("type"):
         await q.message.answer(tr('draft_missing'), parse_mode='HTML')
         return
-    if d.get("type") in ("news", "superevent", "mirotorets"):
+    if d.get("type") in ("news", "superevent", "mirotorets", "stamp"):
         await q.message.answer("Тут свои разделы не нужны")
         return
     if len((d.get("page_data") or {}).get("sections") or []) >= 6:
@@ -1024,10 +1026,10 @@ async def replace_draft_image(q: CallbackQuery, state: FSMContext, cfg: Config) 
         await _show_parliament_assets(q.message, state, return_to="preview")
         return
     count = len(page_images(d.get("page_data") or {}))
-    max_c = 1 if ptype in ("news", "superevent", "mirotorets") else MAX_PAGE_IMAGES
+    max_c = 1 if ptype in ("news", "superevent", "mirotorets", "stamp") else MAX_PAGE_IMAGES
     await state.update_data(image_mode="draft")
     await state.set_state(NewPage.image)
-    if ptype in ("news", "superevent", "mirotorets"):
+    if ptype in ("news", "superevent", "mirotorets", "stamp"):
         text = (
             f""
             f"Картинка\n"
@@ -1175,7 +1177,7 @@ async def quick_input(msg: Message, state: FSMContext, db: Db, cfg: Config) -> N
         return
 
     parsed = parse_text(text)
-    error = news_data_error(parsed.type,parsed.data)
+    error = data_error(parsed.type,parsed.data)
     if error:
         await msg.answer(error)
         return
@@ -1202,7 +1204,7 @@ async def quick_input(msg: Message, state: FSMContext, db: Db, cfg: Config) -> N
     await state.update_data(
         type=parsed.type,
         page_data=data,
-        theme=s.theme,
+        theme="stamp" if parsed.type == "stamp" else s.theme,
         preview_path=None,
         quick_text=quick_text,
         max_image_mb=cfg.max_image_mb,

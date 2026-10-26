@@ -1350,6 +1350,9 @@ def render_pillow(
     output: str | Path,
     watermark: bool = True,
 ) -> Path:
+    if page.type == "stamp":
+        from stamp_renderer import render_stamp
+        return render_stamp(page, work_dir, output, quality)
     if page.theme == "olddoc":
         from olddoc import render_olddoc
 

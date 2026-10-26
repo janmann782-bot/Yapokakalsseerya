@@ -177,10 +177,13 @@ MIROTORETS = Theme(
 
 TNO = replace(FIRE_RISES, key="tno", name="TNO")
 
-THEMES = {x.key: x for x in (LIGHT, DARK, AURELIA, OLDDOC, FIRE_RISES, TNO, MIROTORETS)}
+STAMP = replace(LIGHT, key="stamp", name="Печать")
+
+THEMES = {x.key: x for x in (LIGHT, DARK, AURELIA, OLDDOC, FIRE_RISES, TNO, MIROTORETS, STAMP)}
 
 # Theme available only for these page types (missing key = all types)
 THEME_PAGE_TYPES: dict[str, set[str] | None] = {
+    "stamp": {"stamp"},
     "olddoc": {"country", "region", "battle", "person"},
     "fire_rises": {"news", "superevent"},
     "tno": {"superevent"},

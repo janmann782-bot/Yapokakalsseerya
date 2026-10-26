@@ -974,6 +974,10 @@ async def render_page(
         page.data = {}
     page.data["_font_key"] = font_key or "default"
     page.data["_font_user_id"] = user_id
+    if page.type == "stamp":
+        from stamp_renderer import render_stamp, STAMP_LAYOUT_VERSION
+        page.data["_stamp_layout"] = STAMP_LAYOUT_VERSION
+        return await asyncio.to_thread(render_stamp, page, root, path, quality)
     if page.type == "superevent":
         from hoi4_renderer import LAYOUT_VERSION
         page.data["_hoi4_layout"] = LAYOUT_VERSION

@@ -7,6 +7,9 @@ from templates import TEMPLATES, get_template
 from hoi4_limits import NEWS_FIELDS
 
 TYPE_ALIASES = {
+    "печать": "stamp",
+    "stamp": "stamp",
+    "штамп": "stamp",
     "hoi4 карточка (бета)": "superevent",
     "hoi4": "superevent",
     "superevent": "superevent",
@@ -84,6 +87,11 @@ TYPE_ALIASES = {
 
 
 ALIASES = {
+    "название печати": "title",
+    "текст сверху": "stamp_top",
+    "текст снизу": "stamp_bottom",
+    "текст в центре": "stamp_center",
+    "цвет печати": "stamp_color",
     "заголовок новости": "news_title",
     "текст новости": "news_body",
     "текст на кнопке новости": "news_button",
@@ -238,6 +246,8 @@ def infer_type(keys: set[str]) -> str:
         "administrative_divisions", "head_of_region", "legislature", "executive_body",
         "region_code", "website",
     }
+    if keys & {"stamp_top", "stamp_bottom", "stamp_center", "stamp_color"}:
+        return "stamp"
     scores = {
         "country": 2 * len(keys & {"capital", "government", "currency", "head_of_state", "head_of_government"})
         + len(keys & {"population", "area"}),
@@ -306,6 +316,8 @@ def parse_text(text: str) -> ParsedPage:
         limit = 3800 if key == "description" else 1000
         if key == "title":
             limit = 250
+        if page_type == "stamp" and key in ("stamp_top", "stamp_bottom", "stamp_center", "stamp_color"):
+            limit = None
         if page_type == "superevent" and key in (*NEWS_FIELDS, "parties"):
             limit = None  # The input handlers reject overflow without losing any text.
         if limit is not None and len(value) > limit:
