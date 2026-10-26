@@ -158,7 +158,7 @@ class StampTests(unittest.IsolatedAsyncioTestCase):
                 only=stamp_image(data,root)
                 with_text=stamp_image(dict(data,stamp_center="ЭТОТ ТЕКСТ СКРЫТ"),root)
                 self.assertEqual(only.tobytes(),with_text.tobytes())
-            for key,value in (("stamp_rings","3"),("stamp_width","0"),("stamp_angle","31"),("stamp_separator","треугольник")):
+            for key,value in (("stamp_rings","7"),("stamp_width","0"),("stamp_angle","31"),("stamp_separator","треугольник")):
                 self.assertIsNotNone(field_error("stamp",key,value))
 
     def test_document_placement_is_lossless_outside_stamp(self):
@@ -184,6 +184,49 @@ class StampTests(unittest.IsolatedAsyncioTestCase):
             read_document(b"not an image")
         with self.assertRaises(ValueError):
             place_stamp(document,stamp,9,25)
+
+    def test_centered_visible_ink_and_weight(self):
+        from stamp_renderer import center_text, ROOT
+        for filename in ("DejaVuSans-Bold.ttf","LiberationSerif-Regular.ttf"):
+            for text in ("СЕКРЕТНО", "КОПИЯ\nВЕРНА", "ФОНД\nНАЦИОНАЛЬНОГО\nВЫБОРА"):
+                for strength in (0,3):
+                    image=Image.new("RGBA",(1024,640))
+                    center_text(image,text,(85,80,939,560),(0,0,255,255),ROOT/filename,120,strength)
+                    x0,y0,x1,y1=image.getchannel("A").getbbox()
+                    self.assertLessEqual(abs((x0+x1)/2-512),1)
+                    self.assertLessEqual(abs((y0+y1)/2-320),1)
+        with tempfile.TemporaryDirectory() as tmp:
+            data={"stamp_shape":"прямоугольная","stamp_center":"СЕКРЕТНО","stamp_rings":"0"}
+            im=stamp_image(data,Path(tmp))
+            x0,y0,x1,y1=im.getchannel("A").getbbox()
+            self.assertLessEqual(abs((x0+x1)/2-512),1)
+            self.assertLessEqual(abs((y0+y1)/2-320),1)
+            normal=stamp_image(dict(data,stamp_weight="400"),Path(tmp))
+            heavy=stamp_image(dict(data,stamp_weight="900"),Path(tmp))
+            self.assertGreater(sum(heavy.getchannel("A").tobytes()),sum(normal.getchannel("A").tobytes()))
+
+    def test_six_frames_and_border_styles(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for shape in ("круглая","овальная","прямоугольная"):
+                base={"stamp_shape":shape,"stamp_separator":"нет","stamp_width":"5"}
+                self.assertIsNone(stamp_image(dict(base,stamp_rings="0"),root).getbbox())
+                for count in range(1,7):
+                    image=stamp_image(dict(base,stamp_rings=str(count)),root)
+                    alpha=image.getchannel("A")
+                    # Six distinct bands on the vertical centerline, with gaps.
+                    stop=512 if shape=="круглая" else 370 if shape=="овальная" else 130
+                    values=[bool(alpha.getpixel((512,y))) for y in range(30,stop)]
+                    bands=sum(v and (i==0 or not values[i-1]) for i,v in enumerate(values))
+                    self.assertEqual(bands,count,(shape,count))
+                solid=stamp_image(dict(base,stamp_rings="3"),root)
+                for style in ("пунктир","точки"):
+                    patterned=stamp_image(dict(base,stamp_rings="3",stamp_border_style=style),root)
+                    self.assertLess(sum(patterned.getchannel("A").tobytes()),sum(solid.getchannel("A").tobytes()))
+                # Thick nested frames keep the content area usable.
+                stamp_image(dict(base,stamp_rings="6",stamp_width="24",stamp_center="ФНВ"),root)
+            for key,value in (("stamp_weight","399"),("stamp_weight","901"),("stamp_rings","7"),("stamp_width","25")):
+                self.assertIsNotNone(data_error("stamp",{key:value}))
 
     def test_custom_symbol_is_tinted_and_white_paper_removed(self):
         with tempfile.TemporaryDirectory() as tmp:

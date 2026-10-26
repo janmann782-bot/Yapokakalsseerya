@@ -439,6 +439,13 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
             await self.callback(f"stamp:option:d:{key}")
             await self.callback(f"stamp:pick:d:{key}:{index}")
             self.assertEqual((await self.state.get_data())["page_data"][key],OPTIONS[key][index][1])
+        for key,index in (("stamp_weight",5),("stamp_border_style",1),("stamp_rings",5)):
+            await self.callback(f"stamp:option:d:{key}")
+            await self.callback(f"stamp:pick:d:{key}:{index}")
+            self.assertEqual((await self.state.get_data())["page_data"][key],OPTIONS[key][index][1])
+        await self.callback("stamp:custom:d:stamp_weight")
+        await self.message("850")
+        self.assertEqual((await self.state.get_data())["page_data"]["stamp_weight"],"850")
         await self.callback("stamp:custom:d:stamp_color")
         await self.message("#456BBC")
         self.assertEqual((await self.state.get_data())["page_data"]["stamp_color"],"#456BBC")

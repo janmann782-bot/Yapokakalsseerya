@@ -204,7 +204,7 @@ async def option(q: CallbackQuery, state: FSMContext, db: Db):
     if key == "stamp_logo_mode":
         text += "\nЗагрузи PNG через «Картинки», затем выбери расположение герба"
     base = InlineKeyboardMarkup(inline_keyboard=[[ib("К настройкам", f"stamp:options:{scope}")]])
-    if key in ("stamp_color", "stamp_wear", "stamp_width", "stamp_angle"):
+    if key in ("stamp_color", "stamp_wear", "stamp_width", "stamp_angle", "stamp_weight", "stamp_rings"):
         base.inline_keyboard.insert(0, [ib("Свое значение", f"stamp:custom:{scope}:{key}")])
     await q.message.answer(text, reply_markup=option_kb(key,scope,base))
 
@@ -216,14 +216,14 @@ async def custom_option(q: CallbackQuery, state: FSMContext, db: Db):
     from stamp_controls import LABELS
     _,_,scope,key = q.data.split(":")
     p = await target(scope, state, db, q.from_user.id)
-    if not p or key not in ("stamp_color", "stamp_wear", "stamp_width", "stamp_angle"):
+    if not p or key not in ("stamp_color", "stamp_wear", "stamp_width", "stamp_angle", "stamp_weight", "stamp_rings"):
         await q.answer("Открой настройки заново", show_alert=True)
         return
     await q.answer()
     await state.update_data(edit_kind="standard" if scope == "d" else "s", edit_key=key,
                             edit_label=LABELS[key], page_id=p.id)
     await state.set_state(NewPage.edit_value if scope == "d" else EditPage.value)
-    hint = {"stamp_width":"От 1 до 16", "stamp_angle":"От -30 до 30 градусов"}.get(key, "")
+    hint = {"stamp_width":"От 1 до 24", "stamp_angle":"От -30 до 30 градусов"}.get(key, "")
     await q.message.answer(LABELS[key]+"\n"+hint+field_prompt("stamp",key), reply_markup=back_kb(scope))
 
 

@@ -11,7 +11,7 @@ from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFont, ImageOps, I
 
 from media import page_images
 
-STAMP_LAYOUT_VERSION = 5
+STAMP_LAYOUT_VERSION = 6
 ROOT = Path(__file__).resolve().parent
 LIMITS = {"stamp_top": 60, "stamp_bottom": 60, "stamp_center": 100}
 COLORS = {"синий": "#164a9b", "синяя": "#164a9b", "черный": "#111111",
@@ -87,14 +87,16 @@ def worn_ink(canvas, level=35, seed="180"):
 def stamp_font_path(data, root):
     from fonts_catalog import resolve_font_files, resolve_user_font, list_bundled_families
     key = str(data.get("stamp_font") or data.get("_font_key") or "default")
+    from stamp_controls import number_option
+    weight = number_option("stamp_weight", data.get("stamp_weight"))
     if key == "default":
-        return ROOT / "DejaVuSans-Bold.ttf"
+        return ROOT / ("DejaVuSans-Bold.ttf" if weight >= 600 else "DejaVuSans.ttf")
     if key.startswith("user:"):
         uid = data.get("_font_user_id")
         path = resolve_user_font(root, int(uid), key) if uid is not None else None
     elif key in {k for k, _ in list_bundled_families()}:
         regular, bold = resolve_font_files(key)
-        path = bold or regular
+        path = (bold or regular) if weight >= 600 else regular
     else:
         path = None
     if path is None:
@@ -102,14 +104,65 @@ def stamp_font_path(data, root):
     return path
 
 
+
+def stroke_units(data):
+    from stamp_controls import number_option
+    if not data.get("stamp_weight"):
+        return 0
+    weight = number_option("stamp_weight", data.get("stamp_weight"))
+    key = str(data.get("stamp_font") or data.get("_font_key") or "default")
+    # Imported fonts need synthetic weight because only one face is uploaded.
+    if key.startswith("user:"):
+        return (weight-400)/100
+    return (weight-600)/100 if weight >= 600 else (weight-400)/100*.5
+
+
+def stroke_width(size, strength):
+    return math.ceil(size/66*strength) if strength else 0
+
+
+def frame(draw, box, width, style="сплошная", ellipse=False, color=None):
+    if style == "сплошная":
+        (draw.ellipse if ellipse else draw.rectangle)(box, outline=color, width=width)
+        return
+    x0,y0,x1,y1=box
+    inset=width/2
+    x0,y0,x1,y1=x0+inset,y0+inset,x1-inset,y1-inset
+    if ellipse:
+        rx,ry=(x1-x0)/2,(y1-y0)/2
+        cx,cy=(x0+x1)/2,(y0+y1)/2
+        steps=max(100,math.ceil(math.pi*(rx+ry)))
+        points=[(cx+rx*math.cos(i*2*math.pi/steps),cy+ry*math.sin(i*2*math.pi/steps)) for i in range(steps+1)]
+    else:
+        points=[(x0,y0),(x1,y0),(x1,y1),(x0,y1),(x0,y0)]
+    # Walk the whole perimeter so spacing stays continuous through corners.
+    period=max(24,width*3) if style=="пунктир" else max(12,width*2.5)
+    distance=0
+    next_dot=0
+    for a,b in zip(points,points[1:]):
+        length=math.dist(a,b)
+        count=max(1,math.ceil(length/2))
+        for j in range(count):
+            t=j/count
+            p=(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t)
+            end=((a[0]+(b[0]-a[0])*(j+1)/count),(a[1]+(b[1]-a[1])*(j+1)/count))
+            current=distance+length*t
+            if style=="пунктир" and current%period<period*.6:
+                draw.line((p,end),fill=color,width=width)
+            elif style=="точки" and current>=next_dot:
+                r=width/2
+                draw.ellipse((p[0]-r,p[1]-r,p[0]+r,p[1]+r),fill=color)
+                next_dot=current+period
+        distance+=length
+
 def face(size, font_path=None):
     return ImageFont.truetype(str(font_path or ROOT / "DejaVuSans-Bold.ttf"), size)
 
 
-def arc_font(text, font_path=None, radius=390):
+def arc_font(text, font_path=None, radius=390, strength=0):
     for size in range(58, 19, -1):
         font = face(size, font_path)
-        if sum(font.getlength(char) + 2 for char in text) <= math.radians(140) * radius:
+        if sum(font.getlength(char) + 2 + 2*stroke_width(size,strength) for char in text) <= math.radians(140) * radius:
             return font
     raise ValueError("Надпись по кругу слишком длинная. Сократи текст")
 
@@ -122,9 +175,9 @@ def stamp_field_error(page_type, key, value):
         return f"Символов: {len(text)}/{LIMITS[key]}. Сократи надпись"
     try:
         from stamp_controls import number_option, OPTIONS
-        if key in ("stamp_rings", "stamp_width", "stamp_angle"):
+        if key in ("stamp_rings", "stamp_width", "stamp_angle", "stamp_weight"):
             number_option(key, value)
-        if key in ("stamp_separator", "stamp_logo_mode") and text not in {v for _,v in OPTIONS[key]}:
+        if key in ("stamp_separator", "stamp_logo_mode", "stamp_border_style") and text not in {v for _,v in OPTIONS[key]}:
             raise ValueError("Выбери значение кнопкой")
         if key == "stamp_wear":
             wear_level({"stamp_wear": value})
@@ -141,21 +194,23 @@ def stamp_field_error(page_type, key, value):
     return None
 
 
-def arc_text(canvas, text, bottom, color, font_path=None, oval=False):
+def arc_text(canvas, text, bottom, color, font_path=None, oval=False, strength=0):
     text = " ".join(str(text or "").upper().split())
     if not text:
         return
     radius = 330 if oval else 390
-    font = arc_font(text, font_path, radius)
-    advances = [font.getlength(char) + 2 for char in text]
+    font = arc_font(text, font_path, radius, strength)
+    sw = stroke_width(font.size,strength)
+    advances = [font.getlength(char) + 2 + 2*sw for char in text]
     offset = -sum(advances) / 2
     ascent, descent = font.getmetrics()
     for char, advance in zip(text, advances):
         angle = (90 - math.degrees((offset + advance/2) / radius) if bottom else
                  -90 + math.degrees((offset + advance/2) / radius))
         if not char.isspace():
-            glyph = Image.new("RGBA", (math.ceil(advance) + 20, ascent + descent + 20))
-            ImageDraw.Draw(glyph).text((10, 10 + ascent), char, font=font, fill=color, anchor="ls")
+            bbox = font.getbbox(char, stroke_width=sw)
+            glyph = Image.new("RGBA", (bbox[2]-bbox[0]+4,bbox[3]-bbox[1]+4))
+            ImageDraw.Draw(glyph).text((2-bbox[0],2-bbox[1]), char, font=font, fill=color, stroke_width=sw, stroke_fill=color)
             radians = math.radians(angle)
             tangent = math.degrees(math.atan2((270 if oval else 390)*math.cos(radians), -390*math.sin(radians)))
             rotation = 180-tangent if bottom else -tangent
@@ -166,7 +221,7 @@ def arc_text(canvas, text, bottom, color, font_path=None, oval=False):
         offset += advance
 
 
-def center_text(canvas, text, box, color, font_path=None, max_size=66):
+def center_text(canvas, text, box, color, font_path=None, max_size=66, strength=0):
     from hoi4_renderer import wrap
 
     if not str(text or "").strip():
@@ -175,50 +230,81 @@ def center_text(canvas, text, box, color, font_path=None, max_size=66):
     x0, y0, x1, y1 = box
     for size in range(max_size, 19, -1):
         font = face(size, font_path)
-        if any(font.getlength(word) > x1-x0 for word in text.split()):
+        sw = stroke_width(size,strength)
+        if any(font.getlength(word)+2*sw > x1-x0 for word in text.split()):
             continue
-        lines = wrap(text, font, x1-x0)
-        step = sum(font.getmetrics()) + 6
-        if len(lines) * step <= y1-y0:
+        lines = wrap(text, font, x1-x0-2*sw)
+        boxes = [font.getbbox(line,stroke_width=sw) for line in lines]
+        gap = max(6,round(size*.22))
+        height = sum(b[3]-b[1] for b in boxes)+gap*(len(lines)-1)
+        if height <= y1-y0 and all(b[2]-b[0] <= x1-x0 for b in boxes):
             break
     else:
         raise ValueError("Центральная надпись слишком длинная. Сократи текст")
-    draw = ImageDraw.Draw(canvas)
-    y = y0 + (y1-y0 - len(lines)*step)//2
-    for line in lines:
-        draw.text(((x0+x1-font.getlength(line))/2, y), line, font=font, fill=color, anchor="lt")
-        y += step
+    # Font metrics can still include empty bearing pixels. Rasterize and crop
+    # the actual ink before placing the complete multiline block in its box.
+    block_width=max(b[2]-b[0] for b in boxes)
+    block=Image.new("RGBA",(math.ceil(block_width)+8,math.ceil(height)+8))
+    draw=ImageDraw.Draw(block)
+    y=4
+    for line,bbox in zip(lines,boxes):
+        x=4+(block_width-(bbox[2]-bbox[0]))/2
+        draw.text((round(x-bbox[0]),round(y-bbox[1])),line,font=font,fill=color,
+                  stroke_width=sw,stroke_fill=color)
+        y+=bbox[3]-bbox[1]+gap
+    bounds=block.getchannel("A").getbbox()
+    if bounds:
+        block=block.crop(bounds)
+        canvas.alpha_composite(block,(round((x0+x1-block.width)/2),round((y0+y1-block.height)/2)))
 
 
 def stamp_image(data, root):
-    for key in (*LIMITS, "stamp_color", "stamp_shape", "stamp_texture", "stamp_wear", "stamp_rings", "stamp_width", "stamp_separator", "stamp_angle", "stamp_logo_mode"):
+    for key in (*LIMITS, "stamp_color", "stamp_shape", "stamp_texture", "stamp_wear", "stamp_rings", "stamp_width", "stamp_separator", "stamp_angle", "stamp_logo_mode", "stamp_weight", "stamp_border_style"):
         error = stamp_field_error("stamp", key, data.get(key))
         if error:
             raise ValueError(error)
     color = ink_color(data.get("stamp_color"))
     font_path = stamp_font_path(data, root)
+    strength = stroke_units(data)
     from stamp_controls import number_option
     shape = stamp_option("stamp_shape", data.get("stamp_shape"))
     rectangular, oval = shape == "rectangle", shape == "oval"
     rings = number_option("stamp_rings", data.get("stamp_rings"))
     width = number_option("stamp_width", data.get("stamp_width"))
+    style = data.get("stamp_border_style") or "сплошная"
     height = 640 if rectangular else 740 if oval else 1024
     canvas = Image.new("RGBA", (1024, height))
     draw = ImageDraw.Draw(canvas)
     if rectangular:
-        draw.rectangle((35, 35, 989, 605), outline=color, width=width)
-        if rings == 2:
-            draw.rectangle((49, 49, 975, 591), outline=color, width=max(1,width//2))
+        spacing=max(14,width+5)
+        for i in range(rings):
+            inset=35+i*spacing
+            frame(draw,(inset,inset,1024-inset,640-inset),width,style,color=color)
+        # Keep every text area inside the innermost frame, even with six thick frames.
+        content_inset=max(65,35+max(0,rings-1)*spacing+width+16) if rings else 65
+        left,right=content_inset,1024-content_inset
+        top,bottom=content_inset,640-content_inset
+        available=bottom-top
+        header_bottom=top+available*.24
+        footer_top=bottom-available*.2
         if data.get("stamp_top"):
-            draw.line((65, 200, 959, 200), fill=color, width=max(1,width//2))
+            draw.line((left,header_bottom,right,header_bottom),fill=color,width=max(1,width//2))
         if data.get("stamp_bottom"):
-            draw.line((65, 495, 959, 495), fill=color, width=max(1,width//2))
-        center_text(canvas, data.get("stamp_top"), (75, 65, 949, 185), color, font_path)
-        center_text(canvas, data.get("stamp_bottom"), (75, 510, 949, 575), color, font_path)
+            draw.line((left,footer_top,right,footer_top),fill=color,width=max(1,width//2))
+        center_text(canvas,data.get("stamp_top"),(left,top,right,header_bottom-8),color,font_path,strength=strength)
+        center_text(canvas,data.get("stamp_bottom"),(left,footer_top+8,right,bottom),color,font_path,strength=strength)
+        body_top=header_bottom+10 if data.get("stamp_top") else top
+        body_bottom=footer_top-10 if data.get("stamp_bottom") else bottom
     else:
         cy = 370 if oval else 512
-        for rx, ry in ([(460,320 if oval else 460)] + ([(335,213 if oval else 335)] if rings == 2 else [])):
-            draw.ellipse((512-rx, cy-ry, 512+rx, cy+ry), outline=color, width=width)
+        inner_rx,inner_ry=335,(213 if oval else 335)
+        if rings:
+            frame(draw,(52,cy-(320 if oval else 460),972,cy+(320 if oval else 460)),width,style,ellipse=True,color=color)
+        for i in range(max(0,rings-1)):
+            # Extra rings grow inward, leaving a clear band for the curved text.
+            inner_rx=335-i*max(14,width+5)
+            inner_ry=(213 if oval else 335)-i*max(14,width+5)
+            frame(draw,(512-inner_rx,cy-inner_ry,512+inner_rx,cy+inner_ry),width,style,ellipse=True,color=color)
         separator = data.get("stamp_separator") or "звезды"
         for x in (122, 902):
             if separator == "точки":
@@ -227,8 +313,8 @@ def stamp_image(data, root):
                 points = [(x + (15 if i % 2 == 0 else 6) * math.cos(-math.pi/2 + i*math.pi/5),
                            cy + (15 if i % 2 == 0 else 6) * math.sin(-math.pi/2 + i*math.pi/5)) for i in range(10)]
                 draw.polygon(points, fill=color)
-        arc_text(canvas, data.get("stamp_top"), False, color, font_path, oval)
-        arc_text(canvas, data.get("stamp_bottom"), True, color, font_path, oval)
+        arc_text(canvas, data.get("stamp_top"), False, color, font_path, oval, strength)
+        arc_text(canvas, data.get("stamp_bottom"), True, color, font_path, oval, strength)
     images = page_images(data)
     has_logo = False
     if images:
@@ -244,20 +330,32 @@ def stamp_image(data, root):
                 logo.putalpha(alpha)
                 logo_only = data.get("stamp_logo_mode") == "вместо текста"
                 logo_size = (250 if rectangular else 330 if oval else 440) if logo_only else (150 if rectangular else 190 if oval else 270)
+                if rectangular:
+                    logo_size = min(logo_size, int((body_bottom-body_top)*(1 if logo_only else .52)), right-left)
+                elif rings>2:
+                    logo_size=min(logo_size,int((min(inner_rx,inner_ry)-width)*1.2*(1 if logo_only else .425)))
                 logo = ImageOps.contain(logo.crop(bounds), (logo_size, logo_size), Image.Resampling.LANCZOS)
                 logo_top = (220 if rectangular else 205 if oval else 292) if logo_only else (215 if rectangular else 200 if oval else 300)
+                if rectangular:
+                    logo_top = round((body_top+body_bottom-logo_size)/2) if logo_only else round(body_top)
+                elif rings>2:
+                    logo_top=round(cy-logo_size/2) if logo_only else round(cy-(inner_ry-width)*.60)
                 canvas.alpha_composite(logo, ((1024-logo.width)//2, logo_top + (logo_size-logo.height)//2))
                 has_logo = True
-    box = (290, 600, 734, 730) if has_logo else (280, 350, 744, 690)
+    box = (290, 600, 734, 730) if has_logo else (280, 342, 744, 682)
     if rectangular:
-        box = (85, 375, 939, 485) if has_logo else (85, 215, 939, 480)
+        box = (left,body_top+(body_bottom-body_top)*.56,right,body_bottom) if has_logo else (left,body_top,right,body_bottom)
     if oval:
         box = (290, 410, 734, 530) if has_logo else (280, 255, 744, 485)
+    if not rectangular and rings>2:
+        half_x=min(232,int((inner_rx-width)*.73))
+        half_y=min(170 if not oval else 115,int((inner_ry-width)*.60))
+        box=(512-half_x,cy if has_logo else cy-half_y,512+half_x,cy+half_y)
     plain_rect = rectangular and not data.get("stamp_top") and not data.get("stamp_bottom") and not has_logo
     if plain_rect:
-        box = (85, 80, 939, 560)
+        box = (left,top,right,bottom)
     if not (has_logo and data.get("stamp_logo_mode") == "вместо текста"):
-        center_text(canvas, data.get("stamp_center"), box, color, font_path, 120 if plain_rect else 66)
+        center_text(canvas, data.get("stamp_center"), box, color, font_path, 120 if plain_rect else 66, strength)
     level = wear_level(data)
     if level:
         canvas = worn_ink(canvas, level, data.get("stamp_seed", "180"))
