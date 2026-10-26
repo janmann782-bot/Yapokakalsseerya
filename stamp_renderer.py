@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 import os
+import random
 from pathlib import Path
 from uuid import uuid4
 
@@ -10,7 +11,7 @@ from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFont, ImageOps
 
 from media import page_images
 
-STAMP_LAYOUT_VERSION = 1
+STAMP_LAYOUT_VERSION = 2
 ROOT = Path(__file__).resolve().parent
 LIMITS = {"stamp_top": 60, "stamp_bottom": 60, "stamp_center": 100}
 COLORS = {"синий": "#164a9b", "синяя": "#164a9b", "черный": "#111111",
@@ -29,6 +30,36 @@ def ink_color(value):
         raise ValueError("Укажи цвет: синий, черный, красный, зеленый, фиолетовый или HEX, например #164a9b") from None
     return (*rgb[:3], 255)
 
+
+
+def stamp_option(key, value):
+    text = str(value or "").strip().casefold().replace("ё", "е")
+    choices = {
+        "stamp_shape": {"": "circle", "круглая": "circle", "круг": "circle", "circle": "circle",
+                        "прямоугольная": "rectangle", "прямоугольный": "rectangle", "прямоугольник": "rectangle", "rectangle": "rectangle"},
+        "stamp_texture": {"": "clean", "четкий": "clean", "четкая": "clean", "clean": "clean",
+                          "потертый": "worn", "потертая": "worn", "worn": "worn"},
+    }
+    if text not in choices[key]:
+        raise ValueError("Укажи форму: круглая или прямоугольная" if key == "stamp_shape" else
+                         "Укажи оттиск: четкий или потертый")
+    return choices[key][text]
+
+
+def worn_ink(canvas):
+    # Fixed seed keeps a saved stamp stable across previews and restarts.
+    rng = random.Random(180)
+    wear = Image.new("L", canvas.size, 255)
+    draw = ImageDraw.Draw(wear)
+    for _ in range(5200):
+        x, y = rng.randrange(canvas.width), rng.randrange(canvas.height)
+        radius = rng.choice((1, 1, 2, 3))
+        draw.ellipse((x, y, x+radius, y+radius), fill=rng.choice((0, 0, 65, 120)))
+    for _ in range(45):
+        x, y = rng.randrange(canvas.width), rng.randrange(canvas.height)
+        draw.line((x, y, x+rng.randrange(8, 35), y+rng.randrange(-3, 4)), fill=50, width=1)
+    canvas.putalpha(ImageChops.multiply(canvas.getchannel("A"), wear))
+    return canvas
 
 def face(size):
     return ImageFont.truetype(str(ROOT / "DejaVuSans-Bold.ttf"), size)
@@ -49,6 +80,8 @@ def stamp_field_error(page_type, key, value):
     if key in LIMITS and len(text) > LIMITS[key]:
         return f"Символов: {len(text)}/{LIMITS[key]}. Сократи надпись"
     try:
+        if key in ("stamp_shape", "stamp_texture"):
+            stamp_option(key, text)
         if key == "stamp_color":
             ink_color(text)
         if key in ("stamp_top", "stamp_bottom"):
@@ -107,21 +140,30 @@ def center_text(canvas, text, box, color):
 
 
 def stamp_image(data, root):
-    for key in (*LIMITS, "stamp_color"):
+    for key in (*LIMITS, "stamp_color", "stamp_shape", "stamp_texture"):
         error = stamp_field_error("stamp", key, data.get(key))
         if error:
             raise ValueError(error)
     color = ink_color(data.get("stamp_color"))
-    canvas = Image.new("RGBA", (1024, 1024))
+    rectangular = stamp_option("stamp_shape", data.get("stamp_shape")) == "rectangle"
+    canvas = Image.new("RGBA", (1024, 640) if rectangular else (1024, 1024))
     draw = ImageDraw.Draw(canvas)
-    for radius, width in ((460, 7), (445, 2), (335, 5)):
-        draw.ellipse((512-radius, 512-radius, 512+radius, 512+radius), outline=color, width=width)
-    for x in (122, 902):
-        points = [(x + (15 if i % 2 == 0 else 6) * math.cos(-math.pi/2 + i*math.pi/5),
-                   512 + (15 if i % 2 == 0 else 6) * math.sin(-math.pi/2 + i*math.pi/5)) for i in range(10)]
-        draw.polygon(points, fill=color)
-    arc_text(canvas, data.get("stamp_top"), False, color)
-    arc_text(canvas, data.get("stamp_bottom"), True, color)
+    if rectangular:
+        draw.rectangle((35, 35, 989, 605), outline=color, width=7)
+        draw.rectangle((49, 49, 975, 591), outline=color, width=2)
+        draw.line((65, 200, 959, 200), fill=color, width=3)
+        draw.line((65, 495, 959, 495), fill=color, width=3)
+        center_text(canvas, data.get("stamp_top"), (75, 65, 949, 185), color)
+        center_text(canvas, data.get("stamp_bottom"), (75, 510, 949, 575), color)
+    else:
+        for radius, width in ((460, 7), (445, 2), (335, 5)):
+            draw.ellipse((512-radius, 512-radius, 512+radius, 512+radius), outline=color, width=width)
+        for x in (122, 902):
+            points = [(x + (15 if i % 2 == 0 else 6) * math.cos(-math.pi/2 + i*math.pi/5),
+                       512 + (15 if i % 2 == 0 else 6) * math.sin(-math.pi/2 + i*math.pi/5)) for i in range(10)]
+            draw.polygon(points, fill=color)
+        arc_text(canvas, data.get("stamp_top"), False, color)
+        arc_text(canvas, data.get("stamp_bottom"), True, color)
     images = page_images(data)
     has_logo = False
     if images:
@@ -135,19 +177,23 @@ def stamp_image(data, root):
             if bounds:
                 logo = Image.new("RGBA", logo.size, color)
                 logo.putalpha(alpha)
-                logo = ImageOps.contain(logo.crop(bounds), (270, 270), Image.Resampling.LANCZOS)
-                canvas.alpha_composite(logo, ((1024-logo.width)//2, 300 + (270-logo.height)//2))
+                logo_size = 150 if rectangular else 270
+                logo = ImageOps.contain(logo.crop(bounds), (logo_size, logo_size), Image.Resampling.LANCZOS)
+                logo_top = 215 if rectangular else 300
+                canvas.alpha_composite(logo, ((1024-logo.width)//2, logo_top + (logo_size-logo.height)//2))
                 has_logo = True
     box = (290, 600, 734, 730) if has_logo else (280, 350, 744, 690)
+    if rectangular:
+        box = (85, 375, 939, 485) if has_logo else (85, 215, 939, 480)
     center_text(canvas, data.get("stamp_center"), box, color)
-    return canvas
+    return worn_ink(canvas) if stamp_option("stamp_texture", data.get("stamp_texture")) == "worn" else canvas
 
 
 def render_stamp(page, root, output, quality="high"):
     result = stamp_image(page.data or {}, root)
     size = {"standard": 768, "high": 1024, "ultra": 2048}.get(quality, 1024)
     if size != 1024:
-        result = result.resize((size, size), Image.Resampling.LANCZOS)
+        result = result.resize((size, round(size * result.height / result.width)), Image.Resampling.LANCZOS)
     destination = Path(output)
     temporary = destination.with_name(destination.name + "." + uuid4().hex + ".tmp")
     try:

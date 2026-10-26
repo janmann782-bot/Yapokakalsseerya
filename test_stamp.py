@@ -52,6 +52,28 @@ class StampTests(unittest.IsolatedAsyncioTestCase):
                     self.assertLess(bounds[2],size-20)
                     self.assertGreater(im.getchannel("A").histogram()[255],1000)
 
+    def test_rectangular_worn_stamp(self):
+        from stamp_renderer import stamp_field_error
+        data = {"stamp_shape": "прямоугольная", "stamp_texture": "потертый",
+                "stamp_top": "СОЮЗ АВТОНОМНЫХ РЕСПУБЛИК КЕФИРСТАН",
+                "stamp_bottom": "КАМЕННЫЙ МОСТ", "stamp_center": "ФОНД\nНАЦИОНАЛЬНОГО\nВЫБОРА"}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            worn = stamp_image(data, root)
+            self.assertEqual(worn.size, (1024, 640))
+            self.assertEqual(worn.getpixel((0, 0))[3], 0)
+            self.assertEqual(worn.tobytes(), stamp_image(data, root).tobytes())
+            clean = stamp_image(dict(data, stamp_texture="четкий"), root)
+            wa, ca = worn.getchannel("A"), clean.getchannel("A")
+            self.assertLess(sum(wa.getdata()), sum(ca.getdata()))
+            self.assertGreater(sum(wa.getdata()), sum(ca.getdata()) * .8)
+            self.assertTrue(all(w <= c for w, c in zip(wa.getdata(), ca.getdata())))
+            self.assertEqual(wa.getbbox(), ca.getbbox())
+            self.assertIsNotNone(stamp_field_error("stamp", "stamp_shape", "треугольник"))
+            self.assertIsNotNone(data_error("stamp", dict(data, stamp_texture="мусор")))
+            parsed = parse_text("Тип: печать\nФорма печати: прямоугольная\nОттиск: потертый")
+            self.assertEqual(parsed.data["stamp_texture"], "потертый")
+
     def test_custom_symbol_is_tinted_and_white_paper_removed(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

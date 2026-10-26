@@ -306,13 +306,15 @@ MIROTORETS = Template(
 STAMP = Template(
     key="stamp", label="Печать", emoji="🔵", image_label="символ для центра печати",
     subtitle_key=None,
-    wizard=("title", "stamp_top", "stamp_bottom", "stamp_center", "stamp_color"),
+    wizard=("title", "stamp_top", "stamp_bottom", "stamp_center", "stamp_color", "stamp_shape", "stamp_texture"),
     fields=(
         f("title", "Название печати", "Надписи"),
         f("stamp_top", "Текст сверху", "Надписи"),
         f("stamp_bottom", "Текст снизу", "Надписи"),
         f("stamp_center", "Текст в центре", "Надписи", multiline=True),
         f("stamp_color", "Цвет печати", "Оформление"),
+        f("stamp_shape", "Форма печати", "Оформление"),
+        f("stamp_texture", "Оттиск", "Оформление"),
     ),
 )
 
