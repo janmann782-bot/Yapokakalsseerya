@@ -12,8 +12,23 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 9
+LAYOUT_VERSION = 10
 INK = "#dbe4e5"
+
+# Font sizes in rendered pixels. Larger fields get more room; text_box
+# still reduces the size for long content instead of drawing over the PSD.
+STATE_TEXT_SIZES = {
+    "tno": {
+        "title": 28, "alliance": 26, "leader": 28,
+        "party": 31, "ideology": 31, "elections": 30, "focus": 34,
+    },
+    "tfr": {
+        "title": 27, "alliance": 26, "leader": 27,
+        "party": 29, "ideology": 29, "elections": 29, "focus": 34,
+    },
+}
+EVENT_QUOTE_SIZE = {"tno": 34, "tfr": 22}
+EVENT_BUTTON_SIZE = {"tno": 29, "tfr": 23}
 
 
 class Hoi4TextOverflow(ValueError):
@@ -312,7 +327,6 @@ def state_card(data, root, style):
             alliance_icon=(746, 15, 837, 105),
             focus_icon=(228, 270, 359, 374),
         )
-        size = 25
     else:
         boxes = dict(
             flag=(28, 10, 101, 59),
@@ -329,7 +343,6 @@ def state_card(data, root, style):
             alliance_icon=(411, 8, 461, 58),
             focus_icon=(128, 185, 200, 240),
         )
-        size = 23
     boxes = {k: scaled(v, factor) for k, v in boxes.items()}
     # Image windows are behind the original bezels; the flag uses its PSD alpha.
     flag_mask = asset("tno_flag_mask") if style == "tno" else None
@@ -368,7 +381,7 @@ def state_card(data, root, style):
             data.get(field) or default,
             boxes[key],
             style,
-            size,
+            STATE_TEXT_SIZES[style][key],
             field,
             minimum=14,
             align="center" if key == "focus" else "left",
@@ -402,7 +415,7 @@ def event_card(data, root, style):
         button_text = str(data.get("button_text") or "")
         chosen = buttons[-1]
         for name, bounds in buttons:
-            if font(style, 27).getlength(button_text) <= bounds[2] - bounds[0] - 36:
+            if font(style, EVENT_BUTTON_SIZE[style]).getlength(button_text) <= bounds[2] - bounds[0] - 36:
                 chosen = (name, bounds)
                 break
         canvas.alpha_composite(asset("tno_button_" + chosen[0]))
@@ -431,19 +444,19 @@ def event_card(data, root, style):
         body_value,
         body,
         style,
-        18 if style == "tfr" else 28,
+        EVENT_QUOTE_SIZE[style],
         "Текст или цитата",
         align="right" if style == "tno" else "center",
         minimum=16,
         valign="top" if style == "tfr" else "center",
-        line_height=24 if style == "tfr" else None,
+        line_height=29 if style == "tfr" else None,
     )
     text_box(
         canvas,
         data.get("button_text"),
         button,
         style,
-        18 if style == "tfr" else 24,
+        EVENT_BUTTON_SIZE[style],
         "Надпись на кнопке",
         align="center",
         minimum=14,
