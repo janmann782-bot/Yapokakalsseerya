@@ -11,6 +11,8 @@ NEWS_FIELDS = {
 
 
 def news_prompt(page_type, key, value=""):
+    if page_type == "superevent" and key == "parties":
+        return '\n\nКаждая партия с новой строки:\nЛПК, 43, rgb(243, 190, 32)\nНПК, 29, #D84C4C\nПНЕК, 20, blue\n\nМожно HEX, rgb(...), rgba(...) или название цвета на английском. Без цвета возьму цвет из палитры. Старый ввод через | тоже работает'
     if page_type != "superevent" or key not in NEWS_FIELDS:
         return ""
     _, limit, *_ = NEWS_FIELDS[key]
@@ -18,6 +20,13 @@ def news_prompt(page_type, key, value=""):
 
 
 def news_field_error(page_type, key, value):
+    if page_type == "superevent" and key == "parties" and value:
+        from hoi4_renderer import party_data
+        try:
+            party_data(value)
+        except ValueError as exc:
+            return str(exc)
+        return None
     if page_type != "superevent" or key not in NEWS_FIELDS or not value:
         return None
     label, limit, box, size, minimum = NEWS_FIELDS[key]
@@ -37,7 +46,7 @@ def news_field_error(page_type, key, value):
 
 
 def news_data_error(page_type, data):
-    for key in NEWS_FIELDS:
+    for key in (*NEWS_FIELDS, "parties"):
         error = news_field_error(page_type, key, str(data.get(key) or ""))
         if error:
             return error

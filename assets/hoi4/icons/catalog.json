@@ -1,0 +1,4772 @@
+[
+  {
+    "id": "tno_ideology_000",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "операизм",
+    "source_layer": "операизм",
+    "width": 108,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_001",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "стратократический коммунизм",
+    "source_layer": "стратократический коммунизм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_002",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "сталинизм",
+    "source_layer": "сталинизм",
+    "width": 109,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_003",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "революционный баасизм",
+    "source_layer": "революционный баасизм",
+    "width": 121,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_004",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "национал-коммунизм",
+    "source_layer": "национал-коммунизм",
+    "width": 109,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_005",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "марксизм-ленинизм",
+    "source_layer": "марксизм-ленинизм",
+    "width": 111,
+    "height": 110
+  },
+  {
+    "id": "tno_ideology_006",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "маоизм",
+    "source_layer": "маоизм",
+    "width": 111,
+    "height": 97
+  },
+  {
+    "id": "tno_ideology_007",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "учение мао цзэдуна",
+    "source_layer": "учение мао цзэдуна",
+    "width": 111,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_008",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "левый коммунизм",
+    "source_layer": "левый коммунизм",
+    "width": 114,
+    "height": 99
+  },
+  {
+    "id": "tno_ideology_009",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "исламский марксизм",
+    "source_layer": "исламский марксизм",
+    "width": 111,
+    "height": 105
+  },
+  {
+    "id": "tno_ideology_010",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "большевизм",
+    "source_layer": "большевизм",
+    "width": 109,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_011",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "гармонизм (EaW)",
+    "source_layer": "гармонизм (EaW)",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_012",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "арабский коммунизм",
+    "source_layer": "арабский коммунизм",
+    "width": 112,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_013",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "автаркический марксизм",
+    "source_layer": "автаркический марксизм",
+    "width": 119,
+    "height": 110
+  },
+  {
+    "id": "tno_ideology_014",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "амазонизм",
+    "source_layer": "амазонизм",
+    "width": 111,
+    "height": 108
+  },
+  {
+    "id": "tno_ideology_015",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "коммунизм",
+    "source_layer": "коммунизм",
+    "width": 111,
+    "height": 112
+  },
+  {
+    "id": "tno_ideology_016",
+    "style": "tno",
+    "role": "ideology",
+    "category": "коммунизм",
+    "label": "авторитарный социализм (outdated)",
+    "source_layer": "авторитарный социализм (outdated)",
+    "width": 112,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_017",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "утопический социализм",
+    "source_layer": "утопический социализм",
+    "width": 111,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_018",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "утопический социализм (outdated)",
+    "source_layer": "утопический социализм (outdated)",
+    "width": 109,
+    "height": 95
+  },
+  {
+    "id": "tno_ideology_019",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "ультра-дальновидный социализм (синий)",
+    "source_layer": "ультра-дальновидный социализм (синий)",
+    "width": 109,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_020",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "ультра-дальновидный социализм (розовый)",
+    "source_layer": "ультра-дальновидный социализм (розовый)",
+    "width": 109,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_021",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "синдикализм",
+    "source_layer": "синдикализм ",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_022",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "революционный фронт",
+    "source_layer": "революционный фронт",
+    "width": 111,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_023",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "реформистский социализм",
+    "source_layer": "реформистский социализм",
+    "width": 111,
+    "height": 103
+  },
+  {
+    "id": "tno_ideology_024",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "пан-африканизм",
+    "source_layer": "пан-африканизм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_025",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "неокоммунизм",
+    "source_layer": "неокоммунизм",
+    "width": 110,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_026",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "насеризм",
+    "source_layer": "насеризм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_027",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "левый национализм",
+    "source_layer": "левый национализм",
+    "width": 111,
+    "height": 98
+  },
+  {
+    "id": "tno_ideology_028",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "геваризм",
+    "source_layer": "геваризм",
+    "width": 121,
+    "height": 97
+  },
+  {
+    "id": "tno_ideology_029",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "христианский социализм",
+    "source_layer": "христианский социализм",
+    "width": 111,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_030",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "баасизм",
+    "source_layer": "баасизм",
+    "width": 113,
+    "height": 102
+  },
+  {
+    "id": "tno_ideology_031",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "анархо-коммунизм",
+    "source_layer": "анархо-коммунизм",
+    "width": 109,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_032",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "аграрный социализм",
+    "source_layer": "аграрный социализм",
+    "width": 111,
+    "height": 91
+  },
+  {
+    "id": "tno_ideology_033",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "африканский социализм",
+    "source_layer": "африканский социализм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_034",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "социализм",
+    "source_layer": "социализм",
+    "width": 103,
+    "height": 108
+  },
+  {
+    "id": "tno_ideology_035",
+    "style": "tno",
+    "role": "ideology",
+    "category": "социализм",
+    "label": "либертарианский социализм (outdated)",
+    "source_layer": "либертарианский социализм (outdated)",
+    "width": 93,
+    "height": 110
+  },
+  {
+    "id": "tno_ideology_036",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "западный прогрессизм",
+    "source_layer": "западный прогрессизм",
+    "width": 110,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_037",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "социальный радикализм",
+    "source_layer": "социальный радикализм",
+    "width": 111,
+    "height": 101
+  },
+  {
+    "id": "tno_ideology_038",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "социал-демократия",
+    "source_layer": "социал-демократия",
+    "width": 110,
+    "height": 96
+  },
+  {
+    "id": "tno_ideology_039",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "народный фронт",
+    "source_layer": "народный фронт",
+    "width": 111,
+    "height": 98
+  },
+  {
+    "id": "tno_ideology_040",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "либеральный социализм",
+    "source_layer": "либеральный социализм",
+    "width": 120,
+    "height": 123
+  },
+  {
+    "id": "tno_ideology_041",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "левый популизм",
+    "source_layer": "левый популизм",
+    "width": 105,
+    "height": 112
+  },
+  {
+    "id": "tno_ideology_042",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "левый аграризм",
+    "source_layer": "левый аграризм ",
+    "width": 110,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_043",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "левый кемализм",
+    "source_layer": "левый кемализм",
+    "width": 112,
+    "height": 113
+  },
+  {
+    "id": "tno_ideology_044",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "лейбористкий сионизм",
+    "source_layer": "лейбористкий сионизм",
+    "width": 111,
+    "height": 101
+  },
+  {
+    "id": "tno_ideology_045",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "восточный прогрессивизм",
+    "source_layer": "восточный прогрессивизм",
+    "width": 110,
+    "height": 101
+  },
+  {
+    "id": "tno_ideology_046",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "демократический социализм",
+    "source_layer": "демократический социализм",
+    "width": 111,
+    "height": 97
+  },
+  {
+    "id": "tno_ideology_047",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "прогрессивизм",
+    "source_layer": "прогрессивизм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_048",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "социал-демократия (outdated)",
+    "source_layer": "социал-демократия (outdated)",
+    "width": 111,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_049",
+    "style": "tno",
+    "role": "ideology",
+    "category": "прогрессивизм",
+    "label": "социал-демократия (outdated)",
+    "source_layer": "социал-демократия (outdated)",
+    "width": 110,
+    "height": 97
+  },
+  {
+    "id": "tno_ideology_050",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "рыночный либерализм",
+    "source_layer": "рыночный либерализм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_051",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "ревизионистский сионизм",
+    "source_layer": "ревизионистский сионизм",
+    "width": 111,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_052",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "прогрессивный либерализм",
+    "source_layer": "прогрессивный либерализм",
+    "width": 116,
+    "height": 118
+  },
+  {
+    "id": "tno_ideology_053",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "национал-либерализм",
+    "source_layer": "национал-либерализм",
+    "width": 111,
+    "height": 108
+  },
+  {
+    "id": "tno_ideology_054",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "либеральный радикализм",
+    "source_layer": "либеральный радикализм",
+    "width": 111,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_055",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "либеральный аграризм",
+    "source_layer": "либеральный аграризм",
+    "width": 111,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_056",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "династический либерализм (Кеннеди)",
+    "source_layer": "династический либерализм (Кеннеди)",
+    "width": 110,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_057",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "династический либерализм (lbj)",
+    "source_layer": "династический либерализм (lbj)",
+    "width": 111,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_058",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "династический либерализм (кирк)",
+    "source_layer": "династический либерализм (кирк)",
+    "width": 111,
+    "height": 108
+  },
+  {
+    "id": "tno_ideology_059",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "династический либерализм (габор)",
+    "source_layer": "династический либерализм (габор)",
+    "width": 120,
+    "height": 103
+  },
+  {
+    "id": "tno_ideology_060",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "династический либерализм (чеп)",
+    "source_layer": "династический либерализм (чеп)",
+    "width": 110,
+    "height": 99
+  },
+  {
+    "id": "tno_ideology_061",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "классический либерализм",
+    "source_layer": "классический либерализм",
+    "width": 120,
+    "height": 122
+  },
+  {
+    "id": "tno_ideology_062",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "христианский прогрессизм (outdated)",
+    "source_layer": "христианский прогрессизм (outdated)",
+    "width": 111,
+    "height": 105
+  },
+  {
+    "id": "tno_ideology_063",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "христианский либерализм",
+    "source_layer": "христианский либерализм",
+    "width": 115,
+    "height": 118
+  },
+  {
+    "id": "tno_ideology_064",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "либерализм",
+    "source_layer": "либерализм",
+    "width": 110,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_065",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либерализм",
+    "label": "либеральная демократия (outdated)",
+    "source_layer": "либеральная демократия (outdated)",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_066",
+    "style": "tno",
+    "role": "ideology",
+    "category": "Общие",
+    "label": "рыночный либерализм (outdated)",
+    "source_layer": "рыночный либерализм (outdated)",
+    "width": 106,
+    "height": 107
+  },
+  {
+    "id": "tno_ideology_067",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либеральный коснерватизм",
+    "label": "христианская демократия",
+    "source_layer": "христианская демократия",
+    "width": 111,
+    "height": 101
+  },
+  {
+    "id": "tno_ideology_068",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либеральный коснерватизм",
+    "label": "рыночный либерализм",
+    "source_layer": "рыночный либерализм",
+    "width": 110,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_069",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либеральный коснерватизм",
+    "label": "зонтичная партия",
+    "source_layer": "зонтичная партия",
+    "width": 110,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_070",
+    "style": "tno",
+    "role": "ideology",
+    "category": "либеральный коснерватизм",
+    "label": "либеральный коснерватизм",
+    "source_layer": "либеральный коснерватизм",
+    "width": 110,
+    "height": 96
+  },
+  {
+    "id": "tno_ideology_071",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "тихий консерватизм",
+    "source_layer": "тихий консерватизм",
+    "width": 111,
+    "height": 96
+  },
+  {
+    "id": "tno_ideology_072",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "урбанистический популизм",
+    "source_layer": "урбанистический популизм",
+    "width": 111,
+    "height": 101
+  },
+  {
+    "id": "tno_ideology_073",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "ревизионистский сионизм",
+    "source_layer": "ревизионистский сионизм",
+    "width": 111,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_074",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "популистский консерватизм",
+    "source_layer": "популистский консерватизм",
+    "width": 111,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_075",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "патерналистский консерватизм",
+    "source_layer": "патерналистский консерватизм",
+    "width": 111,
+    "height": 95
+  },
+  {
+    "id": "tno_ideology_076",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "либеральный консерватизм",
+    "source_layer": "либеральный консерватизм",
+    "width": 110,
+    "height": 96
+  },
+  {
+    "id": "tno_ideology_077",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "природный консерватизм",
+    "source_layer": "природный консерватизм",
+    "width": 110,
+    "height": 96
+  },
+  {
+    "id": "tno_ideology_078",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "исламская демократия",
+    "source_layer": "исламская демократия",
+    "width": 110,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_079",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "консерватизм свободного рынка",
+    "source_layer": "консерватизм свободного рынка",
+    "width": 110,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_080",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "христианский консерватизм",
+    "source_layer": "христианский консерватизм",
+    "width": 111,
+    "height": 107
+  },
+  {
+    "id": "tno_ideology_081",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "аграризм",
+    "source_layer": "аграризм",
+    "width": 110,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_082",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "консерватизм",
+    "source_layer": "консерватизм",
+    "width": 112,
+    "height": 100
+  },
+  {
+    "id": "tno_ideology_083",
+    "style": "tno",
+    "role": "ideology",
+    "category": "консерватизм",
+    "label": "консервативная демократия (outdated)",
+    "source_layer": "консервативная демократия (outdated)",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_084",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "сюньчжэн",
+    "source_layer": "сюньчжэн",
+    "width": 111,
+    "height": 96
+  },
+  {
+    "id": "tno_ideology_085",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "переходная демократия",
+    "source_layer": "переходная демократия",
+    "width": 138,
+    "height": 147
+  },
+  {
+    "id": "tno_ideology_086",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "стратократия",
+    "source_layer": "стратократия",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_087",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "солидаризм",
+    "source_layer": "солидаризм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_088",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "социал-национализм",
+    "source_layer": "социал-национализм",
+    "width": 107,
+    "height": 101
+  },
+  {
+    "id": "tno_ideology_089",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "социальный кредит",
+    "source_layer": "социальный кредит",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_090",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "полуконституционная монархия",
+    "source_layer": "полуконституционная монархия ",
+    "width": 110,
+    "height": 105
+  },
+  {
+    "id": "tno_ideology_091",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "правый популизм",
+    "source_layer": "правый популизм",
+    "width": 110,
+    "height": 101
+  },
+  {
+    "id": "tno_ideology_092",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "временное правительство",
+    "source_layer": "временное правительство",
+    "width": 111,
+    "height": 100
+  },
+  {
+    "id": "tno_ideology_093",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "пужадизм",
+    "source_layer": "пужадизм",
+    "width": 130,
+    "height": 140
+  },
+  {
+    "id": "tno_ideology_094",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "перонизм",
+    "source_layer": "перонизм ",
+    "width": 110,
+    "height": 103
+  },
+  {
+    "id": "tno_ideology_095",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "палеоконсерватизм",
+    "source_layer": "палеоконсерватизм",
+    "width": 125,
+    "height": 119
+  },
+  {
+    "id": "tno_ideology_096",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "олигархия",
+    "source_layer": "олигархия ",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_097",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "неоконсерватизм",
+    "source_layer": "неоконсерватизм ",
+    "width": 110,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_098",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "национал-консерватизм",
+    "source_layer": "национал-консерватизм",
+    "width": 107,
+    "height": 107
+  },
+  {
+    "id": "tno_ideology_099",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "военный мандат",
+    "source_layer": "военный мандат",
+    "width": 110,
+    "height": 95
+  },
+  {
+    "id": "tno_ideology_100",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "левый корпоративизм",
+    "source_layer": "левый корпоративизм",
+    "width": 110,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_101",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "кемализм",
+    "source_layer": "кемализм ",
+    "width": 110,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_102",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "однопартийная демократия",
+    "source_layer": "однопартийная демократия",
+    "width": 110,
+    "height": 95
+  },
+  {
+    "id": "tno_ideology_103",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "диксикратия",
+    "source_layer": "диксикратия",
+    "width": 110,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_104",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "корпоративный патернализм",
+    "source_layer": "корпоративный патернализм",
+    "width": 110,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_105",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "контролируемая демократия",
+    "source_layer": "контролируемая демократия",
+    "width": 112,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_106",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "анократия",
+    "source_layer": "анократия",
+    "width": 110,
+    "height": 102
+  },
+  {
+    "id": "tno_ideology_107",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "патернализм",
+    "source_layer": "патернализм",
+    "width": 110,
+    "height": 96
+  },
+  {
+    "id": "tno_ideology_108",
+    "style": "tno",
+    "role": "ideology",
+    "category": "патернализм",
+    "label": "авторитарная демократия (outdated)",
+    "source_layer": "авторитарная демократия (outdated)",
+    "width": 112,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_109",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "варлодизм",
+    "source_layer": "варлодизм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_110",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "авангардный анархизм",
+    "source_layer": "авангардный анархизм",
+    "width": 110,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_111",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "деспотическая теократия",
+    "source_layer": "деспотическая теократия",
+    "width": 111,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_112",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "персоналистическая диктатура",
+    "source_layer": "персоналистическая диктатура",
+    "width": 110,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_113",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "партизанское движение",
+    "source_layer": "партизанское движение",
+    "width": 111,
+    "height": 101
+  },
+  {
+    "id": "tno_ideology_114",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "папство",
+    "source_layer": "папство ",
+    "width": 110,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_115",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "нео-баасизм",
+    "source_layer": "нео-баасизм",
+    "width": 111,
+    "height": 108
+  },
+  {
+    "id": "tno_ideology_116",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "военная хунта",
+    "source_layer": "военная хунта",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_117",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "управленческое состояние",
+    "source_layer": "управленческое состояние",
+    "width": 118,
+    "height": 117
+  },
+  {
+    "id": "tno_ideology_118",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "временное правительство",
+    "source_layer": "временное правительство",
+    "width": 111,
+    "height": 98
+  },
+  {
+    "id": "tno_ideology_119",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "национал-католицизм",
+    "source_layer": "национал-католицизм",
+    "width": 118,
+    "height": 100
+  },
+  {
+    "id": "tno_ideology_120",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "евразийство",
+    "source_layer": "евразийство",
+    "width": 121,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_121",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "корпоратократия",
+    "source_layer": "корпоратократия",
+    "width": 111,
+    "height": 90
+  },
+  {
+    "id": "tno_ideology_122",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "колониальное правительство",
+    "source_layer": "колониальное правительство",
+    "width": 110,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_123",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "гражданская диктатура",
+    "source_layer": "гражданская диктатура",
+    "width": 114,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_124",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "аристократический консерватизм",
+    "source_layer": "аристократический консерватизм",
+    "width": 117,
+    "height": 102
+  },
+  {
+    "id": "tno_ideology_125",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "абсолютная монархия",
+    "source_layer": "абсолютная монархия",
+    "width": 121,
+    "height": 105
+  },
+  {
+    "id": "tno_ideology_126",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "деспотизм",
+    "source_layer": "деспотизм",
+    "width": 110,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_127",
+    "style": "tno",
+    "role": "ideology",
+    "category": "деспотизм",
+    "label": "деспотизм (outdated)",
+    "source_layer": "деспотизм (outdated)",
+    "width": 96,
+    "height": 107
+  },
+  {
+    "id": "tno_ideology_128",
+    "style": "tno",
+    "role": "ideology",
+    "category": "ультранационализм ",
+    "label": "ультрамилитаризм",
+    "source_layer": "ультрамилитаризм",
+    "width": 111,
+    "height": 97
+  },
+  {
+    "id": "tno_ideology_129",
+    "style": "tno",
+    "role": "ideology",
+    "category": "ультранационализм ",
+    "label": "славяно-арийзм",
+    "source_layer": "славяно-арийзм",
+    "width": 111,
+    "height": 101
+  },
+  {
+    "id": "tno_ideology_130",
+    "style": "tno",
+    "role": "ideology",
+    "category": "ультранационализм ",
+    "label": "реакционный национализм",
+    "source_layer": "реакционный национализм",
+    "width": 165,
+    "height": 117
+  },
+  {
+    "id": "tno_ideology_131",
+    "style": "tno",
+    "role": "ideology",
+    "category": "ультранационализм ",
+    "label": "фундаментализм",
+    "source_layer": "фундаментализм ",
+    "width": 115,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_132",
+    "style": "tno",
+    "role": "ideology",
+    "category": "ультранационализм ",
+    "label": "евразийство",
+    "source_layer": "евразийство ",
+    "width": 121,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_133",
+    "style": "tno",
+    "role": "ideology",
+    "category": "ультранационализм ",
+    "label": "деспотизм",
+    "source_layer": "деспотизм",
+    "width": 121,
+    "height": 118
+  },
+  {
+    "id": "tno_ideology_134",
+    "style": "tno",
+    "role": "ideology",
+    "category": "ультранационализм ",
+    "label": "ультранационализм",
+    "source_layer": "ультранационализм ",
+    "width": 111,
+    "height": 96
+  },
+  {
+    "id": "tno_ideology_135",
+    "style": "tno",
+    "role": "ideology",
+    "category": "ультранационализм ",
+    "label": "ультранационализм  (outdated)",
+    "source_layer": "ультранационализм  (outdated)",
+    "width": 100,
+    "height": 99
+  },
+  {
+    "id": "tno_ideology_136",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "денгизм",
+    "source_layer": "денгизм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_137",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "сансеполкризм",
+    "source_layer": "сансеполкризм",
+    "width": 110,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_138",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "революционный национализм",
+    "source_layer": "революционный национализм",
+    "width": 111,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_139",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "реформированный национал-социализм",
+    "source_layer": "реформированный национал-социализм",
+    "width": 110,
+    "height": 107
+  },
+  {
+    "id": "tno_ideology_140",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "реформированная бюрократия",
+    "source_layer": "реформированная бюрократия",
+    "width": 111,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_141",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "пролетарский национализм",
+    "source_layer": "пролетарский национализм",
+    "width": 110,
+    "height": 110
+  },
+  {
+    "id": "tno_ideology_142",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "национал-синдикализм",
+    "source_layer": "национал-синдикализм",
+    "width": 110,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_143",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "ордосоциализм",
+    "source_layer": "ордосоциализм",
+    "width": 131,
+    "height": 108
+  },
+  {
+    "id": "tno_ideology_144",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "неофашизм",
+    "source_layer": "неофашизм",
+    "width": 108,
+    "height": 103
+  },
+  {
+    "id": "tno_ideology_145",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "интегрализм",
+    "source_layer": "интегрализм",
+    "width": 114,
+    "height": 112
+  },
+  {
+    "id": "tno_ideology_146",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "фашистский популизм",
+    "source_layer": "фашистский популизм",
+    "width": 111,
+    "height": 105
+  },
+  {
+    "id": "tno_ideology_147",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "фашистский мистицизм",
+    "source_layer": "фашистский мистицизм",
+    "width": 111,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_148",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "фалангизм",
+    "source_layer": "фалангизм",
+    "width": 111,
+    "height": 105
+  },
+  {
+    "id": "tno_ideology_149",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "церковный национализм",
+    "source_layer": "церковный национализм",
+    "width": 120,
+    "height": 118
+  },
+  {
+    "id": "tno_ideology_150",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "корпоративизм",
+    "source_layer": "корпоративизм",
+    "width": 112,
+    "height": 105
+  },
+  {
+    "id": "tno_ideology_151",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "корпоративный этатизм",
+    "source_layer": "корпоративный этатизм",
+    "width": 112,
+    "height": 99
+  },
+  {
+    "id": "tno_ideology_152",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "фашизм",
+    "source_layer": "фашизм",
+    "width": 111,
+    "height": 111
+  },
+  {
+    "id": "tno_ideology_153",
+    "style": "tno",
+    "role": "ideology",
+    "category": "фашизм",
+    "label": "фашизм (outdated)",
+    "source_layer": "фашизм (outdated)",
+    "width": 108,
+    "height": 100
+  },
+  {
+    "id": "tno_ideology_154",
+    "style": "tno",
+    "role": "ideology",
+    "category": "национал-социализм",
+    "label": "технократический нацизм",
+    "source_layer": "технократический нацизм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_155",
+    "style": "tno",
+    "role": "ideology",
+    "category": "национал-социализм",
+    "label": "стратократический корпоративизм",
+    "source_layer": "стратократический корпоративизм",
+    "width": 120,
+    "height": 109
+  },
+  {
+    "id": "tno_ideology_156",
+    "style": "tno",
+    "role": "ideology",
+    "category": "национал-социализм",
+    "label": "стратократический нацизм",
+    "source_layer": "стратократический нацизм",
+    "width": 110,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_157",
+    "style": "tno",
+    "role": "ideology",
+    "category": "национал-социализм",
+    "label": "спартанизм",
+    "source_layer": "спартанизм",
+    "width": 111,
+    "height": 110
+  },
+  {
+    "id": "tno_ideology_158",
+    "style": "tno",
+    "role": "ideology",
+    "category": "национал-социализм",
+    "label": "революционный нацизм",
+    "source_layer": "революционный нацизм",
+    "width": 111,
+    "height": 110
+  },
+  {
+    "id": "tno_ideology_159",
+    "style": "tno",
+    "role": "ideology",
+    "category": "национал-социализм",
+    "label": "идиосинкратический нацизм",
+    "source_layer": "идиосинкратический нацизм",
+    "width": 111,
+    "height": 106
+  },
+  {
+    "id": "tno_ideology_160",
+    "style": "tno",
+    "role": "ideology",
+    "category": "национал-социализм",
+    "label": "клерикальный фашизм",
+    "source_layer": "клерикальный фашизм",
+    "width": 96,
+    "height": 97
+  },
+  {
+    "id": "tno_ideology_161",
+    "style": "tno",
+    "role": "ideology",
+    "category": "национал-социализм",
+    "label": "национал-социализм",
+    "source_layer": "национал-социализм",
+    "width": 111,
+    "height": 104
+  },
+  {
+    "id": "tno_ideology_162",
+    "style": "tno",
+    "role": "ideology",
+    "category": "национал-социализм",
+    "label": "национал-социализм (outdated)",
+    "source_layer": "национал-социализм (outdated)",
+    "width": 111,
+    "height": 99
+  },
+  {
+    "id": "tno_ideology_163",
+    "style": "tno",
+    "role": "ideology",
+    "category": "эзотерический нацизм",
+    "label": "имперский культ",
+    "source_layer": "имперский культ",
+    "width": 111,
+    "height": 96
+  },
+  {
+    "id": "tno_ideology_164",
+    "style": "tno",
+    "role": "ideology",
+    "category": "эзотерический нацизм",
+    "label": "глубокая экология нацизма",
+    "source_layer": "глубокая экология нацизма",
+    "width": 104,
+    "height": 108
+  },
+  {
+    "id": "tno_ideology_165",
+    "style": "tno",
+    "role": "ideology",
+    "category": "эзотерический нацизм",
+    "label": "бургундская система",
+    "source_layer": "бургундская система",
+    "width": 111,
+    "height": 108
+  },
+  {
+    "id": "tno_ideology_166",
+    "style": "tno",
+    "role": "ideology",
+    "category": "эзотерический нацизм",
+    "label": "бургундская система (outdated)",
+    "source_layer": "бургундская система (outdated)",
+    "width": 111,
+    "height": 102
+  },
+  {
+    "id": "tno_ideology_167",
+    "style": "tno",
+    "role": "ideology",
+    "category": "эзотерический нацизм",
+    "label": "аграрный спартанизм",
+    "source_layer": "аграрный спартанизм",
+    "width": 111,
+    "height": 107
+  },
+  {
+    "id": "tno_ideology_168",
+    "style": "tno",
+    "role": "ideology",
+    "category": "эзотерический нацизм",
+    "label": "эзотерический нацизм",
+    "source_layer": "эзотерический нацизм",
+    "width": 110,
+    "height": 104
+  },
+  {
+    "id": "tno_focus_000",
+    "style": "tno",
+    "role": "focus",
+    "category": "Фокусы",
+    "label": "Фокус не выбран",
+    "source_layer": "национальный фокус не выбран",
+    "width": 142,
+    "height": 116
+  },
+  {
+    "id": "tfr_ideology_000",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "wahabi",
+    "source_layer": "wahabi",
+    "width": 58,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_001",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "vladimir_zhirinovsky_thought",
+    "source_layer": "vladimir_zhirinovsky_thought",
+    "width": 57,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_002",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "USG_purification_administration",
+    "source_layer": "USG_purification_administration",
+    "width": 54,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_003",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "USB_military_junta",
+    "source_layer": "USB_military_junta",
+    "width": 54,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_004",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultranationalism_USB",
+    "source_layer": "ultranationalism_USB",
+    "width": 58,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_005",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultranationalism_SOV",
+    "source_layer": "ultranationalism_SOV",
+    "width": 54,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_006",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultranationalism_GER",
+    "source_layer": "ultranationalism_GER",
+    "width": 54,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_007",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultranationalism_FAF",
+    "source_layer": "ultranationalism_FAF",
+    "width": 57,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_008",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultranationalism",
+    "source_layer": "ultranationalism",
+    "width": 56,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_009",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultra_conservatism_PTF",
+    "source_layer": "ultra_conservatism_PTF",
+    "width": 53,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_010",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultra_conservatism_SOV",
+    "source_layer": "ultra_conservatism_SOV",
+    "width": 53,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_011",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultra_conservatism_USC",
+    "source_layer": "ultra_conservatism_USC",
+    "width": 54,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_012",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "theocracy",
+    "source_layer": "theocracy",
+    "width": 55,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_013",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "theocracy_IKA",
+    "source_layer": "theocracy_IKA",
+    "width": 53,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_014",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "theocracy_LDS",
+    "source_layer": "theocracy_LDS",
+    "width": 55,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_015",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "totalism",
+    "source_layer": "totalism",
+    "width": 53,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_016",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "totalism_PRC",
+    "source_layer": "totalism_PRC",
+    "width": 55,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_017",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "technocracy_PRC",
+    "source_layer": "technocracy_PRC",
+    "width": 52,
+    "height": 53
+  },
+  {
+    "id": "tfr_ideology_018",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "social_liberal_baltic",
+    "source_layer": "social_liberal_baltic",
+    "width": 53,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_019",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "social_liberal_group",
+    "source_layer": "social_liberal_group",
+    "width": 48,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_020",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "social_patriotism",
+    "source_layer": "social_patriotism",
+    "width": 55,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_021",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "social_patriotism_ARG",
+    "source_layer": "social_patriotism_ARG",
+    "width": 54,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_022",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "sovereign_democracy",
+    "source_layer": "sovereign_democracy",
+    "width": 55,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_023",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "sovereign_democracy_auth_dem_FRA",
+    "source_layer": "sovereign_democracy_auth_dem_FRA",
+    "width": 57,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_024",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "sovereign_democracy_auth_dem_IRA",
+    "source_layer": "sovereign_democracy_auth_dem_IRA",
+    "width": 61,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_025",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "sovereign_democracy_auth_dem_TUR",
+    "source_layer": "sovereign_democracy_auth_dem_TUR",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_026",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "sovereign_democracy_FAF",
+    "source_layer": "sovereign_democracy_FAF",
+    "width": 59,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_027",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "sovereign_democracy_FRA",
+    "source_layer": "sovereign_democracy_FRA",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_028",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "sovereign_democracy_left_socdem",
+    "source_layer": "sovereign_democracy_left_socdem",
+    "width": 54,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_029",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "sovereign_democracy_left_socdem_FRA",
+    "source_layer": "sovereign_democracy_left_socdem_FRA",
+    "width": 56,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_030",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "sovereign_democracy_liberal",
+    "source_layer": "sovereign_democracy_liberal",
+    "width": 55,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_031",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "sovereign_democracy_UKR",
+    "source_layer": "sovereign_democracy_UKR",
+    "width": 57,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_032",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "strasserism",
+    "source_layer": "strasserism",
+    "width": 55,
+    "height": 52
+  },
+  {
+    "id": "tfr_ideology_033",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "supervised_democracy_liberal",
+    "source_layer": "supervised_democracy_liberal",
+    "width": 55,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_034",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "Syrian_baathism",
+    "source_layer": "Syrian_baathism",
+    "width": 57,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_035",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "Syrian_baathism_SYR",
+    "source_layer": "Syrian_baathism_SYR",
+    "width": 55,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_036",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "technocracy",
+    "source_layer": "technocracy",
+    "width": 55,
+    "height": 54
+  },
+  {
+    "id": "tfr_ideology_037",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "trotskyism",
+    "source_layer": "trotskyism",
+    "width": 56,
+    "height": 53
+  },
+  {
+    "id": "tfr_ideology_038",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "trotskyism_JAP",
+    "source_layer": "trotskyism_JAP",
+    "width": 55,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_039",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultra_conservatism",
+    "source_layer": "ultra_conservatism",
+    "width": 59,
+    "height": 54
+  },
+  {
+    "id": "tfr_ideology_040",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultra_conservatism_ENG",
+    "source_layer": "ultra_conservatism_ENG",
+    "width": 54,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_041",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultra_conservatism_FRA",
+    "source_layer": "ultra_conservatism_FRA",
+    "width": 58,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_042",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultra_conservatism_JAP",
+    "source_layer": "ultra_conservatism_JAP",
+    "width": 57,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_043",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ultra_conservatism_NOV",
+    "source_layer": "ultra_conservatism_NOV",
+    "width": 56,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_044",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_anarchism",
+    "source_layer": "right_anarchism",
+    "width": 61,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_045",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_anarchism_SOL",
+    "source_layer": "right_anarchism_SOL",
+    "width": 59,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_046",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_centrist",
+    "source_layer": "right_centrist",
+    "width": 61,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_047",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_centrist_JAP",
+    "source_layer": "right_centrist_JAP",
+    "width": 56,
+    "height": 54
+  },
+  {
+    "id": "tfr_ideology_048",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_libertarianism_USC",
+    "source_layer": "right_libertarianism_USC",
+    "width": 59,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_049",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_populism",
+    "source_layer": "right_populism",
+    "width": 60,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_050",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_populism_ISR",
+    "source_layer": "right_populism_ISR",
+    "width": 56,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_051",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_populism_JAP",
+    "source_layer": "right_populism_JAP",
+    "width": 55,
+    "height": 54
+  },
+  {
+    "id": "tfr_ideology_052",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_populism_SER",
+    "source_layer": "right_populism_SER",
+    "width": 59,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_053",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_populism_USA",
+    "source_layer": "right_populism_USA",
+    "width": 58,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_054",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "right_populism_USC",
+    "source_layer": "right_populism_USC",
+    "width": 59,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_055",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "russian_monarchist_conservative",
+    "source_layer": "russian_monarchist_conservative",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_056",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "russian_syncrantism",
+    "source_layer": "russian_syncrantism",
+    "width": 56,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_057",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "salafi",
+    "source_layer": "salafi",
+    "width": 59,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_058",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "social_democracy_TUR",
+    "source_layer": "social_democracy_TUR",
+    "width": 58,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_059",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "social_democrat_group",
+    "source_layer": "social_democrat_group",
+    "width": 62,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_060",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "social_fascism",
+    "source_layer": "social_fascism",
+    "width": 57,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_061",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "social_fascism_Africa",
+    "source_layer": "social_fascism_Africa",
+    "width": 55,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_062",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "social_fascism_ENG",
+    "source_layer": "social_fascism_ENG",
+    "width": 59,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_063",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "reformist_socialism_UK2",
+    "source_layer": "reformist_socialism_UK2",
+    "width": 61,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_064",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "USB_Soclib_Centrism",
+    "source_layer": "USB_Soclib_Centrism",
+    "width": 56,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_065",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "reformist_socialism_ROJ",
+    "source_layer": "reformist_socialism_ROJ",
+    "width": 56,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_066",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "radical_nationalism_PAL",
+    "source_layer": "radical_nationalism_PAL",
+    "width": 51,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_067",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "radical_nationalism_TNM",
+    "source_layer": "radical_nationalism_TNM",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_068",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "reformist_socialism",
+    "source_layer": "reformist_socialism",
+    "width": 57,
+    "height": 53
+  },
+  {
+    "id": "tfr_ideology_069",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "reformist_socialism_APA",
+    "source_layer": "reformist_socialism_APA",
+    "width": 61,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_070",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "reformist_socialism_ENG",
+    "source_layer": "reformist_socialism_ENG",
+    "width": 61,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_071",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "reformist_socialism_FRA",
+    "source_layer": "reformist_socialism_FRA",
+    "width": 59,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_072",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "reformist_socialism_MOL",
+    "source_layer": "reformist_socialism_MOL",
+    "width": 60,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_073",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "reformist_socialism_PRC",
+    "source_layer": "reformist_socialism_PRC",
+    "width": 58,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_074",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "progressivism_USB",
+    "source_layer": "progressivism_USB",
+    "width": 59,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_075",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "purification_administration",
+    "source_layer": "purification_administration",
+    "width": 61,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_076",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "putinism",
+    "source_layer": "putinism",
+    "width": 54,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_077",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "putinism_conservative",
+    "source_layer": "putinism_conservative",
+    "width": 56,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_078",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "Putinism_Natsoc",
+    "source_layer": "Putinism_Natsoc",
+    "width": 53,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_079",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "putinism_social_democrat",
+    "source_layer": "putinism_social_democrat",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_080",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "radical_nationalism",
+    "source_layer": "radical_nationalism",
+    "width": 59,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_081",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "radical_nationalism_Africa",
+    "source_layer": "radical_nationalism_Africa",
+    "width": 58,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_082",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "Oligarchist_TRA",
+    "source_layer": "Oligarchist_TRA",
+    "width": 62,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_083",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "patriotic_liberalism",
+    "source_layer": "patriotic_liberalism",
+    "width": 58,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_084",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "patriotic_meritocracy",
+    "source_layer": "patriotic_meritocracy",
+    "width": 59,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_085",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "patriotic_populism",
+    "source_layer": "patriotic_populism",
+    "width": 59,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_086",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "patriotic_populism_fra",
+    "source_layer": "patriotic_populism_fra",
+    "width": 64,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_087",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "patriotic_populism_tra",
+    "source_layer": "patriotic_populism_tra",
+    "width": 65,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_088",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "patriotic_socialism",
+    "source_layer": "patriotic_socialism",
+    "width": 61,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_089",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "patriotic_socialism_ITA",
+    "source_layer": "patriotic_socialism_ITA",
+    "width": 56,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_090",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "patriotic_socialism_PRC",
+    "source_layer": "patriotic_socialism_PRC",
+    "width": 57,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_091",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "patriotic_socialism_SOV",
+    "source_layer": "patriotic_socialism_SOV",
+    "width": 60,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_092",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "patriotic_socialism_SWZ",
+    "source_layer": "patriotic_socialism_SWZ",
+    "width": 54,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_093",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "post_leftism",
+    "source_layer": "post_leftism",
+    "width": 49,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_094",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "post_leftism_EST",
+    "source_layer": "post_leftism_EST",
+    "width": 55,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_095",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "post_leftism_GER",
+    "source_layer": "post_leftism_GER",
+    "width": 60,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_096",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "progressivism",
+    "source_layer": "progressivism",
+    "width": 60,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_097",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "progressivism_ENG",
+    "source_layer": "progressivism_ENG",
+    "width": 59,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_098",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "progressivism_FRA",
+    "source_layer": "progressivism_FRA",
+    "width": 59,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_099",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "progressivism_GER",
+    "source_layer": "progressivism_GER",
+    "width": 58,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_100",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "radical_nationalism_IRA",
+    "source_layer": "radical_nationalism_IRA",
+    "width": 60,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_101",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "radical_nationalism_LOS",
+    "source_layer": "radical_nationalism_LOS",
+    "width": 60,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_102",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neoliberalism_SOV",
+    "source_layer": "neoliberalism_SOV",
+    "width": 53,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_103",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neoliberalism_UKR",
+    "source_layer": "neoliberalism_UKR",
+    "width": 56,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_104",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neoliberalism_UOA",
+    "source_layer": "neoliberalism_UOA",
+    "width": 56,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_105",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neoliberalism_USA",
+    "source_layer": "neoliberalism_USA",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_106",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neonazism_GER",
+    "source_layer": "neonazism_GER",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_107",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neonazism_PTF",
+    "source_layer": "neonazism_PTF",
+    "width": 58,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_108",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neonazism_SOV",
+    "source_layer": "neonazism_SOV",
+    "width": 59,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_109",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "new_synthesis",
+    "source_layer": "new_synthesis",
+    "width": 60,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_110",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "novocommunism",
+    "source_layer": "novocommunism",
+    "width": 58,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_111",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "obliteration_of_self",
+    "source_layer": "obliteration_of_self",
+    "width": 55,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_112",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "oligarchist",
+    "source_layer": "oligarchist",
+    "width": 61,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_113",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "oligarchist_HUN",
+    "source_layer": "oligarchist_HUN",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_114",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "oligarchist_JAP",
+    "source_layer": "oligarchist_JAP",
+    "width": 59,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_115",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "Oligarchist_SOV",
+    "source_layer": "Oligarchist_SOV",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_116",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neo_luddism",
+    "source_layer": "neo_luddism",
+    "width": 61,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_117",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neo_socialism",
+    "source_layer": "neo_socialism",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_118",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neo_socialism_PRC",
+    "source_layer": "neo_socialism_PRC",
+    "width": 58,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_119",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neo_socialism_socdem",
+    "source_layer": "neo_socialism_socdem",
+    "width": 62,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_120",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neo_socialism_socdem_APA",
+    "source_layer": "neo_socialism_socdem_APA",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_121",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neo_stalinism",
+    "source_layer": "neo_stalinism",
+    "width": 61,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_122",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neoconservative",
+    "source_layer": "neoconservative",
+    "width": 62,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_123",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neoconservative_ENG",
+    "source_layer": "neoconservative_ENG",
+    "width": 61,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_124",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neoconservative_UOA",
+    "source_layer": "neoconservative_UOA",
+    "width": 63,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_125",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "neoliberalism",
+    "source_layer": "neoliberalism",
+    "width": 59,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_126",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "marxism_leninism_VIN",
+    "source_layer": "marxism_leninism_VIN",
+    "width": 57,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_127",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "military_democracy",
+    "source_layer": "military_democracy",
+    "width": 61,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_128",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "military_democracy_FAF",
+    "source_layer": "military_democracy_FAF",
+    "width": 63,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_129",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "military_democracy_JAP",
+    "source_layer": "military_democracy_JAP",
+    "width": 59,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_130",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "military_democracy_PDF",
+    "source_layer": "military_democracy_PDF",
+    "width": 60,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_131",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "military_junta_ATF",
+    "source_layer": "military_junta_ATF",
+    "width": 61,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_132",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "military_junta_BRM",
+    "source_layer": "military_junta_BRM",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_133",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "military_junta_FAF",
+    "source_layer": "military_junta_FAF",
+    "width": 62,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_134",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "military_junta_SOV",
+    "source_layer": "military_junta_SOV",
+    "width": 61,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_135",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "multipolar_communism",
+    "source_layer": "multipolar_communism",
+    "width": 64,
+    "height": 66
+  },
+  {
+    "id": "tfr_ideology_136",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "multipolar_nationalism",
+    "source_layer": "multipolar_nationalism",
+    "width": 62,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_137",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "national_bolshevism",
+    "source_layer": "national_bolshevism",
+    "width": 59,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_138",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "national_communism_SOV",
+    "source_layer": "national_communism_SOV",
+    "width": 58,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_139",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "national_socialist_group",
+    "source_layer": "national_socialist_group",
+    "width": 58,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_140",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "national_socialist_group_NSM",
+    "source_layer": "national_socialist_group_NSM",
+    "width": 67,
+    "height": 68
+  },
+  {
+    "id": "tfr_ideology_141",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "national_spartanism",
+    "source_layer": "national_spartanism",
+    "width": 66,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_142",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "national_spartanism_GER",
+    "source_layer": "national_spartanism_GER",
+    "width": 62,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_143",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "national_spartanism_SOV",
+    "source_layer": "national_spartanism_SOV",
+    "width": 63,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_144",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "national_syndicalism",
+    "source_layer": "national_syndicalism",
+    "width": 66,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_145",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "national_syndicalism_GER",
+    "source_layer": "national_syndicalism_GER",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_146",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "nationalist_group",
+    "source_layer": "nationalist_group",
+    "width": 66,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_147",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "marxism_leninism_GER",
+    "source_layer": "marxism_leninism_GER",
+    "width": 64,
+    "height": 67
+  },
+  {
+    "id": "tfr_ideology_148",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "marxism_leninism_PRC",
+    "source_layer": "marxism_leninism_PRC",
+    "width": 65,
+    "height": 66
+  },
+  {
+    "id": "tfr_ideology_149",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "marxism_leninism_SOV",
+    "source_layer": "marxism_leninism_SOV",
+    "width": 65,
+    "height": 68
+  },
+  {
+    "id": "tfr_ideology_150",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_wing_junta_BRM",
+    "source_layer": "left_wing_junta_BRM",
+    "width": 64,
+    "height": 66
+  },
+  {
+    "id": "tfr_ideology_151",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_wing_junta_PRC",
+    "source_layer": "left_wing_junta_PRC",
+    "width": 61,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_152",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_wing_junta_SOV",
+    "source_layer": "left_wing_junta_SOV",
+    "width": 61,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_153",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "liberal_socialism",
+    "source_layer": "liberal_socialism",
+    "width": 63,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_154",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "liberal_socialism_JAP",
+    "source_layer": "liberal_socialism_JAP",
+    "width": 69,
+    "height": 70
+  },
+  {
+    "id": "tfr_ideology_155",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "liberal_socialism_SOV",
+    "source_layer": "liberal_socialism_SOV",
+    "width": 65,
+    "height": 66
+  },
+  {
+    "id": "tfr_ideology_156",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "libertarian_socialist_group",
+    "source_layer": "libertarian_socialist_group",
+    "width": 47,
+    "height": 70
+  },
+  {
+    "id": "tfr_ideology_157",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "Mafia_State",
+    "source_layer": "Mafia_State",
+    "width": 65,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_158",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "Mafia_State_SOV",
+    "source_layer": "Mafia_State_SOV",
+    "width": 72,
+    "height": 70
+  },
+  {
+    "id": "tfr_ideology_159",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "maoism",
+    "source_layer": "maoism",
+    "width": 71,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_160",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "maoism_PRC",
+    "source_layer": "maoism_PRC",
+    "width": 61,
+    "height": 67
+  },
+  {
+    "id": "tfr_ideology_161",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "market_liberal_baltic",
+    "source_layer": "market_liberal_baltic",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_162",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "market_liberal_group",
+    "source_layer": "market_liberal_group",
+    "width": 67,
+    "height": 70
+  },
+  {
+    "id": "tfr_ideology_163",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "market_socialism",
+    "source_layer": "market_socialism",
+    "width": 69,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_164",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "market_socialism_APA",
+    "source_layer": "market_socialism_APA",
+    "width": 68,
+    "height": 68
+  },
+  {
+    "id": "tfr_ideology_165",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "market_socialism_PRC",
+    "source_layer": "market_socialism_PRC",
+    "width": 70,
+    "height": 72
+  },
+  {
+    "id": "tfr_ideology_166",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "market_socialism_PRK",
+    "source_layer": "market_socialism_PRK",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_167",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "market_socialism_SER",
+    "source_layer": "market_socialism_SER",
+    "width": 66,
+    "height": 67
+  },
+  {
+    "id": "tfr_ideology_168",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "market_socialism_SOV",
+    "source_layer": "market_socialism_SOV",
+    "width": 71,
+    "height": 72
+  },
+  {
+    "id": "tfr_ideology_169",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "market_socialism_SSR",
+    "source_layer": "market_socialism_SSR",
+    "width": 69,
+    "height": 68
+  },
+  {
+    "id": "tfr_ideology_170",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "marxism_leninism",
+    "source_layer": "marxism_leninism",
+    "width": 74,
+    "height": 77
+  },
+  {
+    "id": "tfr_ideology_171",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "marxism_leninism_africa",
+    "source_layer": "marxism_leninism_africa",
+    "width": 69,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_172",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "marxism_leninism_APA",
+    "source_layer": "marxism_leninism_APA",
+    "width": 68,
+    "height": 69
+  },
+  {
+    "id": "tfr_ideology_173",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "marxism_leninism_CUB",
+    "source_layer": "marxism_leninism_CUB",
+    "width": 65,
+    "height": 68
+  },
+  {
+    "id": "tfr_ideology_174",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "latinism",
+    "source_layer": "latinism",
+    "width": 61,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_175",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_accelerationist",
+    "source_layer": "left_accelerationist",
+    "width": 56,
+    "height": 66
+  },
+  {
+    "id": "tfr_ideology_176",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_anarchist",
+    "source_layer": "left_anarchist",
+    "width": 66,
+    "height": 74
+  },
+  {
+    "id": "tfr_ideology_177",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_anarchist_APA",
+    "source_layer": "left_anarchist_APA",
+    "width": 67,
+    "height": 69
+  },
+  {
+    "id": "tfr_ideology_178",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_anarchist_ATP",
+    "source_layer": "left_anarchist_ATP",
+    "width": 66,
+    "height": 69
+  },
+  {
+    "id": "tfr_ideology_179",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_anarchist_ZAP",
+    "source_layer": "left_anarchist_ZAP",
+    "width": 63,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_180",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_baathism",
+    "source_layer": "left_baathism",
+    "width": 60,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_181",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_centrist",
+    "source_layer": "left_centrist",
+    "width": 68,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_182",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_nationalism",
+    "source_layer": "left_nationalism",
+    "width": 71,
+    "height": 70
+  },
+  {
+    "id": "tfr_ideology_183",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_nationalism_ENG",
+    "source_layer": "left_nationalism_ENG",
+    "width": 63,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_184",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_nationalism_HRL",
+    "source_layer": "left_nationalism_HRL",
+    "width": 67,
+    "height": 70
+  },
+  {
+    "id": "tfr_ideology_185",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_nationalism_IRA",
+    "source_layer": "left_nationalism_IRA",
+    "width": 71,
+    "height": 69
+  },
+  {
+    "id": "tfr_ideology_186",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_nationalism_PRC",
+    "source_layer": "left_nationalism_PRC",
+    "width": 64,
+    "height": 66
+  },
+  {
+    "id": "tfr_ideology_187",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_nationalism_PRK",
+    "source_layer": "left_nationalism_PRK",
+    "width": 68,
+    "height": 69
+  },
+  {
+    "id": "tfr_ideology_188",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_nationalism_SER",
+    "source_layer": "left_nationalism_SER",
+    "width": 69,
+    "height": 72
+  },
+  {
+    "id": "tfr_ideology_189",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_nationalism_SOV",
+    "source_layer": "left_nationalism_SOV",
+    "width": 72,
+    "height": 72
+  },
+  {
+    "id": "tfr_ideology_190",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_nationalism_TUR",
+    "source_layer": "left_nationalism_TUR",
+    "width": 67,
+    "height": 69
+  },
+  {
+    "id": "tfr_ideology_191",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_nationalism_VEN",
+    "source_layer": "left_nationalism_VEN",
+    "width": 67,
+    "height": 67
+  },
+  {
+    "id": "tfr_ideology_192",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_populism",
+    "source_layer": "left_populism",
+    "width": 63,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_193",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_populism_FRA",
+    "source_layer": "left_populism_FRA",
+    "width": 64,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_194",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_populism_JAP",
+    "source_layer": "left_populism_JAP",
+    "width": 63,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_195",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_populism_SAF",
+    "source_layer": "left_populism_SAF",
+    "width": 63,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_196",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_populism_SLO",
+    "source_layer": "left_populism_SLO",
+    "width": 64,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_197",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "left_wing_junta",
+    "source_layer": "left_wing_junta",
+    "width": 64,
+    "height": 67
+  },
+  {
+    "id": "tfr_ideology_198",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "hybrid_regime_GER",
+    "source_layer": "hybrid_regime_GER",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_199",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "hybrid_regime_JAP",
+    "source_layer": "hybrid_regime_JAP",
+    "width": 55,
+    "height": 54
+  },
+  {
+    "id": "tfr_ideology_200",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "hybrid_regime_NOV",
+    "source_layer": "hybrid_regime_NOV",
+    "width": 59,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_201",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "hybrid_regime_SLO",
+    "source_layer": "hybrid_regime_SLO",
+    "width": 58,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_202",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "hybrid_regime_SOV",
+    "source_layer": "hybrid_regime_SOV",
+    "width": 56,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_203",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "hybrid_regime_TUR",
+    "source_layer": "hybrid_regime_TUR",
+    "width": 60,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_204",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "identitarianism",
+    "source_layer": "identitarianism",
+    "width": 57,
+    "height": 53
+  },
+  {
+    "id": "tfr_ideology_205",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "identitarianism_FAF",
+    "source_layer": "identitarianism_FAF",
+    "width": 60,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_206",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "iraqi_baathism",
+    "source_layer": "iraqi_baathism",
+    "width": 56,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_207",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "islamic_authoritarian",
+    "source_layer": "islamic_authoritarian",
+    "width": 60,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_208",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "islamic_authoritarian_HEZ",
+    "source_layer": "islamic_authoritarian_HEZ",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_209",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "islamic_authoritarian_PER",
+    "source_layer": "islamic_authoritarian_PER",
+    "width": 59,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_210",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "islamic_democrat",
+    "source_layer": "islamic_democrat",
+    "width": 60,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_211",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "islamic_democrat_PER",
+    "source_layer": "islamic_democrat_PER",
+    "width": 60,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_212",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "jacobinism",
+    "source_layer": "jacobinism",
+    "width": 57,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_213",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "jacobinism_APA",
+    "source_layer": "jacobinism_APA",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_214",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "jucheism",
+    "source_layer": "jucheism",
+    "width": 54,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_215",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "jucheism_PRK",
+    "source_layer": "jucheism_PRK",
+    "width": 62,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_216",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "falun_gong",
+    "source_layer": "falun_gong",
+    "width": 62,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_217",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "fascist_group",
+    "source_layer": "fascist_group",
+    "width": 63,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_218",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "generic_patriotic_populism",
+    "source_layer": "generic_patriotic_populism",
+    "width": 66,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_219",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "greater_russia_system",
+    "source_layer": "greater_russia_system",
+    "width": 68,
+    "height": 66
+  },
+  {
+    "id": "tfr_ideology_220",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "green_liberalism",
+    "source_layer": "green_liberalism",
+    "width": 60,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_221",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "green_politics",
+    "source_layer": "green_politics",
+    "width": 57,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_222",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "green_politics_CAC",
+    "source_layer": "green_politics_CAC",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_223",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "hybrid_regime_BLR",
+    "source_layer": "hybrid_regime_BLR",
+    "width": 53,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_224",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "hybrid_regime_DPR",
+    "source_layer": "hybrid_regime_DPR",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_225",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "6th_Republic_Constitutionalism",
+    "source_layer": "6th_Republic_Constitutionalism",
+    "width": 60,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_226",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "absolute_monarchist",
+    "source_layer": "absolute_monarchist",
+    "width": 57,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_227",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "absolute_monarchist_GER",
+    "source_layer": "absolute_monarchist_GER",
+    "width": 60,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_228",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "absolute_monarchist_SOV",
+    "source_layer": "absolute_monarchist_SOV",
+    "width": 55,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_229",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "absolute_monarchy_FAF",
+    "source_layer": "absolute_monarchy_FAF",
+    "width": 58,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_230",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "accelerationist",
+    "source_layer": "accelerationist",
+    "width": 59,
+    "height": 55
+  },
+  {
+    "id": "tfr_ideology_231",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "accelerationist_ATW",
+    "source_layer": "accelerationist_ATW",
+    "width": 58,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_232",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "america_republicanism",
+    "source_layer": "america_republicanism",
+    "width": 61,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_233",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "american_neonazism",
+    "source_layer": "american_neonazism",
+    "width": 57,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_234",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "authoritarian_democrat_group",
+    "source_layer": "authoritarian_democrat_group",
+    "width": 57,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_235",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "authoritarian_liberalism",
+    "source_layer": "authoritarian_liberalism",
+    "width": 63,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_236",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "autocrat",
+    "source_layer": "autocrat",
+    "width": 60,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_237",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "autocrat_BLR",
+    "source_layer": "autocrat_BLR",
+    "width": 58,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_238",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "autocrat_MLI",
+    "source_layer": "autocrat_MLI",
+    "width": 62,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_239",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "autocrat_NGR",
+    "source_layer": "autocrat_NGR",
+    "width": 60,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_240",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "autocrat_PTF",
+    "source_layer": "autocrat_PTF",
+    "width": 57,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_241",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "autocrat_SOV",
+    "source_layer": "autocrat_SOV",
+    "width": 60,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_242",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "autocrat_VOL",
+    "source_layer": "autocrat_VOL",
+    "width": 59,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_243",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "babylonian_nazism",
+    "source_layer": "babylonian_nazism",
+    "width": 62,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_244",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "babylonian_nazism_ATW",
+    "source_layer": "babylonian_nazism_ATW",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_245",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "blr_patriotic",
+    "source_layer": "blr_patriotic",
+    "width": 68,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_246",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "cascadian_nationalism",
+    "source_layer": "cascadian_nationalism",
+    "width": 63,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_247",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "cascadian_nationalism_authdem",
+    "source_layer": "cascadian_nationalism_authdem",
+    "width": 69,
+    "height": 72
+  },
+  {
+    "id": "tfr_ideology_248",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "centrist",
+    "source_layer": "centrist",
+    "width": 65,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_249",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "centrist_FRA",
+    "source_layer": "centrist_FRA",
+    "width": 62,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_250",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "centrist_JAP",
+    "source_layer": "centrist_JAP",
+    "width": 60,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_251",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "centrist_NGA",
+    "source_layer": "centrist_NGA",
+    "width": 60,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_252",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "centrist_TUR",
+    "source_layer": "centrist_TUR",
+    "width": 62,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_253",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "chinese_exceptionalism",
+    "source_layer": "chinese_exceptionalism",
+    "width": 61,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_254",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "christian_conservatism",
+    "source_layer": "christian_conservatism",
+    "width": 65,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_255",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "christian_democracy",
+    "source_layer": "christian_democracy",
+    "width": 60,
+    "height": 69
+  },
+  {
+    "id": "tfr_ideology_256",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "civic_nationalism",
+    "source_layer": "civic_nationalism",
+    "width": 61,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_257",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "civic_nationalism_FAF",
+    "source_layer": "civic_nationalism_FAF",
+    "width": 64,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_258",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "civic_nationalism_JAP",
+    "source_layer": "civic_nationalism_JAP",
+    "width": 61,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_259",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "classical_conservatism_GER",
+    "source_layer": "classical_conservatism_GER",
+    "width": 63,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_260",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "classical_fascism_FAF",
+    "source_layer": "classical_fascism_FAF",
+    "width": 61,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_261",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "classical_fascism_PTF",
+    "source_layer": "classical_fascism_PTF",
+    "width": 58,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_262",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "classical_liberalism",
+    "source_layer": "classical_liberalism",
+    "width": 62,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_263",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "classical_liberalism_SOV",
+    "source_layer": "classical_liberalism_SOV",
+    "width": 58,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_264",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "classical_liberalism_USB",
+    "source_layer": "classical_liberalism_USB",
+    "width": 61,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_265",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "clerical_fascism",
+    "source_layer": "clerical_fascism",
+    "width": 62,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_266",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "clerical_fascism_HUM",
+    "source_layer": "clerical_fascism_HUM",
+    "width": 60,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_267",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "clerical_fascism_SOV",
+    "source_layer": "clerical_fascism_SOV",
+    "width": 64,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_268",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "clerical_fascism_TAJ",
+    "source_layer": "clerical_fascism_TAJ",
+    "width": 60,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_269",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "communist_group",
+    "source_layer": "communist_group",
+    "width": 60,
+    "height": 54
+  },
+  {
+    "id": "tfr_ideology_270",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "confucian_hyperconservatism",
+    "source_layer": "confucian_hyperconservatism",
+    "width": 61,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_271",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "conservative_baltic",
+    "source_layer": "conservative_baltic",
+    "width": 55,
+    "height": 57
+  },
+  {
+    "id": "tfr_ideology_272",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "conservative_group",
+    "source_layer": "conservative_group",
+    "width": 55,
+    "height": 56
+  },
+  {
+    "id": "tfr_ideology_273",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "conservative_socialism",
+    "source_layer": "conservative_socialism",
+    "width": 61,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_274",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "constitutionalist",
+    "source_layer": "constitutionalist",
+    "width": 62,
+    "height": 59
+  },
+  {
+    "id": "tfr_ideology_275",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "constitutionalist_GER",
+    "source_layer": "constitutionalist_GER",
+    "width": 63,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_276",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "constitutionalist_JAP",
+    "source_layer": "constitutionalist_JAP",
+    "width": 62,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_277",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "constitutionalist_TUR",
+    "source_layer": "constitutionalist_TUR",
+    "width": 60,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_278",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "corporatocracy",
+    "source_layer": "corporatocracy",
+    "width": 62,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_279",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "corporatocracy_CAR",
+    "source_layer": "corporatocracy_CAR",
+    "width": 65,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_280",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "corporatocracy_GER",
+    "source_layer": "corporatocracy_GER",
+    "width": 64,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_281",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "corporatocracy_SOV",
+    "source_layer": "corporatocracy_SOV",
+    "width": 61,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_282",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "corporatocracy_USB",
+    "source_layer": "corporatocracy_USB",
+    "width": 65,
+    "height": 67
+  },
+  {
+    "id": "tfr_ideology_283",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "death_cult",
+    "source_layer": "death_cult",
+    "width": 64,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_284",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "death_cult_ATW",
+    "source_layer": "death_cult_ATW",
+    "width": 63,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_285",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "democratism",
+    "source_layer": "democratism",
+    "width": 65,
+    "height": 67
+  },
+  {
+    "id": "tfr_ideology_286",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "eco_socialism",
+    "source_layer": "eco_socialism",
+    "width": 63,
+    "height": 68
+  },
+  {
+    "id": "tfr_ideology_287",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ecofascism",
+    "source_layer": "ecofascism",
+    "width": 66,
+    "height": 60
+  },
+  {
+    "id": "tfr_ideology_288",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ecofascism_CAC",
+    "source_layer": "ecofascism_CAC",
+    "width": 65,
+    "height": 67
+  },
+  {
+    "id": "tfr_ideology_289",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "esoteric_fascism",
+    "source_layer": "esoteric_fascism",
+    "width": 61,
+    "height": 58
+  },
+  {
+    "id": "tfr_ideology_290",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ethno_nationalism",
+    "source_layer": "ethno_nationalism",
+    "width": 64,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_291",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ethno_nationalism_BLR",
+    "source_layer": "ethno_nationalism_BLR",
+    "width": 63,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_292",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ethno_nationalism_CAC",
+    "source_layer": "ethno_nationalism_CAC",
+    "width": 60,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_293",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ethno_nationalism_IRA",
+    "source_layer": "ethno_nationalism_IRA",
+    "width": 64,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_294",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ethno_nationalism_LWK",
+    "source_layer": "ethno_nationalism_LWK",
+    "width": 58,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_295",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "ethno_nationalism_SOV",
+    "source_layer": "ethno_nationalism_SOV",
+    "width": 63,
+    "height": 65
+  },
+  {
+    "id": "tfr_ideology_296",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "eurasianism",
+    "source_layer": "eurasianism",
+    "width": 63,
+    "height": 64
+  },
+  {
+    "id": "tfr_ideology_297",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "eurasianism_FAF",
+    "source_layer": "eurasianism_FAF",
+    "width": 65,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_298",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "eurasianism_left",
+    "source_layer": "eurasianism_left",
+    "width": 67,
+    "height": 68
+  },
+  {
+    "id": "tfr_ideology_299",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "eurasianism_left_SOV",
+    "source_layer": "eurasianism_left_SOV",
+    "width": 67,
+    "height": 68
+  },
+  {
+    "id": "tfr_ideology_300",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "eurasianism_SOV",
+    "source_layer": "eurasianism_SOV",
+    "width": 73,
+    "height": 75
+  },
+  {
+    "id": "tfr_ideology_301",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "eurocommunism",
+    "source_layer": "eurocommunism",
+    "width": 61,
+    "height": 66
+  },
+  {
+    "id": "tfr_ideology_302",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "eurocommunism_JAP",
+    "source_layer": "eurocommunism_JAP",
+    "width": 65,
+    "height": 62
+  },
+  {
+    "id": "tfr_ideology_303",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "eurocommunism_PRC",
+    "source_layer": "eurocommunism_PRC",
+    "width": 62,
+    "height": 63
+  },
+  {
+    "id": "tfr_ideology_304",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "eurocommunism_SOV",
+    "source_layer": "eurocommunism_SOV",
+    "width": 59,
+    "height": 61
+  },
+  {
+    "id": "tfr_ideology_305",
+    "style": "tfr",
+    "role": "ideology",
+    "category": "Идеологии TFR",
+    "label": "falangist",
+    "source_layer": "falangist",
+    "width": 64,
+    "height": 62
+  },
+  {
+    "id": "tfr_focus_000",
+    "style": "tfr",
+    "role": "focus",
+    "category": "Фокусы",
+    "label": "Новая российская эра",
+    "source_layer": "SOV_new_russian_era",
+    "width": 112,
+    "height": 84
+  }
+]

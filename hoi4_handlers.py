@@ -11,6 +11,7 @@ from drafts import park_flow
 from media import BadImage, save_image, set_page_images
 from templates import HOI4_MODES
 from hoi4_renderer import image_roles, media_roles, crop_settings
+from hoi4_icons import entry_for, matching, catalog, icon_sheet, PAGE_SIZE
 from ui import ib, flow_show
 from states import NewPage
 from aiogram.dispatcher.event.bases import SkipHandler
@@ -20,6 +21,14 @@ router = Router(name="hoi4")
 
 class Hoi4Upload(StatesGroup):
     wait = State()
+
+
+class Hoi4IconSearch(StatesGroup):
+    wait = State()
+
+
+def has_image(data, role):
+    return bool(image_roles(data).get(role) or (role in ("ideology", "focus") and entry_for(data, role)))
 
 
 def style_kb(prefix):
@@ -87,17 +96,17 @@ def back_callback(scope):
 
 async def show_media(target, state, scope, data):
     await state.set_state(NewPage.review if scope == "d" else None)
-    await state.update_data(hoi4_upload_scope=None, hoi4_upload_role=None)
-    roles = image_roles(data)
+    await state.update_data(hoi4_upload_scope=None, hoi4_upload_role=None, hoi4_icon_query="")
     rows = []
     for key, label in media_roles(data).items():
         row = [
-            ib(("✓ " if roles.get(key) else "") + label, f"hoi4:upload:{scope}:{key}")
+            ib(("✓ " if has_image(data, key) else "") + label, f"hoi4:upload:{scope}:{key}")
         ]
-        if roles.get(key):
-            row.append(ib("Расположение", f"hoi4:crop:{scope}:{key}"))
+        if key in ("ideology", "focus"):
+            row.append(ib("Из шаблона", f"hoi4:icons:{scope}:{key}:0"))
+        if has_image(data, key):
             rows.append(row)
-            row = [ib("Убрать " + label.lower(), f"hoi4:remove:{scope}:{key}")]
+            row = [ib("Расположение", f"hoi4:crop:{scope}:{key}"), ib("Убрать", f"hoi4:remove:{scope}:{key}")]
         rows.append(row)
     rows.append(
         [ib("Посмотреть карточку", back_callback(scope)), ib("В меню", "menu:home")]
@@ -105,7 +114,7 @@ async def show_media(target, state, scope, data):
     await flow_show(
         target,
         state,
-        "<b>Картинки HOI4</b>\nКаждая картинка идет на свое место. Нажми что хочешь загрузить\nФлаг и значки можно отправить прозрачным PNG",
+        '<b>Картинки HOI4</b>\nКаждая картинка идет на свое место. Нажми что хочешь загрузить\nФлаг и значки можно отправить прозрачным PNG\n"Из шаблона" - готовые значки из исходного TNO или TFR',
         InlineKeyboardMarkup(inline_keyboard=rows),
     )
 
@@ -193,6 +202,122 @@ async def media_menu(q, state, db):
     await show_media(q, state, scope, data)
 
 
+async def show_icons(target, state, scope, role, data, offset=0):
+    import asyncio
+    from aiogram.exceptions import TelegramBadRequest
+    from aiogram.types import BufferedInputFile, InputMediaPhoto
+
+    style = data.get("hoi4_style", "tno")
+    query = (await state.get_data()).get("hoi4_icon_query", "")
+    entries = matching(style, role, query)
+    offset = max(0, min(offset, max(0, (len(entries) - 1) // PAGE_SIZE * PAGE_SIZE)))
+    selected = entries[offset:offset + PAGE_SIZE]
+    rows = []
+    for start in range(0, len(selected), 3):
+        rows.append([ib(str(i + 1), f"hoi4:icon:{scope}:{role}:{selected[i]['id']}")
+                     for i in range(start, min(start + 3, len(selected)))])
+    arrows = []
+    if offset:
+        arrows.append(ib("Назад", f"hoi4:icons:{scope}:{role}:{offset - PAGE_SIZE}"))
+    if offset + PAGE_SIZE < len(entries):
+        arrows.append(ib("Дальше", f"hoi4:icons:{scope}:{role}:{offset + PAGE_SIZE}"))
+    if arrows:
+        rows.append(arrows)
+    rows.append([ib("Найти по названию", f"hoi4:iconsearch:{scope}:{role}")])
+    if query:
+        rows.append([ib("Сбросить поиск", f"hoi4:iconclear:{scope}:{role}")])
+    rows.append([ib("К картинкам", f"hoi4:media:{scope}")])
+    markup = InlineKeyboardMarkup(inline_keyboard=rows)
+    label = "Значки идеологии" if role == "ideology" else "Значки фокуса"
+    caption = f"{label} {style.upper()}\nНажми номер под картинкой. Страница {offset // PAGE_SIZE + 1}/{max(1, (len(entries) + PAGE_SIZE - 1) // PAGE_SIZE)}\n"
+    caption += "\n".join(f"{i + 1}. {escape(e['label'])}" for i, e in enumerate(selected))
+    if query:
+        caption += "\nПоиск: " + escape(query)
+    if role == "focus":
+        caption += "\nВ этом PSD есть только этот готовый фокус. Другой можно загрузить своим PNG"
+    msg = target.message if hasattr(target, "message") else target
+    if not selected:
+        await flow_show(target, state, "Ничего не нашел. Попробуй другое название", markup)
+        return
+    image = BufferedInputFile(await asyncio.to_thread(icon_sheet, selected), filename="hoi4_icons.png")
+    if hasattr(target, "message") and msg.photo:
+        try:
+            await msg.edit_media(InputMediaPhoto(media=image, caption=caption), reply_markup=markup)
+            return
+        except TelegramBadRequest:
+            pass
+    await msg.answer_photo(image, caption=caption, reply_markup=markup)
+
+
+@router.callback_query(F.data.startswith("hoi4:icons:"))
+async def icons_menu(q, state, db):
+    await q.answer()
+    _, _, scope, role, offset = q.data.split(":")
+    _, data = await target_data(scope, state, db, q.from_user.id)
+    if data is None or role not in ("ideology", "focus") or role not in media_roles(data):
+        return
+    await state.set_state(NewPage.review if scope == "d" else None)
+    await show_icons(q, state, scope, role, data, int(offset))
+
+
+@router.callback_query(F.data.startswith("hoi4:iconsearch:"))
+async def search_icons(q, state, db):
+    await q.answer()
+    _, _, scope, role = q.data.split(":")
+    _, data = await target_data(scope, state, db, q.from_user.id)
+    if data is None or role not in ("ideology", "focus") or role not in media_roles(data):
+        return
+    await state.update_data(hoi4_icon_scope=scope, hoi4_icon_role=role)
+    await state.set_state(Hoi4IconSearch.wait)
+    await flow_show(q, state, "Напиши название значка или часть названия. В TFR названия на английском",
+                    InlineKeyboardMarkup(inline_keyboard=[[ib("К значкам", f"hoi4:icons:{scope}:{role}:0")]]))
+
+
+@router.message(Hoi4IconSearch.wait, F.text, ~F.text.startswith("/"))
+async def icon_query(msg, state, db):
+    current = await state.get_data()
+    scope, role = current.get("hoi4_icon_scope", ""), current.get("hoi4_icon_role", "")
+    _, data = await target_data(scope, state, db, msg.from_user.id)
+    if data is None or role not in ("ideology", "focus") or role not in media_roles(data):
+        return
+    await state.update_data(hoi4_icon_query=msg.text.strip()[:100])
+    await state.set_state(NewPage.review if scope == "d" else None)
+    await show_icons(msg, state, scope, role, data)
+
+
+@router.callback_query(F.data.startswith("hoi4:iconclear:"))
+async def clear_icon_query(q, state, db):
+    await q.answer()
+    _, _, scope, role = q.data.split(":")
+    _, data = await target_data(scope, state, db, q.from_user.id)
+    if data is None or role not in ("ideology", "focus") or role not in media_roles(data):
+        return
+    await state.update_data(hoi4_icon_query="")
+    await state.set_state(NewPage.review if scope == "d" else None)
+    await show_icons(q, state, scope, role, data)
+
+
+@router.callback_query(F.data.startswith("hoi4:icon:"))
+async def choose_icon(q, state, db):
+    _, _, scope, role, key = q.data.split(":")
+    page, data = await target_data(scope, state, db, q.from_user.id)
+    entry = catalog().get(key)
+    if (data is None or role not in media_roles(data) or not entry
+            or entry["role"] != role or entry["style"] != data.get("hoi4_style", "tno")):
+        await q.answer("Этот значок относится к другому шаблону. Открой список заново", show_alert=True)
+        return
+    await q.answer("Значок выбран")
+    roles = image_roles(data)
+    roles.pop(role, None)
+    data["hoi4_media"] = roles
+    data.setdefault("hoi4_icons", {})[role] = key
+    data.setdefault("hoi4_crop", {}).pop(role, None)
+    set_page_images(data, list(dict.fromkeys(roles.values())))
+    await save_target(scope, state, db, page, data)
+    await ready_context(scope, state, db, q.from_user.id)
+    await show_media(q, state, scope, data)
+
+
 @router.callback_query(F.data.startswith("hoi4:upload:"))
 async def upload(q, state, db):
     await q.answer()
@@ -241,6 +366,7 @@ async def receive_image(msg, state, db, cfg, bot):
     roles = image_roles(data)
     roles[role] = info.path.name
     data.setdefault("hoi4_crop", {}).pop(role, None)
+    data.setdefault("hoi4_icons", {}).pop(role, None)
     data["hoi4_media"] = roles
     set_page_images(data, list(dict.fromkeys(roles.values())))
     await db.add_media(
@@ -270,6 +396,7 @@ async def remove_image(q, state, db):
         return
     roles = image_roles(data)
     roles.pop(role, None)
+    data.setdefault("hoi4_icons", {}).pop(role, None)
     data.setdefault("hoi4_crop", {}).pop(role, None)
     data["hoi4_media"] = roles
     set_page_images(data, list(dict.fromkeys(roles.values())))
@@ -403,7 +530,7 @@ async def open_crop(q, state, db, cfg):
     await q.answer()
     _, _, scope, role = q.data.split(":")
     page, data = await target_data(scope, state, db, q.from_user.id)
-    if data is None or role not in media_roles(data) or not image_roles(data).get(role):
+    if data is None or role not in media_roles(data) or not has_image(data, role):
         return
     await ready_context(scope, state, db, q.from_user.id)
     await crop_preview(q, state, db, cfg, scope, role, page, data)
@@ -414,7 +541,7 @@ async def adjust_crop(q, state, db, cfg):
     await q.answer()
     _, _, scope, role, action = q.data.split(":")
     page, data = await target_data(scope, state, db, q.from_user.id)
-    if data is None or role not in media_roles(data) or not image_roles(data).get(role):
+    if data is None or role not in media_roles(data) or not has_image(data, role):
         return
     values = crop_settings(data, role)
     if action in ("contain", "cover"):

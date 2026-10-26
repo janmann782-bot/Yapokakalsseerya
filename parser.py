@@ -183,6 +183,8 @@ ALIASES = {
     "период": "term",
     "партии и места": "parties",
     "партии": "parties",
+    "доли партий": "parties",
+    "партии и поддержка": "parties",
     "вид мест": "seat_shape",
     "форма мест": "seat_shape",
     "тип мест": "seat_shape",
@@ -253,8 +255,15 @@ def parse_text(text: str) -> ParsedPage:
         line = raw.strip()
         if not line:
             continue
+        if ALIASES.get(clean_key(line)) == "parties":
+            pairs.append(("parties", line.rstrip(":"), ""))
+            continue
         pair = split_line(line)
         if not pair:
+            if pairs and pairs[-1][0] == "parties":
+                key, label, value = pairs[-1]
+                pairs[-1] = (key, label, (value + "\n" + line).strip())
+                continue
             if re.fullmatch(r"[\d\s.,]+\s*(?:млн|миллион(?:а|ов)?|жител(?:ей|я))", line, re.IGNORECASE):
                 pairs.append(("population", "Население", line))
             else:
@@ -294,7 +303,7 @@ def parse_text(text: str) -> ParsedPage:
         limit = 3800 if key == "description" else 1000
         if key == "title":
             limit = 250
-        if page_type == "superevent" and key in NEWS_FIELDS:
+        if page_type == "superevent" and key in (*NEWS_FIELDS, "parties"):
             limit = None  # The input handlers reject overflow without losing any text.
         if limit is not None and len(value) > limit:
             value = value[:limit]

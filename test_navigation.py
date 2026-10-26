@@ -112,13 +112,15 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
     async def message(self, text=None, document=None):
         self.updates += 1
         msg = Message(message_id=self.updates, date=datetime.now(UTC), chat=Chat(id=self.uid, type="private"), from_user=User(id=self.uid, is_bot=False, first_name="Тест"), text=text, document=document)
-        await self.dp.feed_update(self.bot, Update(update_id=self.updates, message=msg))
+        with self.assertNoLogs("handlers", level="ERROR"):
+            await self.dp.feed_update(self.bot, Update(update_id=self.updates, message=msg))
 
     async def callback(self, data, photo=False):
         self.updates += 1
         msg = Message(message_id=10, date=datetime.now(UTC), chat=Chat(id=self.uid, type="private"), from_user=User(id=self.bot.id, is_bot=True, first_name="InfoBox"), text=None if photo else "Экран", photo=[PhotoSize(file_id="preview",file_unique_id="preview",width=800,height=600)] if photo else None)
         q = CallbackQuery(id=str(self.updates), from_user=User(id=self.uid, is_bot=False, first_name="Тест"), chat_instance="test", message=msg, data=data)
-        await self.dp.feed_update(self.bot, Update(update_id=self.updates, callback_query=q))
+        with self.assertNoLogs("handlers", level="ERROR"):
+            await self.dp.feed_update(self.bot, Update(update_id=self.updates, callback_query=q))
 
     async def click_message(self, message, data):
         self.updates+=1
@@ -195,6 +197,79 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(f"p:e:{page.id}",{b.callback_data for row in keyboard.inline_keyboard for b in row})
         await self.click_message(document,f"p:x:{page.id}")
         self.assertIsNone(await self.state.get_state())
+
+    async def test_hoi4_builtin_icon_picker_search_saved_cards_and_custom_upload(self):
+        from hoi4_icons import matching
+        for style in ("tno", "tfr"):
+            with self.subTest(style=style):
+                await self.message("/start")
+                await self.callback(f"hoi4:mode:new:{style}:state")
+                await self.callback("build:superevent:editor")
+                await self.message("Тест")
+                await self.callback("hoi4:media:d")
+                await self.callback("hoi4:icons:d:ideology:0")
+                sheet = next(m for m in reversed(list(self.session.messages.values())) if m.photo)
+                self.assertIn("Значки идеологии", sheet.caption)
+                await self.click_message(sheet, "hoi4:icons:d:ideology:9")
+                self.assertIsInstance(self.session.calls[-1], EditMessageMedia)
+                await self.click_message(sheet, "hoi4:iconsearch:d:ideology")
+                query = "либерал" if style == "tno" else "liberal"
+                await self.message(query)
+                first = matching(style, "ideology", query)[0]
+                sheet = next(m for m in reversed(list(self.session.messages.values())) if m.photo)
+                self.assertIn(first["label"], sheet.caption)
+                await self.click_message(sheet, f"hoi4:icon:d:ideology:{first['id']}")
+                self.assertEqual((await self.state.get_data())["page_data"]["hoi4_icons"]["ideology"], first["id"])
+                await self.callback("hoi4:icons:d:focus:0")
+                focus = matching(style, "focus")[0]
+                await self.callback(f"hoi4:icon:d:focus:{focus['id']}")
+                await self.callback("hoi4:crop:d:focus")
+                await self.callback("hoi4:adjust:d:focus:in", photo=True)
+                await self.callback("draft:back")
+                await self.callback("draft:save")
+                page = (await self.db.get_user_pages(self.uid))[0]
+                self.assertEqual(page.data["hoi4_icons"]["focus"], focus["id"])
+                await self.callback(f"hoi4:media:p{page.id}")
+                await self.callback(f"hoi4:icons:p{page.id}:ideology:0")
+                other = matching("tfr" if style == "tno" else "tno", "ideology")[0]
+                await self.callback(f"hoi4:icon:p{page.id}:ideology:{other['id']}")
+                self.assertEqual((await self.db.get_page(page.id,self.uid)).data["hoi4_icons"]["ideology"], first["id"])
+                await self.callback(f"hoi4:upload:p{page.id}:ideology")
+                buf = BytesIO()
+                Image.new("RGBA", (60, 60), "green").save(buf, "PNG")
+                self.session.download = buf.getvalue()
+                await self.message(document=Document(file_id="icon", file_unique_id="icon", file_name="icon.png", file_size=len(buf.getvalue())))
+                page = await self.db.get_page(page.id, self.uid)
+                self.assertNotIn("ideology", page.data["hoi4_icons"])
+                self.assertIn("ideology", page.data["hoi4_media"])
+                await self.callback(f"hoi4:icon:p{page.id}:ideology:{first['id']}")
+                self.assertNotIn("ideology", (await self.db.get_page(page.id,self.uid)).data["hoi4_media"])
+                await self.callback(f"hoi4:remove:p{page.id}:ideology")
+                self.assertNotIn("ideology", (await self.db.get_page(page.id,self.uid)).data["hoi4_icons"])
+                await self.callback(f"pd:{page.id}:yes")
+
+    async def test_hoi4_party_editor_rejects_bad_input_without_losing_previous_value(self):
+        from templates import get_template
+        await self.message("/start")
+        await self.callback("hoi4:mode:new:tno:state")
+        await self.callback("build:superevent:editor")
+        await self.message("Тест")
+        tpl = get_template("superevent", {"hoi4_style":"tno", "hoi4_mode":"state"})
+        index = next(i for i,f in enumerate(tpl.fields) if f.key == "parties")
+        good = "ЛПК, 43, rgb(243, 190, 32)\nНПК, 57, red"
+        await self.callback(f"df:{index}")
+        await self.message(good)
+        await self.callback(f"df:{index}")
+        await self.message("ЛПК, -3, red")
+        self.assertEqual((await self.state.get_data())["page_data"]["parties"], good)
+        self.assertEqual(await self.state.get_state(), NewPage.edit_value.state)
+        await self.message(good)
+        await self.callback("draft:back")
+        await self.callback("draft:save")
+        page = (await self.db.get_user_pages(self.uid))[0]
+        await self.callback(f"pe:{page.id}:s:{index}")
+        await self.message("Новая, 100, blue")
+        self.assertEqual((await self.db.get_page(page.id, self.uid)).data["parties"], "Новая, 100, blue")
 
     async def test_hoi4_selection_upload_resume_and_save(self):
         await self.message("/start")

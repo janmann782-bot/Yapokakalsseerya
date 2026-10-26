@@ -19,6 +19,49 @@ from parser import parse_text
 
 
 class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
+    def test_party_input_matches_parliament_and_keeps_rgb_commas(self):
+        from hoi4_limits import news_field_error, news_data_error, news_prompt
+
+        values = party_data("ЛПК, 43, rgb(243, 190, 32)\nНПК, 29%, #D84C4C\nПНЕК, 20, blue\nДругие, 8, rgba(167, 173, 181, 0.5)")
+        self.assertEqual([x[1] for x in values], [43, 29, 20, 8])
+        self.assertEqual([x[2] for x in values], ["#F3BE20", "#D84C4C", "#0000FF", "#A7ADB5"])
+        self.assertEqual(party_data("ЛПК | 43,5 | yellow")[0], ("ЛПК", 43.5, "#FFFF00"))
+        self.assertEqual(party_data("ЛПК; 43; red")[0][2], "#FF0000")
+        self.assertEqual(len(party_data("ЛПК, 43\nНПК 29 blue")), 2)
+        self.assertIn("rgb", news_prompt("superevent", "parties"))
+        for header in ("Партии:", "Партии: ЛПК, 43, yellow"):
+            first = "ЛПК, 43, yellow\n" if header == "Партии:" else ""
+            parsed = parse_text("Тип: HOI4\nНазвание: Тест\n" + header + "\n" + first + "НПК, 57, rgb(216, 76, 76)\nЛидер: Тимофей")
+            self.assertEqual([p[1] for p in party_data(parsed.data["parties"])], [43, 57])
+            self.assertEqual(parsed.data["leader"], "Тимофей")
+        for raw in ("ЛПК, -1, red", "ЛПК, 5, nonsense", "ЛПК, 5, rgb(999, 1, 1)", "без доли"):
+            with self.subTest(raw=raw):
+                self.assertTrue(news_field_error("superevent", "parties", raw))
+                self.assertTrue(news_data_error("superevent", {"parties": raw}))
+
+    def test_bundled_icons_are_complete_and_render_in_both_styles(self):
+        from hoi4_icons import catalog, matching, icon_image, entry_for, icon_sheet
+        from hoi4_renderer import state_card
+
+        for entry in catalog().values():
+            icon = icon_image(entry["id"])
+            self.assertEqual(icon.size, (entry["width"], entry["height"]))
+            self.assertIsNotNone(icon.getchannel("A").getbbox())
+        for style in ("tno", "tfr"):
+            entries = matching(style, "ideology")
+            self.assertGreater(len(entries), 100)
+            self.assertEqual(len(matching(style, "focus")), 1)
+            self.assertGreater(len(icon_sheet(entries[:9])), 1000)
+            with tempfile.TemporaryDirectory() as tmp:
+                data = {"hoi4_style": style, "hoi4_icons": {"ideology": entries[0]["id"], "focus": matching(style, "focus")[0]["id"]}}
+                baseline = state_card({"hoi4_style": style}, Path(tmp), style)
+                rendered = state_card(data, Path(tmp), style)
+                from PIL import ImageChops
+                self.assertIsNotNone(ImageChops.difference(rendered.convert("RGB"), baseline.convert("RGB")).getbbox())
+                self.assertIsNotNone(entry_for(data, "ideology"))
+                data["hoi4_style"] = "tfr" if style == "tno" else "tno"
+                self.assertIsNone(entry_for(data, "ideology"))
+
     async def test_every_format_renders_with_exact_canvas(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

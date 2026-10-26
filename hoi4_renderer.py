@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageChops
@@ -11,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 5
+LAYOUT_VERSION = 6
 INK = "#dbe4e5"
 
 
@@ -162,19 +163,22 @@ def crop_settings(data, role):
 
 
 def picture(
-    canvas, root, path, box, *, grayscale=False, contain=False, settings=None, mask=None
+    canvas, root, path, box, *, grayscale=False, contain=False, settings=None, mask=None, source_image=None
 ):
-    if not path:
-        return False
-    base = Path(root).resolve()
-    src = (base / str(path)).resolve()
-    if src.parent != base or not src.is_file():
-        return False
+    if source_image is None:
+        if not path:
+            return False
+        base = Path(root).resolve()
+        src = (base / str(path)).resolve()
+        if src.parent != base or not src.is_file():
+            return False
+        with Image.open(src) as source:
+            image = ImageOps.exif_transpose(source).convert("RGBA")
+    else:
+        image = source_image.convert("RGBA")
     settings = settings or dict(
         fit="contain" if contain else "cover", x=50, y=50, zoom=100
     )
-    with Image.open(src) as source:
-        image = ImageOps.exif_transpose(source).convert("RGBA")
     if grayscale:
         alpha = image.getchannel("A")
         image = ImageOps.grayscale(image).convert("RGBA")
@@ -190,7 +194,7 @@ def picture(
         (max(1, round(image.width * ratio)), max(1, round(image.height * ratio))),
         Image.Resampling.LANCZOS,
     )
-    viewport = Image.new("RGBA", (w, h), (0, 0, 0, 255))
+    viewport = Image.new("RGBA", (w, h), (0, 0, 0, 0 if source_image is not None else 255))
     viewport.alpha_composite(
         image,
         (
@@ -207,36 +211,56 @@ def picture(
 
 
 def photo(canvas, data, root, role, box, *, mask=None, grayscale=False):
+    source_image = None
+    path = image_roles(data).get(role)
+    if not path and role in ("ideology", "focus"):
+        from hoi4_icons import entry_for, icon_image
+        entry = entry_for(data, role)
+        if entry:
+            source_image = icon_image(entry["id"])
     return picture(
         canvas,
         root,
-        image_roles(data).get(role),
+        path,
         box,
         settings=crop_settings(data, role),
         mask=mask,
         grayscale=grayscale,
+        source_image=source_image,
     )
 
 
 def party_data(raw):
+    from PIL import ImageColor
+    from pillow_renderer import PARLIAMENT_PALETTE
+
     parties = []
     for line in str(raw or "").splitlines():
         if not line.strip():
             continue
-        parts = [x.strip() for x in line.split("|")]
-        if len(parts) != 3:
-            raise ValueError('Доли партий: пиши каждую строку как "ЛПК | 40 | #ffcc00"')
-        name, value, color = parts
+        if "|" in line or ";" in line:
+            parts = [x.strip() for x in re.split(r"[|;]", line, maxsplit=2)]
+        else:
+            match = re.fullmatch(r"\s*(.+?)\s*,\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)%?)\s*(?:,\s*(.+))?\s*", line)
+            if not match:
+                match = re.fullmatch(r"\s*(.+?)\s+([+-]?(?:\d+(?:\.\d*)?|\.\d+)%?)\s*(#[\da-fA-F]+|[A-Za-z]+|rgba?\(.*\))?\s*", line)
+            parts = list(match.groups()) if match else []
+        if len(parts) not in (2, 3) or not parts[0]:
+            raise ValueError('Партии: каждая строка как "ЛПК, 43, rgb(243, 190, 32)"')
+        name, value = parts[:2]
+        color = (parts[2] if len(parts) == 3 else None) or PARLIAMENT_PALETTE[len(parties) % len(PARLIAMENT_PALETTE)]
         try:
             value = float(value.replace("%", "").replace(",", "."))
-            from PIL import ImageColor
-
-            ImageColor.getrgb(color)
+            rgba = re.fullmatch(r"rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*\d+(?:\.\d+)?\s*\)", color, re.I)
+            channels = tuple(int(rgba.group(i)) for i in (1, 2, 3)) if rgba else ImageColor.getrgb(color)
+            if any(c < 0 or c > 255 for c in channels[:3]):
+                raise ValueError
+            color = "#%02X%02X%02X" % channels[:3]
             if not math.isfinite(value) or value <= 0:
                 raise ValueError
         except (ValueError, TypeError):
             raise ValueError(
-                "В долях партий нужны положительное число и цвет вроде #ffcc00"
+                "В долях партий нужны положительное число и цвет: #ffcc00, rgb(255, 204, 0) или yellow"
             ) from None
         parties.append((name, value, color))
     if len(parties) > 12:

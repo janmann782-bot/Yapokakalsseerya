@@ -22,3 +22,10 @@ No sample portraits, faction emblems or percentage distributions are baked into
 the rendered card. Images have explicit roles. Missing party shares remain
 unknown. Newspaper masthead can be replaced with user text; the original
 masthead remains when the field is empty.
+
+`icons/catalog.json` and `icons/icons.zip` contain the native ideology and focus
+layers from both PSD files. Hidden alternatives are exported as individual RGBA
+PNGs, cropped only to their nontransparent bounds. Labels, original layer names,
+style and role are retained in the catalog. There are 169 TNO ideologies and
+306 TFR ideologies. Each PSD contains one focus graphic. Reproduce this export
+with `python tools/extract_hoi4_icons.py /path/to/original/files`.
