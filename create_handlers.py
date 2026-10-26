@@ -130,7 +130,7 @@ async def ask_field(msg: Message, state: FSMContext) -> None:
     hint = tr("field_hint") if f.multiline else ""
     s = tr("field_prompt", label=f.label, hint=hint, step=i + 1, total=len(tpl.wizard))
     if f.key == "title":
-        s = tr("name_prompt")
+        s = tr("superevent_name_prompt" if tpl.key == "superevent" else "name_prompt")
     current = (d.get("page_data") or {}).get(f.key)
     s += news_prompt(d["type"],f.key,current)
     if current:

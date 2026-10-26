@@ -401,6 +401,18 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
                             for c in self.session.calls if getattr(c, "reply_markup", None)
                             for row in c.reply_markup.inline_keyboard for b in row))
 
+    async def test_hoi4_title_step_says_superevent_in_both_styles(self):
+        await self.message("/start")
+        for style in ("tfr", "tno"):
+            await self.state.clear()
+            await self.db.delete_draft(self.uid)
+            await self.callback(f"hoi4:mode:new:{style}:event")
+            before = len(self.session.calls)
+            await self.callback("build:superevent:wizard")
+            texts = [c.text for c in self.session.calls[before:] if isinstance(c, (SendMessage, EditMessageText))]
+            self.assertTrue(any("Название суперэвента" in text for text in texts), style)
+            self.assertFalse(any("Как назовем карточку" in text for text in texts), style)
+
     async def test_hoi4_all_wizards_reach_preview(self):
         from templates import get_template
         await self.message("/start")
