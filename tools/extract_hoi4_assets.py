@@ -65,11 +65,14 @@ def main(root):
     plate = composite(
         state,
         view,
-        ("флаг", "национальный фокус не выбран", "диаграмма", "идеологии", "альянсы"),
+        ("флаг", "бокс лидера", "национальный фокус не выбран", "диаграмма", "идеологии", "альянсы"),
     )
-    portrait_mask = rectangle_mask(plate.size, (16, 124, 201, 376))
+    portrait_mask = raster(
+        child(child(state, "партия, лидер и фокус"), "бокс лидера"), view
+    ).getchannel("A")
     punch(plate, ImageChops.lighter(flag_mask, portrait_mask))
     save(plate, "tno_state_front")
+    save(portrait_mask, "tno_portrait_mask")
     save(flag_mask, "tno_flag_mask")
     glass = Image.new("RGBA", plate.size)
     for name in ("шумы", "тени", "блик"):

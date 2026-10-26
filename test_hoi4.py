@@ -178,6 +178,21 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             for point in ((205, 624), (214, 642)):
                 self.assertEqual(news.getpixel(point)[:3], front.getpixel(point)[:3])
 
+    def test_tno_portrait_uses_full_native_window_without_placeholder_edges(self):
+        from hoi4_renderer import asset, state_card
+
+        mask = asset("tno_portrait_mask").convert("L")
+        self.assertEqual(mask.getbbox(), (12, 120, 205, 380))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            Image.new("RGB", (193, 260), "red").save(root / "media_portrait.png")
+            state = state_card({"hoi4_media": {"portrait": "media_portrait.png"}}, root, "tno")
+            # The old rectangular cutout left a cream strip above and beside
+            # the image. These pixels belong to the native portrait aperture.
+            for point in ((108, 123), (108, 125), (15, 250), (201, 250)):
+                r, g, b = state.getpixel(point)[:3]
+                self.assertGreater(r - max(g, b), 150, point)
+
     def test_flag_aspect_and_crop_controls(self):
         from hoi4_renderer import picture
 

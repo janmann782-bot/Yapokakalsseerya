@@ -11,7 +11,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 4
+LAYOUT_VERSION = 5
 INK = "#dbe4e5"
 
 
@@ -265,7 +265,7 @@ def state_card(data, root, style):
     if style == "tno":
         boxes = dict(
             flag=(36, 12, 184, 104),
-            portrait=(16, 124, 201, 376),
+            portrait=(12, 120, 205, 380),
             title=(356, 15, 739, 47),
             alliance=(356, 48, 739, 75),
             leader=(356, 77, 739, 109),
@@ -300,7 +300,8 @@ def state_card(data, root, style):
     # Image windows are behind the original bezels; the flag uses its PSD alpha.
     flag_mask = asset("tno_flag_mask") if style == "tno" else None
     photo(canvas, data, root, "flag", boxes["flag"], mask=flag_mask)
-    photo(canvas, data, root, "portrait", boxes["portrait"])
+    portrait_mask = asset("tno_portrait_mask") if style == "tno" else None
+    photo(canvas, data, root, "portrait", boxes["portrait"], mask=portrait_mask)
     canvas.alpha_composite(foreground)
     if style == "tno":
         canvas.alpha_composite(asset("tno_flag_glass"))
