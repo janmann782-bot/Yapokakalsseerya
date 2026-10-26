@@ -580,7 +580,9 @@ async def flow_show(target, state, text: str, reply_markup=None, parse_mode="HTM
     try:
         if not as_new and is_callback and getattr(msg, "text", None) and callable(getattr(msg, "edit_text", None)):
             sent = await msg.edit_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
-        elif not as_new and data.get("flow_message_id") and data.get("flow_chat_id") and callable(getattr(msg.bot, "edit_message_text", None)):
+        # A media callback must open its menu below the preview. Reusing the
+        # remembered wizard message edits a screen above it, outside the viewport.
+        elif not as_new and not is_callback and data.get("flow_message_id") and data.get("flow_chat_id") and callable(getattr(msg.bot, "edit_message_text", None)):
             sent = await msg.bot.edit_message_text(text, chat_id=data["flow_chat_id"], message_id=data["flow_message_id"], reply_markup=reply_markup, parse_mode=parse_mode)
     except TelegramBadRequest as exc:
         if "message is not modified" in str(exc).lower():

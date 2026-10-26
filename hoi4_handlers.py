@@ -278,7 +278,7 @@ async def remove_image(q, state, db):
     await show_media(q, state, scope, data)
 
 
-async def is_hoi4_draft(state):
+async def is_hoi4_draft(event, state):
     return (await state.get_data()).get("type") == "superevent"
 
 

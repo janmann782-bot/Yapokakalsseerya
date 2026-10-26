@@ -124,7 +124,8 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         self.updates+=1
         current=self.session.messages[(message.chat.id,message.message_id)]
         q=CallbackQuery(id=str(self.updates),from_user=User(id=self.uid,is_bot=False,first_name="Тест"),chat_instance="test",message=current,data=data)
-        await self.dp.feed_update(self.bot,Update(update_id=self.updates,callback_query=q))
+        with self.assertNoLogs("handlers", level="ERROR"):
+            await self.dp.feed_update(self.bot,Update(update_id=self.updates,callback_query=q))
 
     async def test_preview_photo_buttons_survive_home_restart_and_save(self):
         await self.message("/start")
@@ -140,6 +141,10 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
             before=len(self.session.calls)
             await self.click_message(photo,callback)
             self.assertGreater(len(self.session.calls),before+1,callback)
+            if callback in ("draft:fields", "hoi4:media:d", "hoi4:options:d"):
+                calls = self.session.calls[before:]
+                self.assertTrue(any(isinstance(c, SendMessage) for c in calls), callback)
+                self.assertFalse(any(isinstance(c, EditMessageText) for c in calls), callback)
         await self.message("/start")
         await self.state.clear()
         await self.click_message(photo,"draft:fields")
@@ -170,8 +175,20 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         await self.callback("draft:back")
         document=next(m for m in reversed(list(self.session.messages.values())) if m.document)
         await self.state.clear()
+        before = len(self.session.calls)
         await self.click_message(document,"hoi4:options:d")
+        calls = self.session.calls[before:]
+        self.assertTrue(any(isinstance(c, SendMessage) for c in calls))
+        self.assertFalse(any(isinstance(c, EditMessageText) for c in calls))
         self.assertEqual((await self.state.get_data())["type"],"superevent")
+        for callback in ("hoi4:media:d", "hoi4:options:d", "draft:image", "draft:theme"):
+            before = len(self.session.calls)
+            await self.click_message(document, callback)
+            calls = self.session.calls[before:]
+            self.assertTrue(any(isinstance(c, SendMessage) for c in calls), callback)
+            self.assertFalse(any(isinstance(c, EditMessageText) for c in calls), callback)
+            expected = "Картинки HOI4" if callback in ("hoi4:media:d", "draft:image") else "Выбери стиль"
+            self.assertTrue(any(isinstance(c, SendMessage) and expected in c.text for c in calls), callback)
         await self.click_message(document,"draft:save")
         page=(await self.db.get_user_pages(self.uid))[0]
         keyboard=self.session.messages[(document.chat.id,document.message_id)].reply_markup
