@@ -14,6 +14,7 @@ from aiogram.types import CallbackQuery, Message
 from config import Config
 from db import Db
 from locales import tr
+from hoi4_limits import news_field_error, news_data_error, news_prompt
 from log_sink import (
     send_created_page_log,
     spawn_cancel,
@@ -131,6 +132,7 @@ async def ask_field(msg: Message, state: FSMContext) -> None:
     if f.key == "title":
         s = tr("name_prompt")
     current = (d.get("page_data") or {}).get(f.key)
+    s += news_prompt(d["type"],f.key,current)
     if current:
         # value в current_value уже в blockquote - экранируем HTML
         from html import escape
@@ -365,6 +367,10 @@ async def take_field(msg: Message, state: FSMContext) -> None:
 
     f = tpl.get_field(tpl.wizard[i])
     s = msg.text.strip()
+    error = news_field_error(d["type"], f.key, s)
+    if error:
+        await flow_show(msg,state,error,wizard_kb(can_skip=f.key != "title"))
+        return
     limit = 3800 if f.multiline else 700
     if f.key == "title":
         limit = 250
@@ -846,7 +852,7 @@ async def edit_draft_standard(q: CallbackQuery, state: FSMContext) -> None:
     f = tpl.fields[i]
     await state.update_data(edit_kind="standard", edit_key=f.key, edit_label=f.label)
     await state.set_state(NewPage.edit_value)
-    await flow_show(q, state, tr("edit_value", label=f.label), edit_value_kb("draft:fields"))
+    await flow_show(q, state, tr("edit_value", label=f.label)+news_prompt(d["type"],f.key,(d.get("page_data") or {}).get(f.key)), edit_value_kb("draft:fields"))
 
 
 @router.callback_query(F.data.startswith("dc:"))
@@ -890,14 +896,17 @@ async def take_draft_edit(msg: Message, state: FSMContext, db: Db, cfg: Config, 
         await msg.answer(tr('text_only'), parse_mode='HTML')
         return
     s = msg.text.strip()
-    if len(s) > 3800:
-        await msg.answer(tr('too_long', limit=3800), parse_mode='HTML')
-        return
-
     d = await state.get_data()
     data = d.get("page_data") or {}
     kind = d.get("edit_kind")
     value = "" if s == "-" else s
+    error = news_field_error(d.get("type"),d.get("edit_key") if kind=="standard" else None,value)
+    if error:
+        await msg.answer(error,reply_markup=edit_value_kb("draft:fields"))
+        return
+    if len(s)>3800:
+        await msg.answer(tr('too_long',limit=3800),parse_mode='HTML')
+        return
 
     if kind == "standard":
         key = d["edit_key"]
@@ -1151,6 +1160,10 @@ async def quick_input(msg: Message, state: FSMContext, db: Db, cfg: Config) -> N
         return
 
     parsed = parse_text(text)
+    error = news_data_error(parsed.type,parsed.data)
+    if error:
+        await msg.answer(error)
+        return
     if parsed.recognized < 2:
         await msg.answer(tr('quick_hint'), reply_markup=main_menu(), parse_mode='HTML')
         return

@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass, field
 
 from templates import TEMPLATES, get_template
+from hoi4_limits import NEWS_FIELDS
 
 TYPE_ALIASES = {
     "hoi4 карточка (бета)": "superevent",
@@ -289,7 +290,9 @@ def parse_text(text: str) -> ParsedPage:
         limit = 3800 if key == "description" else 1000
         if key == "title":
             limit = 250
-        if len(value) > limit:
+        if page_type == "superevent" and key in NEWS_FIELDS:
+            limit = None  # The input handlers reject overflow without losing any text.
+        if limit is not None and len(value) > limit:
             value = value[:limit]
             warnings.append(f"Поле {label}: значение сокращено до {limit} символов")
         if key in allowed:

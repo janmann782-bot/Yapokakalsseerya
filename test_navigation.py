@@ -217,6 +217,53 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
                 await self.callback("draft:save")
                 self.assertIsNone(await self.db.get_draft(self.uid))
 
+    async def test_news_limit_preserves_previous_value_in_all_input_modes(self):
+        from templates import get_template
+        await self.message("/start")
+        await self.callback("hoi4:mode:new:tno:news")
+        await self.callback("build:superevent:editor")
+        await self.message("Кефирстан")
+        tpl=get_template("superevent",(await self.state.get_data())["page_data"])
+        i=next(i for i,f in enumerate(tpl.fields) if f.key=="news_body")
+        await self.callback(f"df:{i}")
+        self.assertIn("0/400",self.session.calls[-1].text)
+        await self.message("А"*401)
+        self.assertEqual(await self.state.get_state(),NewPage.edit_value.state)
+        self.assertNotIn("news_body",(await self.state.get_data())["page_data"])
+        self.assertIn("401/400",self.session.calls[-1].text)
+        await self.message("Кефирстан "*40)
+        self.assertEqual(len((await self.state.get_data())["page_data"]["news_body"]),399)
+        await self.callback("draft:save")
+        page=(await self.db.get_user_pages(self.uid))[0]
+        await self.callback(f"pe:{page.id}:s:{i}")
+        self.assertIn("399/400",self.session.calls[-1].text)
+        await self.message("А"*401)
+        self.assertEqual(len((await self.db.get_page(page.id,self.uid)).data["news_body"]),399)
+        self.assertEqual(await self.state.get_state(),"EditPage:value")
+        await self.message("Текст\n"*60)
+        self.assertIn("не помещаются",self.session.calls[-1].text)
+        await self.message("Исправлено")
+        self.assertEqual((await self.db.get_page(page.id,self.uid)).data["news_body"],"Исправлено")
+        await self.callback("menu:home")
+        await self.callback("hoi4:mode:new:tno:news")
+        await self.callback("build:superevent:paste")
+        await self.message("Название: Газета\nТекст газеты: "+"А"*1400)
+        self.assertEqual(await self.state.get_state(),Navigation.paste.state)
+        self.assertIn("1400/400",self.session.calls[-1].text)
+        await self.message("Название: Газета\nТекст газеты: Короткий текст")
+        self.assertEqual((await self.state.get_data())["page_data"]["news_body"],"Короткий текст")
+        # Wizard rejects the same overflow before advancing its field index.
+        await self.callback("menu:home")
+        await self.callback("draft:discard:yes")
+        await self.callback("hoi4:mode:new:tno:news")
+        await self.callback("build:superevent:wizard")
+        await self.message("Газета")
+        await self.callback("wiz:skip")  # headline
+        before=(await self.state.get_data())["i"]
+        await self.message("А"*401)
+        self.assertEqual((await self.state.get_data())["i"],before)
+        self.assertIn("401/400",self.session.calls[-1].text)
+
     async def test_hoi4_paste_keeps_style_and_mode(self):
         await self.message("/start")
         await self.callback("hoi4:mode:new:tno:news")

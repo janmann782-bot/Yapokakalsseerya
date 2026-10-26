@@ -42,6 +42,9 @@ async def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--output-dir", type=Path, required=True)
     cli.add_argument("--source", type=Path)
+    cli.add_argument(
+        "--portrait", type=Path, help="Existing full portrait; copied without cropping"
+    )
     args = cli.parse_args()
     root = args.output_dir.resolve()
     root.mkdir(exist_ok=True, parents=True)
@@ -62,6 +65,11 @@ async def main():
             news="media_event.png",
         )
         data["images"] = list(data["hoi4_media"].values())
+    if args.portrait:
+        with Image.open(args.portrait) as im:
+            im.convert("RGBA").save(root / "media_portrait.png")
+        data["hoi4_media"]["portrait"] = "media_portrait.png"
+        data["images"] = list(dict.fromkeys(data["hoi4_media"].values()))
     db = Db(root / "demo.db")
     await db.init()
     for style in ("tno", "tfr"):

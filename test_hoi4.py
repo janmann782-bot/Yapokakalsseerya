@@ -7,6 +7,7 @@ from models import Page
 from renderer import render_page
 from hoi4_renderer import (
     Hoi4TextOverflow,
+    LAYOUT_VERSION,
     text_box,
     wrap,
     font,
@@ -70,7 +71,7 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                                 },
                             }
                             self.assertEqual(im.size, expected[style][mode])
-                        self.assertEqual(page.data["_hoi4_layout"], 2)
+                        self.assertEqual(page.data["_hoi4_layout"], LAYOUT_VERSION)
 
     async def test_old_superevent_still_renders(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -235,3 +236,27 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                 self.assertGreater(yellow[0], 180)
                 self.assertGreater(yellow[1], 180)
                 self.assertLess(yellow[2], 100)
+
+    def test_newspaper_limit_and_layout_are_checked_before_render(self):
+        from hoi4_limits import news_field_error
+        from hoi4_renderer import news_card, crop_settings
+
+        self.assertIsNone(news_field_error("superevent", "news_body", "Ш" * 400))
+        self.assertIn("401/400", news_field_error("superevent", "news_body", "А" * 401))
+        self.assertIn(
+            "переносы", news_field_error("superevent", "news_body", "Текст\n" * 60)
+        )
+        self.assertEqual(crop_settings({}, "portrait")["fit"], "contain")
+        self.assertEqual(
+            crop_settings(
+                {"hoi4_crop": {"portrait": {"fit": "cover", "zoom": 120}}}, "portrait"
+            )["zoom"],
+            120,
+        )
+        parsed = parse_text("Тип: HOI4\nНазвание: Газета\nТекст газеты: " + "А" * 1400)
+        self.assertEqual(len(parsed.data["news_body"]), 1400)
+        with tempfile.TemporaryDirectory() as tmp:
+            image = news_card({"news_body": "Ш" * 400}, tmp)
+            self.assertEqual(image.size, (618, 683))
+            with self.assertRaisesRegex(Hoi4TextOverflow, "401/400"):
+                news_card({"news_body": "А" * 401}, tmp)

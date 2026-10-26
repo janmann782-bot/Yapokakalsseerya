@@ -11,7 +11,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 2
+LAYOUT_VERSION = 3
 INK = "#dbe4e5"
 
 
@@ -142,12 +142,16 @@ def crop_settings(data, role):
     saved = (data.get("hoi4_crop") or {}).get(role) or {}
     fit = saved.get(
         "fit",
-        "contain" if role in ("flag", "ideology", "alliance", "focus") else "cover",
+        (
+            "contain"
+            if role in ("flag", "portrait", "ideology", "alliance", "focus")
+            else "cover"
+        ),
     )
     return dict(
         fit=fit if fit in ("contain", "cover") else "cover",
         x=max(0, min(100, int(saved.get("x", 50)))),
-        y=max(0, min(100, int(saved.get("y", 25 if role == "portrait" else 50)))),
+        y=max(0, min(100, int(saved.get("y", 50)))),
         zoom=max(100, min(300, int(saved.get("zoom", 100)))),
     )
 
@@ -404,6 +408,11 @@ def event_card(data, root, style):
 
 
 def news_card(data, root):
+    from hoi4_limits import NEWS_FIELDS, news_data_error
+
+    error = news_data_error("superevent", data)
+    if error:
+        raise Hoi4TextOverflow(error)
     foreground = asset("tno_news_front").convert("RGBA")
     canvas = Image.new("RGBA", foreground.size, "black")
     photo(
@@ -417,67 +426,25 @@ def news_card(data, root):
     )
     canvas.alpha_composite(asset("tno_news_effects"))
     canvas.alpha_composite(foreground)
-    if data.get("newspaper_name"):
+    if not data.get("newspaper_name"):
+        canvas.alpha_composite(asset("tno_news_masthead"))
+    for key, (label, limit, box, size, minimum) in NEWS_FIELDS.items():
+        # Title is a private card name. Never silently use a long card name
+        # as a newspaper headline and bypass the headline input limit.
+        value = data.get(key)
         text_box(
             canvas,
-            data["newspaper_name"],
-            (99, 22, 571, 79),
+            value,
+            box,
             "tno",
-            34,
-            "Название газеты",
+            size,
+            label,
             role="news",
-            align="center",
-            minimum=16,
+            align="left" if key in ("news_body", "news_date") else "center",
+            minimum=minimum,
             fill="#25251f",
+            valign="top" if key == "news_body" else "center",
         )
-    else:
-        canvas.alpha_composite(asset("tno_news_masthead"))
-    text_box(
-        canvas,
-        data.get("news_title") or data.get("title"),
-        (37, 103, 584, 143),
-        "tno",
-        23,
-        "Заголовок газеты",
-        role="news",
-        align="center",
-        minimum=14,
-        fill="#25251f",
-    )
-    text_box(
-        canvas,
-        data.get("news_body"),
-        (237, 161, 578, 580),
-        "tno",
-        20,
-        "Текст газеты",
-        role="news",
-        minimum=14,
-        fill="#25251f",
-        valign="top",
-    )
-    text_box(
-        canvas,
-        data.get("news_date"),
-        (241, 581, 578, 618),
-        "tno",
-        16,
-        "Дата газеты",
-        role="news",
-        minimum=12,
-        fill="#25251f",
-    )
-    text_box(
-        canvas,
-        data.get("news_button"),
-        (242, 622, 583, 666),
-        "tno",
-        18,
-        "Подпись газеты",
-        role="news",
-        align="center",
-        fill="#25251f",
-    )
     return canvas
 
 

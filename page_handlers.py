@@ -14,6 +14,7 @@ from aiogram.types import CallbackQuery, Message
 from config import Config
 from db import Db
 from locales import tr
+from hoi4_limits import news_field_error, news_prompt
 from log_sink import spawn_created_page_log, spawn_export, spawn_page_deleted
 from media import (
     MAX_PAGE_IMAGES,
@@ -289,7 +290,8 @@ async def choose_page_field(q: CallbackQuery, state: FSMContext, db: Db) -> None
 
     await state.update_data(**edit)
     await state.set_state(EditPage.value)
-    await q.message.answer(tr('edit_value', label=label), reply_markup=edit_value_kb(f'p:e:{page_id}', f'p:o:{page_id}'), parse_mode='HTML')
+    prompt=tr("edit_value",label=label)+news_prompt(p.type,edit.get("edit_key"),(p.data or {}).get(edit.get("edit_key")))
+    await q.message.answer(prompt,reply_markup=edit_value_kb(f"p:e:{page_id}",f"p:o:{page_id}"),parse_mode="HTML")
 
 
 async def save_and_render(msg: Message, p: Page, db: Db, cfg: Config) -> None:
@@ -306,10 +308,6 @@ async def take_page_value(msg: Message, state: FSMContext, db: Db, cfg: Config) 
         await msg.answer(tr('text_only'), parse_mode='HTML')
         return
     s = msg.text.strip()
-    if len(s) > 3800:
-        await msg.answer(tr('too_long', limit=3800), parse_mode='HTML')
-        return
-
     d = await state.get_data()
     p = await db.get_page(int(d["page_id"]), msg.from_user.id)
     if not p:
@@ -319,6 +317,13 @@ async def take_page_value(msg: Message, state: FSMContext, db: Db, cfg: Config) 
 
     kind = d["edit_kind"]
     value = "" if s == "-" else s
+    error=news_field_error(p.type,d.get("edit_key") if kind=="s" else None,value)
+    if error:
+        await msg.answer(error,reply_markup=edit_value_kb(f"p:e:{p.id}"))
+        return
+    if len(s)>3800:
+        await msg.answer(tr('too_long',limit=3800),parse_mode='HTML')
+        return
     if kind == "s":
         key = d["edit_key"]
         if key == "title" and not value:

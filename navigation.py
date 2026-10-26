@@ -5,6 +5,7 @@ from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup
 
 from drafts import checkpoint, park_flow
 from locales import tr
+from hoi4_limits import news_data_error
 from parser import parse_text
 from states import Navigation, NewPage, clear_flow
 from templates import TEMPLATES, get_template
@@ -135,6 +136,10 @@ async def paste_data(msg: Message, state: FSMContext, db, cfg):
     d = await state.get_data()
     kind = d["paste_type"]
     parsed = parse_text("Тип: " + get_template(kind).label + "\n" + msg.text)
+    error = news_data_error(parsed.type,parsed.data)
+    if error:
+        await msg.answer(error)
+        return
     if not parsed.data.get("title"):
         await msg.answer(tr("paste_need_title"))
         return

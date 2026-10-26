@@ -206,7 +206,8 @@ async def upload(q, state, db):
     await flow_show(
         q,
         state,
-        f"<b>{escape(media_roles(data)[role])}</b>\nПришли PNG, JPEG или WEBP. Файл сохранит качество лучше фотографии",
+        f"<b>{escape(media_roles(data)[role])}</b>\nПришли PNG, JPEG или WEBP. Файл сохранит качество лучше фотографии"
+        + ("\nЛучше вертикальный портрет по грудь. Впишу целиком, без автоматического обрезания головы" if role == "portrait" else ""),
         InlineKeyboardMarkup(
             inline_keyboard=[[ib("К картинкам", f"hoi4:media:{scope}")]]
         ),
