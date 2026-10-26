@@ -436,7 +436,19 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             )
             button = event_card({"button_text": "TEST"}, root, "tfr").convert("RGB")
             bounds = ImageChops.difference(button, empty).getbbox()
-            self.assertLessEqual(bounds[3] - bounds[1], 20)
+            self.assertLessEqual(bounds[3] - bounds[1], 29)
+
+    def test_hoi4_typography_uses_larger_panel_quote_and_button_fonts(self):
+        from hoi4_renderer import (
+            STATE_TEXT_SIZES, EVENT_QUOTE_SIZE, EVENT_BUTTON_SIZE,
+        )
+
+        for key, size in STATE_TEXT_SIZES["tno"].items():
+            self.assertGreater(size, 25, key)
+        for key, size in STATE_TEXT_SIZES["tfr"].items():
+            self.assertGreater(size, 23, key)
+        self.assertEqual(EVENT_QUOTE_SIZE, {"tno": 34, "tfr": 22})
+        self.assertEqual(EVENT_BUTTON_SIZE, {"tno": 29, "tfr": 23})
 
     def test_superevent_name_and_legacy_input_alias(self):
         from templates import HOI4_MODES, get_template
