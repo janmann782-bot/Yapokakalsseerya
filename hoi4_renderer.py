@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 13
+LAYOUT_VERSION = 14
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -552,7 +552,7 @@ def tfr_news_card(data, root):
     photo(canvas, data, root, "news", (362, 599, 1159, 898))
     canvas.alpha_composite(foreground)
     for key, box, size, fill, align in (
-        ("news_title", (280, 480, 1256, 585), 54, "#141414", "center"),
+        ("news_title", (280, 480, 1256, 585), 78, "#141414", "center"),
         ("news_body", (280, 930, 1256, 1560), 32, "#191919", "left"),
         ("news_button", (443, 1610, 1100, 1677), 32, "#d2e6c8", "center"),
     ):
