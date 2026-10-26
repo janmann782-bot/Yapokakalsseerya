@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 7
+LAYOUT_VERSION = 8
 INK = "#dbe4e5"
 
 
@@ -275,11 +275,21 @@ def chart(canvas, raw, box, style):
     # Relative shares stay finite even for very large numeric values.
     largest = max(p[1] for p in parties)
     total = sum(p[1] / largest for p in parties)
+    # Draw separately: Pillow's inclusive pieslice box used to paint one pixel
+    # beyond the PSD aperture and over the surrounding bezel.
+    scale = 4
+    layer = Image.new("RGBA", (canvas.width * scale, canvas.height * scale))
+    draw = ImageDraw.Draw(layer)
+    bounds = (box[0]*scale, box[1]*scale, box[2]*scale-1, box[3]*scale-1)
     start = -90
     for _, value, color in parties:
         end = start + 360 * (value / largest) / total
-        ImageDraw.Draw(canvas).pieslice(box, start, end, fill=color)
+        draw.pieslice(bounds, start, end, fill=color)
         start = end
+    layer = layer.resize(canvas.size, Image.Resampling.LANCZOS)
+    mask = asset(style + "_chart_mask", 2 if style == "tfr" else 1).convert("L")
+    layer.putalpha(ImageChops.multiply(layer.getchannel("A"), mask))
+    canvas.alpha_composite(layer)
 
 
 def state_card(data, root, style):
@@ -314,7 +324,7 @@ def state_card(data, root, style):
             ideology=(228, 133, 458, 151),
             elections=(228, 151, 458, 172),
             focus=(241, 196, 439, 229),
-            chart=(138, 112, 194, 168),
+            chart=(140, 114, 192, 166),
             icon=(137, 5, 192, 61),
             alliance_icon=(411, 8, 461, 58),
             focus_icon=(128, 185, 200, 240),
@@ -509,6 +519,11 @@ def render_hoi4(page, root, output, quality="high"):
             result = Image.new("RGBA", (2006, 1128), "black")
             result.alpha_composite(state, (0, 0))
             result.alpha_composite(event, (954, 374))
+        # Both combined layouts leave this corner black and clear of cards.
+        ImageDraw.Draw(result).text(
+            (32, result.height - 48), "Aurelia INFOBOX",
+            font=font(style, 24), fill="#737b80",
+        )
     if quality == "standard" and result.width > 1280:
         result.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
     elif quality == "ultra":

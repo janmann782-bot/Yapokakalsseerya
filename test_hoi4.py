@@ -19,6 +19,37 @@ from parser import parse_text
 
 
 class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
+    def test_party_colors_cannot_change_pixels_outside_inner_aperture(self):
+        from PIL import ImageChops
+        from hoi4_renderer import asset, state_card
+
+        with tempfile.TemporaryDirectory() as tmp:
+            for style in ("tno", "tfr"):
+                factor = 2 if style == "tfr" else 1
+                mask = asset(style + "_chart_mask", factor).convert("L")
+                outside = mask.point(lambda a: 255 if a == 0 else 0)
+                base = state_card({}, Path(tmp), style).convert("RGB")
+                for parties in ("А, 100, magenta", "А, 43, yellow\nБ, 29, red\nВ, 28, blue"):
+                    rendered = state_card({"parties": parties}, Path(tmp), style).convert("RGB")
+                    difference = ImageChops.difference(base, rendered)
+                    for channel in difference.split():
+                        self.assertIsNone(ImageChops.multiply(channel, outside).getbbox(), style)
+                    self.assertIsNotNone(difference.getbbox(), style)
+
+    def test_combined_cards_include_bot_signature_in_empty_corner(self):
+        from hoi4_renderer import render_hoi4
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for theme in ("tno", "fire_rises"):
+                page = Page(1, "superevent", "", theme=theme, data={"hoi4_mode": "all"})
+                output = root / (theme + ".png")
+                render_hoi4(page, root, output)
+                with Image.open(output) as im:
+                    corner = im.crop((0, im.height-60, 240, im.height))
+                    self.assertIsNotNone(corner.getbbox())
+                    self.assertEqual(im.getpixel((0, im.height-1)), (0, 0, 0))
+
     def test_tno_party_sectors_stay_under_native_clipped_shadow(self):
         from hoi4_renderer import asset, state_card
 

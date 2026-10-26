@@ -9,7 +9,7 @@ from pathlib import Path
 import shutil
 import sys
 
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 from psd_tools import PSDImage
 
 OUT = Path(__file__).resolve().parents[1] / "assets" / "hoi4"
@@ -83,6 +83,7 @@ def main(root):
     chart = child(state, "диаграмма")
     chart_base = raster(child(chart, "диаграмма"), view)
     save(chart_base, "tno_chart_front")
+    save(chart_base.getchannel("A").filter(ImageFilter.MinFilter(3)), "tno_chart_mask")
     chart_effects = raster(child(chart, "тени"), view)
     chart_effects.putalpha(ImageChops.multiply(
         chart_effects.getchannel("A"), chart_base.getchannel("A")
@@ -134,6 +135,10 @@ def main(root):
     save(plate, "tfr_state_front")
     chart = child(child(info, "Pie chart"), "pol_piechart_overlay_63x63")
     save(raster(chart, view), "tfr_chart_front")
+    # The glass is 58 px wide; its inner aperture leaves the dark bezel intact.
+    mask = Image.new("L", (470 * 4, 252 * 4))
+    ImageDraw.Draw(mask).ellipse((140*4, 114*4, 192*4-1, 166*4-1), fill=255)
+    save(mask.resize((470, 252), Image.Resampling.LANCZOS), "tfr_chart_mask")
     event = child(tfr, "Superevent")
     view = (477, 187, 1002, 561)
     # The actual frame has partial alpha: it is designed to sit ON the photo.

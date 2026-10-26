@@ -21,6 +21,10 @@ To reproduce the extraction locally, install psd-tools as a development tool and
 run `python tools/extract_hoi4_assets.py /path/to/original/files`.
 Production uses Pillow only and does not open PSDs.
 
+`tno_chart_mask.png` uses the native circle alpha inset by one pixel to preserve its rim.
+`tfr_chart_mask.png` clips sectors inside the glass bezel. Colored sectors are
+composited through these masks before the native shadow/glass overlays.
+
 No sample portraits, faction emblems or percentage distributions are baked into
 the rendered card. Images have explicit roles. Missing party shares remain
 unknown. Newspaper masthead can be replaced with user text; the original
