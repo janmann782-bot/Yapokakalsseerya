@@ -84,6 +84,7 @@ TYPE_ALIASES = {
 
 
 ALIASES = {
+    "название карточки": "title",
     "заголовок события": "event_title",
     "надпись на кнопке события": "button_text",
     "название": "title",

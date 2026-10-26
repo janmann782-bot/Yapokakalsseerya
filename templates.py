@@ -249,7 +249,7 @@ SUPEREVENT = Template(
     subtitle_key=None,
     wizard=("title", "body", "button_text"),
     fields=(
-        f("title", "Название карточки", "Основное"),
+        f("title", "Название суперэвента", "Основное"),
         f("country_name", "Название государства", "Государство"),
         f("leader", "Лидер", "Государство"),
         f("alliance", "Альянс", "Государство"),
