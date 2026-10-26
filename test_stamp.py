@@ -228,6 +228,32 @@ class StampTests(unittest.IsolatedAsyncioTestCase):
             for key,value in (("stamp_weight","399"),("stamp_weight","901"),("stamp_rings","7"),("stamp_width","25")):
                 self.assertIsNotNone(data_error("stamp",{key:value}))
 
+    async def test_texture_eraser_is_binary_after_rotation_scaling_and_placement(self):
+        from stamp_renderer import wear_mask, worn_ink, wear_source
+        from stamp_document import place_stamp
+        for name in ("metal007.png","metal009.png"):
+            source=wear_source(name)
+            self.assertGreater(len(set(source.tobytes())),20)
+        mask=wear_mask((1024,640),75,"seed-A")
+        self.assertEqual(set(mask.tobytes()),{0,255})
+        self.assertEqual(mask.tobytes(),wear_mask(mask.size,75,"seed-A").tobytes())
+        self.assertNotEqual(mask.tobytes(),wear_mask(mask.size,75,"seed-B").tobytes())
+        self.assertGreater(mask.histogram()[0],mask.width*mask.height*.25)
+        self.assertLess(mask.histogram()[0],mask.width*mask.height*.35)
+        # Erasing always removes the entire pixel; it never fades ink.
+        solid=Image.new("RGBA",mask.size,(22,74,155,255))
+        erased=worn_ink(solid,75,"seed-A")
+        self.assertEqual(erased.getchannel("A").tobytes(),mask.tobytes())
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for quality in ("standard","high","ultra"):
+                page=Page(1,"stamp","Тест",theme="stamp",data={"stamp_center":"СЕКРЕТНО","stamp_shape":"прямоугольная","stamp_angle":"8","stamp_wear":"75","stamp_seed":"seed-A"})
+                path=await render_page(page,root,quality,user_id=1,output=quality+".png")
+                with Image.open(path) as image:
+                    self.assertEqual(set(image.getchannel("A").tobytes()),{0,255})
+                    placed=place_stamp(Image.new("RGBA",(700,900)),image,4,35)
+                    self.assertEqual(set(placed.getchannel("A").tobytes()),{0,255})
+
     def test_custom_symbol_is_tinted_and_white_paper_removed(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

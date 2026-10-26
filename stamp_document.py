@@ -24,7 +24,7 @@ def place_stamp(document, stamp, position=8, percent=25):
     out=document.convert("RGBA").copy()
     margin=max(1,round(min(out.size)*.03))
     width=max(1,min(round(out.width*percent/100),out.width-2*margin))
-    stamp=ImageOps.contain(stamp,(width,max(1,out.height-2*margin)),Image.Resampling.LANCZOS)
+    stamp=ImageOps.contain(stamp,(width,max(1,out.height-2*margin)),Image.Resampling.NEAREST)
     col,row=position%3,position//3
     x=round(margin+(out.width-2*margin-stamp.width)*col/2)
     y=round(margin+(out.height-2*margin-stamp.height)*row/2)

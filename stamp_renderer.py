@@ -4,14 +4,15 @@ from __future__ import annotations
 import math
 import os
 import random
+from functools import lru_cache
 from pathlib import Path
 from uuid import uuid4
 
-from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFont, ImageOps, ImageFilter
+from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFont, ImageOps
 
 from media import page_images
 
-STAMP_LAYOUT_VERSION = 6
+STAMP_LAYOUT_VERSION = 7
 ROOT = Path(__file__).resolve().parent
 LIMITS = {"stamp_top": 60, "stamp_bottom": 60, "stamp_center": 100}
 COLORS = {"синий": "#164a9b", "синяя": "#164a9b", "черный": "#111111",
@@ -56,31 +57,61 @@ def wear_level(data):
     return int(text)
 
 
+@lru_cache(maxsize=2)
+def wear_source(name):
+    with Image.open(ROOT / "assets" / "stamp_wear" / name) as source:
+        return source.convert("L")
+
+
+def wear_mask(size, level, seed):
+    if not level:
+        return Image.new("L",size,255)
+    rng=random.Random(str(seed)+":texture-eraser-v1")
+    names=["metal007.png","metal009.png"]
+    scores=[]
+    for _ in range(rng.choice((1,2,2))):
+        source=wear_source(rng.choice(names))
+        if rng.getrandbits(1):
+            source=ImageOps.mirror(source)
+        if rng.getrandbits(1):
+            source=ImageOps.flip(source)
+        # Repeating before rotation keeps all sampled pixels inside the texture.
+        tiled=Image.new("L",(source.width*3,source.height*3))
+        for x in range(3):
+            for y in range(3):
+                tiled.paste(source,(x*source.width,y*source.height))
+        tiled=tiled.rotate(rng.randrange(360),resample=Image.Resampling.NEAREST)
+        w,h=rng.randint(140,550),rng.randint(140,550)
+        cx=tiled.width//2+rng.randint(-100,100)
+        cy=tiled.height//2+rng.randint(-100,100)
+        crop=tiled.crop((cx-w//2,cy-h//2,cx-w//2+w,cy-h//2+h))
+        crop=crop.resize(size,Image.Resampling.NEAREST)
+        if rng.getrandbits(1):
+            crop=ImageOps.invert(crop)
+        scores.append(ImageOps.equalize(crop))
+    score=scores[0]
+    for layer in scores[1:]:
+        score=ImageChops.darker(score,layer)
+    # Level controls erased area, not opacity. At 100 the stamp stays readable.
+    target=round(size[0]*size[1]*level*.004)
+    histogram=score.histogram()
+    count=0
+    threshold=0
+    for threshold,n in enumerate(histogram):
+        count+=n
+        if count>=target:
+            break
+    return score.point([0 if value<=threshold else 255 for value in range(256)])
+
+
+def hard_alpha(canvas):
+    canvas.putalpha(canvas.getchannel("A").point([0 if a<128 else 255 for a in range(256)]))
+    return canvas
+
+
 def worn_ink(canvas, level=35, seed="180"):
-    seed = str(seed)
-    # Separate stable random streams make increasing wear remove more ink only.
-    rng = random.Random(seed + ":grain")
-    wear = Image.new("L", canvas.size, 255)
-    draw = ImageDraw.Draw(wear)
-    for _ in range(round(14857 * level / 100)):
-        x, y = rng.randrange(canvas.width), rng.randrange(canvas.height)
-        radius = rng.choice((1, 1, 2, 3))
-        draw.ellipse((x, y, x+radius, y+radius), fill=0)
-    rng = random.Random(seed + ":scratches")
-    for _ in range(round(129 * level / 100)):
-        x, y = rng.randrange(canvas.width), rng.randrange(canvas.height)
-        draw.line((x, y, x+rng.randrange(8, 35), y+rng.randrange(-3, 4)), fill=0, width=1)
-    # Broad faded patches mixed with sharp grain and directional scratches.
-    rng = random.Random(seed + ":patches")
-    patches = Image.new("L", canvas.size, 255)
-    patch_draw = ImageDraw.Draw(patches)
-    for _ in range(round(55 * level / 100)):
-        x, y = rng.randrange(canvas.width), rng.randrange(canvas.height)
-        w, h = rng.randrange(12, 75), rng.randrange(5, 25)
-        patch_draw.ellipse((x, y, x+w, y+h), fill=70)
-    patches = patches.filter(ImageFilter.GaussianBlur(4))
-    wear = ImageChops.darker(wear, patches)
-    canvas.putalpha(ImageChops.multiply(canvas.getchannel("A"), wear))
+    canvas=hard_alpha(canvas)
+    canvas.putalpha(ImageChops.multiply(canvas.getchannel("A"),wear_mask(canvas.size,level,seed)))
     return canvas
 
 
@@ -214,7 +245,7 @@ def arc_text(canvas, text, bottom, color, font_path=None, oval=False, strength=0
             radians = math.radians(angle)
             tangent = math.degrees(math.atan2((270 if oval else 390)*math.cos(radians), -390*math.sin(radians)))
             rotation = 180-tangent if bottom else -tangent
-            glyph = glyph.rotate(rotation, Image.Resampling.BICUBIC, expand=True)
+            glyph = glyph.rotate(rotation, Image.Resampling.NEAREST, expand=True)
             radians = math.radians(angle)
             center = (512 + 390 * math.cos(radians), (370 if oval else 512) + (270 if oval else 390) * math.sin(radians))
             canvas.alpha_composite(glyph, (round(center[0] - glyph.width/2), round(center[1] - glyph.height/2)))
@@ -334,7 +365,7 @@ def stamp_image(data, root):
                     logo_size = min(logo_size, int((body_bottom-body_top)*(1 if logo_only else .52)), right-left)
                 elif rings>2:
                     logo_size=min(logo_size,int((min(inner_rx,inner_ry)-width)*1.2*(1 if logo_only else .425)))
-                logo = ImageOps.contain(logo.crop(bounds), (logo_size, logo_size), Image.Resampling.LANCZOS)
+                logo = ImageOps.contain(logo.crop(bounds), (logo_size, logo_size), Image.Resampling.NEAREST)
                 logo_top = (220 if rectangular else 205 if oval else 292) if logo_only else (215 if rectangular else 200 if oval else 300)
                 if rectangular:
                     logo_top = round((body_top+body_bottom-logo_size)/2) if logo_only else round(body_top)
@@ -357,10 +388,9 @@ def stamp_image(data, root):
     if not (has_logo and data.get("stamp_logo_mode") == "вместо текста"):
         center_text(canvas, data.get("stamp_center"), box, color, font_path, 120 if plain_rect else 66, strength)
     level = wear_level(data)
-    if level:
-        canvas = worn_ink(canvas, level, data.get("stamp_seed", "180"))
+    canvas = worn_ink(canvas, level, data.get("stamp_seed", "180"))
     angle = number_option("stamp_angle", data.get("stamp_angle"))
-    return canvas.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True) if angle else canvas
+    return canvas.rotate(angle, resample=Image.Resampling.NEAREST, expand=True) if angle else canvas
 
 
 def render_stamp(page, root, output, quality="high"):
@@ -368,7 +398,7 @@ def render_stamp(page, root, output, quality="high"):
     result = stamp_image(page.data, root)
     size = {"standard": 768, "high": 1024, "ultra": 2048}.get(quality, 1024)
     if size != 1024:
-        result = result.resize((size, round(size * result.height / result.width)), Image.Resampling.LANCZOS)
+        result = result.resize((size, round(size * result.height / result.width)), Image.Resampling.NEAREST)
     destination = Path(output)
     temporary = destination.with_name(destination.name + "." + uuid4().hex + ".tmp")
     try:
