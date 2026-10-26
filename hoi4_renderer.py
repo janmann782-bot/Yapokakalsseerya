@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 12
+LAYOUT_VERSION = 13
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -67,7 +67,13 @@ def media_roles(data):
 
 
 def font(style, size, role="body"):
-    if role == "news":
+    if role == "tfr_news_title":
+        here = Path(__file__).resolve().parent
+        try:
+            return ImageFont.truetype(str(here / "ETORO-VF-V0.8.TTF"), size)
+        except OSError:
+            return ImageFont.truetype(str(here / "PixeloidSans-Bold.otf"), size)
+    elif role == "news":
         name = ASSETS / "OldTyper.ttf"
     elif style == "tno":
         name = ASSETS / ("Aldrich.ttf" if role == "title" else "Bombardier.ttf")
@@ -546,12 +552,13 @@ def tfr_news_card(data, root):
     photo(canvas, data, root, "news", (362, 599, 1159, 898))
     canvas.alpha_composite(foreground)
     for key, box, size, fill, align in (
-        ("news_title", (280, 480, 1256, 585), 48, "#141414", "center"),
+        ("news_title", (280, 480, 1256, 585), 54, "#141414", "center"),
         ("news_body", (280, 930, 1256, 1560), 32, "#191919", "left"),
         ("news_button", (443, 1610, 1100, 1677), 32, "#d2e6c8", "center"),
     ):
         text_box(canvas, data.get(key), box, "tfr", size, key,
                  minimum=22, fill=fill, align=align,
+                 role="tfr_news_title" if key == "news_title" else "body",
                  valign="top" if key == "news_body" else "center")
     # Remove the transparent margins around the original browser frame.
     return canvas.crop(foreground.getchannel("A").getbbox())
