@@ -113,7 +113,7 @@ async def show_media(target, state, scope, data):
     await flow_show(
         target,
         state,
-        '<b>Картинки HOI4</b>\nКаждая картинка идет на свое место. Нажми что хочешь загрузить\nФлаг и значки можно отправить прозрачным PNG\n"Из шаблона" - шаблонные значки',
+        '<b>Картинки HOI4</b>\nВыбери изображение\n\n"Из шаблона" - шаблонные значки',
         InlineKeyboardMarkup(inline_keyboard=rows),
     )
 
@@ -227,12 +227,10 @@ async def show_icons(target, state, scope, role, data, offset=0):
     rows.append([ib("К картинкам", f"hoi4:media:{scope}")])
     markup = InlineKeyboardMarkup(inline_keyboard=rows)
     label = "Значки идеологии" if role == "ideology" else "Значки фокуса"
-    caption = f"{label} {style.upper()}\nНажми номер под картинкой. Страница {offset // PAGE_SIZE + 1}/{max(1, (len(entries) + PAGE_SIZE - 1) // PAGE_SIZE)}\n"
+    caption = f"{label} {style.upper()}\nСтраница {offset // PAGE_SIZE + 1}/{max(1, (len(entries) + PAGE_SIZE - 1) // PAGE_SIZE)}\n\n"
     caption += "\n".join(f"{i + 1}. {escape(e['label'])}" for i, e in enumerate(selected))
     if query:
         caption += "\nПоиск: " + escape(query)
-    if role == "focus":
-        caption += "\nВ шаблоне один значок фокуса. Свой можно загрузить картинкой PNG"
     msg = target.message if hasattr(target, "message") else target
     if not selected:
         await flow_show(target, state, "Ничего не нашел. Попробуй другое название", markup)
@@ -329,12 +327,7 @@ async def upload(q, state, db):
     await flow_show(
         q,
         state,
-        f"<b>{escape(media_roles(data)[role])}</b>\nПришли PNG, JPEG или WEBP. Файл сохранит качество лучше фотографии"
-        + (
-            "\nЛучше вертикальный портрет по грудь. Впишу целиком, без автоматического обрезания головы"
-            if role == "portrait"
-            else ""
-        ),
+        f"<b>{escape(media_roles(data)[role])}</b>\nОтправь изображение",
         InlineKeyboardMarkup(
             inline_keyboard=[[ib("К картинкам", f"hoi4:media:{scope}")]]
         ),

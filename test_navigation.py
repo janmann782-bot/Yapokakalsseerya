@@ -221,6 +221,9 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
                 await self.click_message(sheet, f"hoi4:icon:d:ideology:{first['id']}")
                 self.assertEqual((await self.state.get_data())["page_data"]["hoi4_icons"]["ideology"], first["id"])
                 await self.callback("hoi4:icons:d:focus:0")
+                focus_sheet = next(m for m in reversed(list(self.session.messages.values())) if m.photo)
+                self.assertNotIn("В шаблоне", focus_sheet.caption)
+                self.assertNotIn("PSD", focus_sheet.caption)
                 focus = matching(style, "focus")[0]
                 await self.callback(f"hoi4:icon:d:focus:{focus['id']}")
                 await self.callback("hoi4:crop:d:focus")
@@ -412,6 +415,18 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
             texts = [c.text for c in self.session.calls[before:] if isinstance(c, (SendMessage, EditMessageText))]
             self.assertTrue(any("Название суперэвента" in text for text in texts), style)
             self.assertFalse(any("Как назовем карточку" in text for text in texts), style)
+
+    async def test_hoi4_is_a_primary_format(self):
+        await self.message("/start")
+        main = {b.callback_data for row in types_kb().inline_keyboard for b in row}
+        self.assertIn("compose:superevent", main)
+        await self.callback("compose:more")
+        messages = [c for c in self.session.calls if isinstance(c, (SendMessage, EditMessageText))]
+        extra = {b.callback_data for row in messages[-1].reply_markup.inline_keyboard for b in row}
+        self.assertNotIn("compose:superevent", extra)
+        await self.callback("compose:superevent")
+        messages = [c for c in self.session.calls if isinstance(c, (SendMessage, EditMessageText))]
+        self.assertIn("Выбери стиль", messages[-1].text)
 
     async def test_hoi4_all_wizards_reach_preview(self):
         from templates import get_template
