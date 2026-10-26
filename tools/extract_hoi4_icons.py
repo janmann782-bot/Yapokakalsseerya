@@ -14,6 +14,8 @@ def child(group, name):
 
 
 def extract(root, output):
+    existing_path = output / "catalog.json"
+    previous = {e["id"]: e for e in json.loads(existing_path.read_text())} if existing_path.exists() else {}
     entries = []
     output.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output / "icons.zip", "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -24,6 +26,9 @@ def extract(root, output):
                 return
             image = image.crop(bounds)
             key = f"{style}_{role}_{sum(e['style'] == style and e['role'] == role for e in entries):03d}"
+            old = previous.get(key)
+            if old and old["source_layer"] == layer.name:
+                label, category = old["label"], old["category"]
             stream = io.BytesIO()
             image.save(stream, "PNG", optimize=True)
             archive.writestr(key + ".png", stream.getvalue())

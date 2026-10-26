@@ -213,7 +213,7 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
                 await self.click_message(sheet, "hoi4:icons:d:ideology:9")
                 self.assertIsInstance(self.session.calls[-1], EditMessageMedia)
                 await self.click_message(sheet, "hoi4:iconsearch:d:ideology")
-                query = "либерал" if style == "tno" else "liberal"
+                query = "либерал"
                 await self.message(query)
                 first = matching(style, "ideology", query)[0]
                 sheet = next(m for m in reversed(list(self.session.messages.values())) if m.photo)

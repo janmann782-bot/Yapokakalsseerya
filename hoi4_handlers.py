@@ -113,7 +113,7 @@ async def show_media(target, state, scope, data):
     await flow_show(
         target,
         state,
-        '<b>Картинки HOI4</b>\nКаждая картинка идет на свое место. Нажми что хочешь загрузить\nФлаг и значки можно отправить прозрачным PNG\n"Из шаблона" - готовые значки из исходного TNO или TFR',
+        '<b>Картинки HOI4</b>\nКаждая картинка идет на свое место. Нажми что хочешь загрузить\nФлаг и значки можно отправить прозрачным PNG\n"Из шаблона" - шаблонные значки',
         InlineKeyboardMarkup(inline_keyboard=rows),
     )
 
@@ -232,7 +232,7 @@ async def show_icons(target, state, scope, role, data, offset=0):
     if query:
         caption += "\nПоиск: " + escape(query)
     if role == "focus":
-        caption += "\nВ этом PSD есть только этот готовый фокус. Другой можно загрузить своим PNG"
+        caption += "\nВ шаблоне один значок фокуса. Свой можно загрузить картинкой PNG"
     msg = target.message if hasattr(target, "message") else target
     if not selected:
         await flow_show(target, state, "Ничего не нашел. Попробуй другое название", markup)
@@ -267,7 +267,7 @@ async def search_icons(q, state, db):
         return
     await state.update_data(hoi4_icon_scope=scope, hoi4_icon_role=role)
     await state.set_state(Hoi4IconSearch.wait)
-    await flow_show(q, state, "Напиши название значка или часть названия. В TFR названия на английском",
+    await flow_show(q, state, "Напиши название значка или часть названия на русском",
                     InlineKeyboardMarkup(inline_keyboard=[[ib("К значкам", f"hoi4:icons:{scope}:{role}:0")]]))
 
 

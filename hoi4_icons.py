@@ -43,21 +43,24 @@ def matching(style, role, query=""):
     terms = norm(query).split()
     return [entry for entry in catalog().values()
             if entry["style"] == style and entry["role"] == role
-            and all(term in norm(entry["label"] + " " + entry["category"]) for term in terms)]
+            and all(term in norm(entry["label"] + " " + entry["category"] + " " + entry["source_layer"]) for term in terms)]
 
 
 def icon_sheet(entries):
     from hoi4_renderer import font, wrap
-    canvas = Image.new("RGB", (768, 180 * max(1, (len(entries) + 2) // 3)), "#101619")
+    canvas = Image.new("RGB", (768, 200 * max(1, (len(entries) + 2) // 3)), "black")
     draw = ImageDraw.Draw(canvas)
-    face = font("tno", 16)
     for i, entry in enumerate(entries):
-        x, y = (i % 3) * 256, (i // 3) * 180
-        draw.rounded_rectangle((x + 5, y + 5, x + 250, y + 174), radius=6, outline="#4d666b")
+        x, y = (i % 3) * 256, (i // 3) * 200
         image = ImageOps.contain(icon_image(entry["id"]), (116, 116))
         canvas.paste(image, (x + (256 - image.width) // 2, y + 9), image)
         label = str(i + 1) + ". " + entry["label"].replace("_", " ")
-        for j, line in enumerate(wrap(label, face, 234)[:2]):
+        for size in range(16, 11, -1):
+            face = font("tno", size)
+            lines = wrap(label, face, 234)
+            if len(lines) <= 3:
+                break
+        for j, line in enumerate(lines):
             draw.text((x + 11, y + 130 + j * 19), line, font=face, fill="#dbe4e5")
     stream = BytesIO()
     canvas.save(stream, "PNG")

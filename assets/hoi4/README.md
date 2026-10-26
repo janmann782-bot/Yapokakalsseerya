@@ -36,3 +36,7 @@ PNGs, cropped only to their nontransparent bounds. Labels, original layer names,
 style and role are retained in the catalog. There are 169 TNO ideologies and
 306 TFR ideologies. Each PSD contains one focus graphic. Reproduce this export
 with `python tools/extract_hoi4_icons.py /path/to/original/files`.
+
+Catalog labels and categories are Russian; source_layer keeps the original name
+for backwards-compatible search. Extraction preserves labels when the ID and
+source layer match the checked-in catalog. Native PNGs and IDs are unchanged.

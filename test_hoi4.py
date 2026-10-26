@@ -1,4 +1,6 @@
 from pathlib import Path
+from io import BytesIO
+import re
 import tempfile
 import unittest
 
@@ -130,6 +132,8 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
         from hoi4_renderer import state_card
 
         for entry in catalog().values():
+            self.assertIsNone(re.search(r"[A-Za-z_]", entry["label"]), entry["id"])
+            self.assertIsNone(re.search(r"[A-Za-z_]", entry["category"]), entry["id"])
             icon = icon_image(entry["id"])
             self.assertEqual(icon.size, (entry["width"], entry["height"]))
             self.assertIsNotNone(icon.getchannel("A").getbbox())
@@ -137,7 +141,16 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             entries = matching(style, "ideology")
             self.assertGreater(len(entries), 100)
             self.assertEqual(len(matching(style, "focus")), 1)
+            if style == "tfr":
+                russian = {e["id"] for e in matching(style, "ideology", "Классический либерализм")}
+                original = {e["id"] for e in matching(style, "ideology", "classical_liberalism")}
+                self.assertEqual(russian, original)
+                self.assertIn("tfr_ideology_262", russian)
             self.assertGreater(len(icon_sheet(entries[:9])), 1000)
+            with Image.open(BytesIO(icon_sheet(entries[:9]))) as sheet:
+                # Both former frame edges and the gutter must be plain black.
+                for point in ((128,5), (5,80), (256,80), (512,200)):
+                    self.assertEqual(sheet.getpixel(point), (0,0,0))
             with tempfile.TemporaryDirectory() as tmp:
                 data = {"hoi4_style": style, "hoi4_icons": {"ideology": entries[0]["id"], "focus": matching(style, "focus")[0]["id"]}}
                 baseline = state_card({"hoi4_style": style}, Path(tmp), style)
