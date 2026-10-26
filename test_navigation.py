@@ -416,6 +416,62 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(any("Название суперэвента" in text for text in texts), style)
             self.assertFalse(any("Как назовем карточку" in text for text in texts), style)
 
+    async def test_stamp_fonts_and_reroll_for_draft_and_saved(self):
+        from stamp_handlers import font_id
+        from fonts_catalog import ROOT
+        from states import StampFontUpload
+        await self.message("/start")
+        await self.callback("compose:stamp")
+        await self.callback("build:stamp:wizard")
+        for text in ("Фонд", "Кефирстан", "Каменный Мост", "ФНВ", "синий", "прямоугольная", "75"):
+            await self.message(text)
+        await self.callback("img:done")
+        first = dict((await self.state.get_data())["page_data"])
+        self.assertTrue(first.get("stamp_seed"))
+        await self.callback("stamp:reroll:d")
+        second = (await self.state.get_data())["page_data"]
+        self.assertNotEqual(first["stamp_seed"], second["stamp_seed"])
+        self.assertEqual(second["stamp_wear"], "75")
+        await self.callback("stamp:fonts:d:0")
+        await self.callback("stamp:set:d:" + font_id("liberation-serif"))
+        self.assertEqual((await self.state.get_data())["page_data"]["stamp_font"], "liberation-serif")
+        # Invalid uploads stay in upload mode and do not replace the selected font.
+        await self.callback("stamp:upload:d")
+        oversized = Document(file_id="font",file_unique_id="font",file_name="large.ttf",file_size=6*1024*1024)
+        await self.message(document=oversized)
+        self.assertEqual(await self.state.get_state(), StampFontUpload.wait.state)
+        self.session.download = b"broken font"
+        doc = Document(file_id="font",file_unique_id="font",file_name="custom.ttf",file_size=11)
+        await self.message(document=doc)
+        self.assertEqual(await self.state.get_state(), StampFontUpload.wait.state)
+        self.assertEqual((await self.state.get_data())["page_data"]["stamp_font"], "liberation-serif")
+        self.session.download = (ROOT / "LiberationSerif-Regular.ttf").read_bytes()
+        doc = doc.model_copy(update={"file_size":len(self.session.download)})
+        await self.message(document=doc)
+        imported = (await self.state.get_data())["page_data"]["stamp_font"]
+        self.assertTrue(imported.startswith("user:"))
+        self.assertEqual(await self.state.get_state(), NewPage.review.state)
+        self.assertEqual((await self.db.get_settings(self.uid)).font, "default")
+        # Draft controls recover after a restart without losing the chosen font.
+        await self.state.clear()
+        await self.callback("stamp:fonts:d:0")
+        self.assertEqual((await self.state.get_data())["page_data"]["stamp_font"], imported)
+        await self.callback("draft:save")
+        page = (await self.db.get_user_pages(self.uid))[0]
+        self.assertEqual(page.data["stamp_font"], imported)
+        seed = page.data["stamp_seed"]
+        await self.callback(f"stamp:reroll:p{page.id}")
+        page = await self.db.get_page(page.id, self.uid)
+        self.assertNotEqual(seed, page.data["stamp_seed"])
+        self.assertEqual(page.data["stamp_font"], imported)
+        await self.callback(f"stamp:upload:p{page.id}")
+        await self.message(document=doc)
+        page = await self.db.get_page(page.id, self.uid)
+        self.assertNotEqual(page.data["stamp_font"], imported)
+        await self.callback(f"stamp:set:p{page.id}:" + font_id("default"))
+        self.assertEqual((await self.db.get_page(page.id,self.uid)).data["stamp_font"], "default")
+        await self.callback("stamp:reroll:p99999999")
+
     async def test_stamp_wizard_symbol_edit_save_and_export(self):
         from templates import get_template
         await self.message("/start")

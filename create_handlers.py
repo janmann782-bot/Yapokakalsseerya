@@ -1105,8 +1105,10 @@ async def export_draft(q: CallbackQuery, state: FSMContext, db: Db, cfg: Config,
     path = raw.resolve() if raw.is_absolute() else (cfg.work_dir / raw).resolve()
     stale_parliament = d.get("type") == "parliament" and (d.get("page_data") or {}).get("_parliament_layout") != PARLIAMENT_LAYOUT_VERSION
     from hoi4_renderer import LAYOUT_VERSION
+    from stamp_renderer import STAMP_LAYOUT_VERSION
+    stale_stamp = d.get("type") == "stamp" and (d.get("page_data") or {}).get("_stamp_layout") != STAMP_LAYOUT_VERSION
     stale_hoi4 = d.get("type") == "superevent" and (d.get("page_data") or {}).get("_hoi4_layout") != LAYOUT_VERSION
-    if stale_parliament or stale_hoi4 or path.parent != cfg.work_dir.resolve() or not path.name.startswith("preview_") or not path.is_file():
+    if stale_parliament or stale_hoi4 or stale_stamp or path.parent != cfg.work_dir.resolve() or not path.name.startswith("preview_") or not path.is_file():
         p = await show_preview(q.message, state, db, cfg, bot, q.from_user)
         if not p:
             return

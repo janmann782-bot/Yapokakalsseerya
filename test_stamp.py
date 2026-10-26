@@ -98,6 +98,42 @@ class StampTests(unittest.IsolatedAsyncioTestCase):
                         self.assertTrue(all(a <= b for a, b in zip(alpha, previous)))
                     previous = alpha
 
+    async def test_procedural_seed_persists_and_fonts_render(self):
+        import asyncio
+        import shutil
+        from fonts_catalog import user_fonts_dir, resolve_user_font
+        from stamp_renderer import ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = user_fonts_dir(root, 17)
+            shutil.copy(ROOT / "LiberationSerif-Regular.ttf", folder / "MyFont.ttf")
+            data = {"stamp_top": "КЕФИРСТАН", "stamp_center": "ФНВ", "stamp_wear": "75"}
+            page = Page(17, "stamp", "ФНВ", theme="stamp", data=dict(data))
+            first = await render_page(page, root, "high", user_id=17, output="first.png")
+            seed = page.data["stamp_seed"]
+            again = await render_page(page, root, "high", user_id=17, output="again.png")
+            self.assertEqual(first.read_bytes(), again.read_bytes())
+            self.assertEqual(page.data["stamp_seed"], seed)
+            other = Page(17, "stamp", "ФНВ", theme="stamp", data=dict(data))
+            second = await render_page(other, root, "high", user_id=17, output="second.png")
+            self.assertNotEqual(seed, other.data["stamp_seed"])
+            self.assertNotEqual(first.read_bytes(), second.read_bytes())
+            data.update(stamp_wear="0", stamp_seed="fixed", _font_user_id=17)
+            plain = stamp_image(data, root).tobytes()
+            custom = stamp_image(dict(data, stamp_font="user:MyFont.ttf"), root).tobytes()
+            self.assertNotEqual(plain, custom)
+            self.assertEqual(stamp_image(dict(data, _font_key="user:MyFont.ttf"), root).tobytes(), custom)
+            # No shared mutable active font: concurrent rendering stays isolated.
+            images = await asyncio.gather(
+                asyncio.to_thread(stamp_image, data, root),
+                asyncio.to_thread(stamp_image, dict(data, stamp_font="user:MyFont.ttf"), root))
+            self.assertEqual(images[0].tobytes(), plain)
+            self.assertEqual(images[1].tobytes(), custom)
+            self.assertIsNone(resolve_user_font(root, 17, "user:../MyFont.ttf"))
+            self.assertIsNone(resolve_user_font(root, 18, "user:MyFont.ttf"))
+            with self.assertRaises(ValueError):
+                stamp_image(dict(data, stamp_font="user:missing.ttf"), root)
+
     def test_custom_symbol_is_tinted_and_white_paper_removed(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

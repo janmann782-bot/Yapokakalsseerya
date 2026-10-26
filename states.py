@@ -13,6 +13,10 @@ if TYPE_CHECKING:
     from db import Db
 
 
+class StampFontUpload(StatesGroup):
+    wait = State()
+
+
 class FontUpload(StatesGroup):
     wait = State()
 

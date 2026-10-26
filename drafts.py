@@ -58,6 +58,9 @@ class DraftPreviewRecoveryMiddleware(BaseMiddleware):
         is_draft = callback in direct or callback.startswith(
             ("df:", "dc:", "dx:", "fields:d:", "group:d:")
         )
+        if callback.startswith("stamp:"):
+            parts = callback.split(":")
+            is_draft = len(parts) > 2 and parts[2] == "d"
         if callback.startswith("hoi4:"):
             parts = callback.split(":")
             is_draft = len(parts) > 2 and parts[2] == "d"

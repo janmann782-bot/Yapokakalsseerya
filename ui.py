@@ -296,6 +296,8 @@ def draft_kb(page_type: str | None = None, theme: str = "") -> InlineKeyboardMar
             [ib("Добавить или править", "draft:fields")],
             [ib("Картинки", "hoi4:media:d" if page_type == "superevent" else "draft:image"), ib("Оформление", "hoi4:options:d" if page_type == "superevent" else "draft:theme")],
             [ib("Скачать PNG", "draft:export"), ib("Забрать текст", "draft:text")]]
+    if page_type == "stamp":
+        rows.insert(3, [ib("Шрифт печати", "stamp:fonts:d:0"), ib("Новая потертость", "stamp:reroll:d")])
     if page_type == "battle":
         rows.insert(3, [ib("Стороны и участники", "draft:sides")])
     if theme == "olddoc":
@@ -392,6 +394,8 @@ def page_actions_kb(page_id: int, page_type: str | None = None, theme: str = "")
             [ib("Картинки", f"hoi4:media:p{page_id}" if page_type == "superevent" else f"pa:{page_id}:image"), ib("Оформление", f"hoi4:options:p{page_id}" if page_type == "superevent" else f"p:t:{page_id}")],
             [ib("Скачать PNG", f"p:x:{page_id}"), ib("Забрать текст", f"p:txt:{page_id}")],
             [ib("Сделать копию", f"p:c:{page_id}"), ib("Удалить карточку", f"p:d:{page_id}")]]
+    if page_type == "stamp":
+        rows.insert(2, [ib("Шрифт печати", f"stamp:fonts:p{page_id}:0"), ib("Новая потертость", f"stamp:reroll:p{page_id}")])
     if page_type == "battle":
         rows.insert(2, [ib("Стороны и участники", f"p:bs:{page_id}")])
     if theme == "olddoc":

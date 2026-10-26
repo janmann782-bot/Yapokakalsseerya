@@ -14,6 +14,7 @@ from page_handlers import router as page_router
 from navigation import router as navigation_router
 from drafts import DraftCheckpointMiddleware, DraftPreviewRecoveryMiddleware
 from hoi4_handlers import router as hoi4_router
+from stamp_handlers import router as stamp_router
 
 
 def make_dispatcher(db: Db, cfg: Config) -> Dispatcher:
@@ -30,6 +31,7 @@ def make_dispatcher(db: Db, cfg: Config) -> Dispatcher:
     dp.include_router(admin_router)
     dp.include_router(common_router)
     dp.include_router(hoi4_router)
+    dp.include_router(stamp_router)
     dp.include_router(navigation_router)
     dp.include_router(page_router)
     dp.include_router(create_router)

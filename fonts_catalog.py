@@ -103,7 +103,13 @@ def list_user_fonts(work_dir: str | Path, user_id: int) -> list[tuple[str, str]]
 def resolve_user_font(work_dir: str | Path, user_id: int, key: str) -> Path | None:
     if not key.startswith("user:"):
         return None
-    p = user_fonts_dir(work_dir, user_id) / key[5:]
+    name = key[5:]
+    if not name or Path(name).name != name or "\\" in name:
+        return None
+    folder = user_fonts_dir(work_dir, user_id).resolve()
+    p = (folder / name).resolve()
+    if p.parent != folder:
+        return None
     if p.is_file() and p.suffix.lower() in {".ttf", ".otf"}:
         return p
     return None

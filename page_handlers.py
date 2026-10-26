@@ -141,6 +141,10 @@ async def render_saved(
         from hoi4_renderer import LAYOUT_VERSION
         if p.data.get("_hoi4_layout") != LAYOUT_VERSION:
             path = None
+    if p.type == "stamp":
+        from stamp_renderer import STAMP_LAYOUT_VERSION
+        if p.data.get("_stamp_layout") != STAMP_LAYOUT_VERSION:
+            path = None
     wait = None
     if not path:
         wait = await msg.answer(progress_text(8))
