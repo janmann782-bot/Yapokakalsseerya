@@ -15,6 +15,7 @@ from navigation import router as navigation_router
 from drafts import DraftCheckpointMiddleware, DraftPreviewRecoveryMiddleware
 from hoi4_handlers import router as hoi4_router
 from stamp_handlers import router as stamp_router
+from post_format_handlers import router as post_format_router
 
 
 def make_dispatcher(db: Db, cfg: Config) -> Dispatcher:
@@ -29,6 +30,7 @@ def make_dispatcher(db: Db, cfg: Config) -> Dispatcher:
     dp.callback_query.outer_middleware(DraftPreviewRecoveryMiddleware())
     # Admin router first so /maint_* always reachable for admins
     dp.include_router(admin_router)
+    dp.include_router(post_format_router)
     dp.include_router(common_router)
     dp.include_router(hoi4_router)
     dp.include_router(stamp_router)
@@ -38,3 +40,4 @@ def make_dispatcher(db: Db, cfg: Config) -> Dispatcher:
     dp.include_router(battle_router)
     dp.errors()(on_error)
     return dp
+
