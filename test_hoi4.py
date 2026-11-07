@@ -52,6 +52,42 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                     self.assertIsNotNone(corner.getbbox())
                     self.assertEqual(im.getpixel((0, im.height-1)), (0, 0, 0))
 
+    def test_combined_news_is_behind_focus_overhang_in_tno_and_tfr(self):
+        from hoi4_renderer import render_hoi4
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            Image.new("RGBA", (64, 64), (0, 0, 255, 255)).save(root / "focus.png")
+            for style, theme, overlap_pixel in (
+                ("tno", "tno", (300, 400)),
+                ("tfr", "fire_rises", (300, 519)),
+            ):
+                with self.subTest(style=style):
+                    # Focus was previously cropped at the state-card edge,
+                    # while the news panel was laid on top of everything.
+                    baseline = Page(
+                        1, "superevent", "Кефирстан", theme=theme,
+                        data={"hoi4_mode": "all"},
+                    )
+                    with_focus = Page(
+                        1, "superevent", "Кефирстан", theme=theme,
+                        data={"hoi4_mode": "all",
+                              "hoi4_media": {"focus": "focus.png"}},
+                    )
+                    base_path = root / f"{style}_news_baseline.png"
+                    focus_path = root / f"{style}_news_focus.png"
+                    render_hoi4(baseline, root, base_path)
+                    render_hoi4(with_focus, root, focus_path)
+                    with Image.open(base_path) as old, Image.open(focus_path) as new:
+                        self.assertNotEqual(
+                            old.getpixel(overlap_pixel), (0, 0, 255),
+                            "The news-only pixel must not already be blue",
+                        )
+                        self.assertEqual(
+                            new.getpixel(overlap_pixel), (0, 0, 255),
+                            "The focus should paint OVER the news panel",
+                        )
+
     def test_tno_party_sectors_stay_under_native_clipped_shadow(self):
         from hoi4_renderer import asset, state_card
 
