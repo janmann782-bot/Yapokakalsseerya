@@ -388,6 +388,60 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(canvas.getpixel((50, 50))[:3], expected)
 
+    def test_all_hoi4_icons_are_scaled_by_1_3(self):
+        from hoi4_renderer import (
+            ICON_RENDER_SCALE, icon_display_box, scaled_icon_box
+        )
+
+        self.assertEqual(ICON_RENDER_SCALE, 1.3)
+        sample_boxes = {
+            "tno": {
+                "ideology": (225, 15, 331, 106),
+                "alliance": (746, 15, 837, 105),
+                "focus": (228, 270, 359, 374),
+            },
+            "tfr": {
+                "ideology": (274, 10, 384, 122),
+                "alliance": (822, 16, 922, 116),
+                "focus": (256, 370, 400, 480),
+            },
+        }
+        for style, cells in sample_boxes.items():
+            factor = 1 if style == "tno" else 2
+            canvas_size = (960, 512) if style == "tno" else (1000, 600)
+            for role, cell in cells.items():
+                previous = icon_display_box(
+                    cell, role, style, factor, canvas_size
+                )
+                scaled = scaled_icon_box(
+                    cell, role, style, factor, canvas_size
+                )
+                self.assertEqual(
+                    scaled[2] - scaled[0],
+                    round((previous[2] - previous[0]) * 1.3),
+                    (style, role, "width"),
+                )
+                self.assertEqual(
+                    scaled[3] - scaled[1],
+                    round((previous[3] - previous[1]) * 1.3),
+                    (style, role, "height"),
+                )
+                self.assertLessEqual(
+                    abs((scaled[0] + scaled[2]) - (previous[0] + previous[2])),
+                    1,
+                )
+                self.assertLessEqual(
+                    abs((scaled[1] + scaled[3]) - (previous[1] + previous[3])),
+                    1,
+                )
+                self.assertGreater(scaled[2] - scaled[0], previous[2] - previous[0])
+                self.assertGreater(scaled[3] - scaled[1], previous[3] - previous[1])
+
+        self.assertEqual(
+            scaled_icon_box((100, 10, 200, 110), "flag", "tno", 1, (960, 512)),
+            (100, 10, 200, 110),
+        )
+
     def test_large_focus_icons_receive_priority_bleed(self):
         from hoi4_renderer import ICON_BLEED, LAYOUT_VERSION, icon_display_box
 
