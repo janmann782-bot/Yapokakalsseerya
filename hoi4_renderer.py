@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 19
+LAYOUT_VERSION = 20
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -625,6 +625,36 @@ def tfr_news_card(data, root):
     return canvas.crop(foreground.getchannel("A").getbbox())
 
 
+def focus_overhang_above_news(canvas, data, root, style, state_origin, state_size):
+    """Preserve the focus emblem outside the state card when it overlaps news.
+
+    The state card itself clips its icon to its original PSD canvas. Draw the
+    same focus icon once more on a full-sized transparent layer, then keep
+    ONLY pixels beyond the state canvas so its frame/text remain untouched.
+    """
+    factor = 2 if style == "tfr" else 1
+    native_focus = (
+        (228, 270, 359, 374) if style == "tno"
+        else (128, 185, 200, 240)
+    )
+    box = scaled_icon_box(
+        scaled(native_focus, factor), "focus", style, factor, state_size
+    )
+    box = (
+        box[0] + state_origin[0], box[1] + state_origin[1],
+        box[2] + state_origin[0], box[3] + state_origin[1],
+    )
+    overhang = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    if not photo(overhang, data, root, "focus", box, trim_alpha=True):
+        return
+    x, y = state_origin
+    ImageDraw.Draw(overhang).rectangle(
+        (x, y, x + state_size[0] - 1, y + state_size[1] - 1),
+        fill=(0, 0, 0, 0),
+    )
+    canvas.alpha_composite(overhang)
+
+
 def render_hoi4(page, root, output, quality="high"):
     style = style_for(page)
     data = dict(page.data or {})
@@ -642,16 +672,19 @@ def render_hoi4(page, root, output, quality="high"):
         event = event_card(data, root, style)
         if style == "tno":
             result = Image.new("RGBA", (1920, 1080), "black")
+            # News belongs behind the state card and its protruding focus.
+            result.alpha_composite(news_card(data, root), (244, 397))
             result.alpha_composite(state, (0, 1))
             result.alpha_composite(event, (868, 99))
-            result.alpha_composite(news_card(data, root), (244, 397))
+            focus_overhang_above_news(result, data, root, style, (0, 1), state.size)
         else:
             result = Image.new("RGBA", (2006, 1640), "black")
-            result.alpha_composite(state, (0, 0))
-            result.alpha_composite(event, (954, 374))
             news = tfr_news_card(data, root)
             news.thumbnail((900, 1104), Image.Resampling.LANCZOS)
             result.alpha_composite(news, (20, 518))
+            result.alpha_composite(state, (0, 0))
+            result.alpha_composite(event, (954, 374))
+            focus_overhang_above_news(result, data, root, style, (0, 0), state.size)
         # Both combined layouts leave this corner black and clear of cards.
         ImageDraw.Draw(result).text(
             (32 if style == "tno" else 1000, result.height - 48), "Aurelia INFOBOX",
