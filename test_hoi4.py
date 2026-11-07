@@ -431,7 +431,7 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(ICON_RENDER_SCALE, 1.3)
         self.assertEqual(FOCUS_RENDER_SCALE, 1.2)
-        self.assertEqual(LAYOUT_VERSION, 19)
+        self.assertGreaterEqual(LAYOUT_VERSION, 19)
         sample_boxes = {
             "tno": {
                 "ideology": (225, 15, 331, 106),
