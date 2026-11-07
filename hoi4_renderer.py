@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 14
+LAYOUT_VERSION = 15
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -165,15 +165,35 @@ def scaled(box, scale):
     return tuple(round(x * scale) for x in box)
 
 
+# Extra pixels around TFR's icon cells, measured in the original PSD size.
+# The extension is applied AFTER the PSD bezel so the emblem can overlap it.
+TFR_ICON_BLEED = {
+    "ideology": (6, 7, 6, 7),
+    "alliance": (4, 6, 4, 6),
+    "focus": (7, 6, 7, 6),
+}
+
+
+def icon_display_box(box, role, style, factor, canvas_size):
+    """Let TFR emblems project beyond their PSD apertures without clipping."""
+    if style != "tfr" or role not in TFR_ICON_BLEED:
+        return box
+    left, top, right, bottom = (value * factor for value in TFR_ICON_BLEED[role])
+    width, height = canvas_size
+    return (
+        max(0, box[0] - left),
+        max(0, box[1] - top),
+        min(width, box[2] + right),
+        min(height, box[3] + bottom),
+    )
+
+
 def crop_settings(data, role):
     saved = (data.get("hoi4_crop") or {}).get(role) or {}
+    # Fill flag/portrait windows by default. User-selected contain still wins.
     fit = saved.get(
         "fit",
-        (
-            "contain"
-            if role in ("flag", "portrait", "ideology", "alliance", "focus")
-            else "cover"
-        ),
+        "contain" if role in ("ideology", "alliance", "focus") else "cover",
     )
     return dict(
         fit=fit if fit in ("contain", "cover") else "cover",
@@ -184,7 +204,8 @@ def crop_settings(data, role):
 
 
 def picture(
-    canvas, root, path, box, *, grayscale=False, contain=False, settings=None, mask=None, source_image=None
+    canvas, root, path, box, *, grayscale=False, contain=False,
+    settings=None, mask=None, source_image=None, trim_alpha=False,
 ):
     if source_image is None:
         if not path:
@@ -197,6 +218,13 @@ def picture(
             image = ImageOps.exif_transpose(source).convert("RGBA")
     else:
         image = source_image.convert("RGBA")
+    if trim_alpha:
+        # Uploaded transparent icons often have invisible margins that make
+        # enlarging the target cell visually ineffective.
+        alpha = image.getchannel("A")
+        visible = alpha.point(lambda value: 255 if value > 8 else 0).getbbox()
+        if visible:
+            image = image.crop(visible)
     settings = settings or dict(
         fit="contain" if contain else "cover", x=50, y=50, zoom=100
     )
@@ -215,7 +243,10 @@ def picture(
         (max(1, round(image.width * ratio)), max(1, round(image.height * ratio))),
         Image.Resampling.LANCZOS,
     )
-    viewport = Image.new("RGBA", (w, h), (0, 0, 0, 0 if source_image is not None else 255))
+    viewport = Image.new(
+        "RGBA", (w, h),
+        (0, 0, 0, 0 if source_image is not None or trim_alpha else 255),
+    )
     viewport.alpha_composite(
         image,
         (
@@ -231,7 +262,7 @@ def picture(
     return True
 
 
-def photo(canvas, data, root, role, box, *, mask=None, grayscale=False):
+def photo(canvas, data, root, role, box, *, mask=None, grayscale=False, trim_alpha=False):
     source_image = None
     path = image_roles(data).get(role)
     if not path and role in ("ideology", "focus"):
@@ -248,6 +279,7 @@ def photo(canvas, data, root, role, box, *, mask=None, grayscale=False):
         mask=mask,
         grayscale=grayscale,
         source_image=source_image,
+        trim_alpha=trim_alpha,
     )
 
 
@@ -385,7 +417,8 @@ def state_card(data, root, style):
         ("alliance", "alliance_icon"),
         ("focus", "focus_icon"),
     ):
-        photo(canvas, data, root, role, boxes[key])
+        display_box = icon_display_box(boxes[key], role, style, factor, canvas.size)
+        photo(canvas, data, root, role, display_box, trim_alpha=style == "tfr")
     if style == "tno":
         # Native base below the sectors, clipped PSD shadows above them.
         canvas.alpha_composite(asset("tno_chart_front"))

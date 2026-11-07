@@ -388,6 +388,49 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(canvas.getpixel((50, 50))[:3], expected)
 
+    def test_tfr_icons_bleed_beyond_original_cells(self):
+        from hoi4_renderer import crop_settings, icon_display_box, state_card
+
+        # Flag and leader portraits fill the native windows unless overridden.
+        for role in ("flag", "portrait"):
+            self.assertEqual(crop_settings({}, role)["fit"], "cover")
+            self.assertEqual(
+                crop_settings({"hoi4_crop": {role: {"fit": "contain"}}}, role)["fit"],
+                "contain",
+            )
+        self.assertEqual(crop_settings({}, "focus")["fit"], "contain")
+
+        # The TNO layout remains unchanged.
+        original = (100, 10, 200, 110)
+        self.assertEqual(
+            icon_display_box(original, "focus", "tno", 1, (960, 512)),
+            original,
+        )
+
+        from PIL import ImageDraw
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            colors = {
+                "ideology": (0, 255, 0),
+                "alliance": (255, 0, 0),
+                "focus": (0, 0, 255),
+            }
+            for role, color in colors.items():
+                # The alpha padding must not shrink the visible emblem.
+                icon = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
+                ImageDraw.Draw(icon).rectangle((20, 20, 79, 79), fill=color)
+                icon.save(root / f"media_{role}.png")
+            data = {
+                "hoi4_media": {
+                    role: f"media_{role}.png" for role in colors
+                },
+            }
+            rendered = state_card(data, root, "tfr")
+            # These points lie JUST OUTSIDE the old icon rectangles.
+            self.assertEqual(rendered.getpixel((266, 70))[:3], colors["ideology"])
+            self.assertEqual(rendered.getpixel((818, 64))[:3], colors["alliance"])
+            self.assertEqual(rendered.getpixel((328, 361))[:3], colors["focus"])
+
     def test_icons_use_their_own_cells_and_party_pie_is_visible(self):
         from hoi4_renderer import state_card
 
@@ -430,7 +473,7 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(
             "переносы", news_field_error("superevent", "news_body", "Текст\n" * 60)
         )
-        self.assertEqual(crop_settings({}, "portrait")["fit"], "contain")
+        self.assertEqual(crop_settings({}, "portrait")["fit"], "cover")
         self.assertEqual(
             crop_settings(
                 {"hoi4_crop": {"portrait": {"fit": "cover", "zoom": 120}}}, "portrait"
