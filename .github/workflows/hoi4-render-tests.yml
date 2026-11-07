@@ -1,0 +1,31 @@
+name: HOI4 renderer regressions
+
+on:
+  push:
+    paths:
+      - "hoi4_renderer.py"
+      - "test_hoi4.py"
+      - ".github/workflows/hoi4-render-tests.yml"
+  pull_request:
+    paths:
+      - "hoi4_renderer.py"
+      - "test_hoi4.py"
+      - ".github/workflows/hoi4-render-tests.yml"
+
+jobs:
+  hoi4:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dependencies
+        run: python -m pip install -r requirements.txt
+      - name: HOI4 render smoke and crop tests
+        run: |
+          python -m unittest -v \
+            test_hoi4.Hoi4Tests.test_tfr_icons_bleed_beyond_original_cells \
+            test_hoi4.Hoi4Tests.test_flag_aspect_and_crop_controls \
+            test_hoi4.Hoi4Tests.test_icons_use_their_own_cells_and_party_pie_is_visible \
+            test_hoi4.Hoi4Tests.test_tfr_keeps_native_flag_glass_and_event_type_scale
