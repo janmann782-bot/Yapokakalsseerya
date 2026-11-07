@@ -1,0 +1,36 @@
+name: Real bot renders - Kefirstan before and after
+
+on:
+  push:
+    paths:
+      - ".github/workflows/render-kefirstan.yml"
+      - "render_kefirstan_preview.py"
+      - "preview_kefirstan_assets.b64"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Pillow
+        run: python -m pip install -r requirements.txt
+      - name: Capture true baseline source from before 1.12.1
+        run: git show b7a604a83f9258d79bc42617ce4346c1890e8afd:hoi4_renderer.py > preview_renderer_before.py
+      - name: Render original bot PSD templates
+        run: python render_kefirstan_preview.py
+      - name: Commit actual PNG renders to preview branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add previews/kefirstan/*.png
+          git commit -m "Add real TNO and TFR Kefirstan before/after renders" || exit 0
+          git push origin HEAD:${{ github.ref_name }}
