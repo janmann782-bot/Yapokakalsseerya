@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 17
+LAYOUT_VERSION = 18
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -194,6 +194,25 @@ def icon_display_box(box, role, style, factor, canvas_size):
         min(width, box[2] + right),
         min(height, box[3] + bottom),
     )
+
+
+# Scale visual icons relative to the current 1.12.3 layout. Unlike a
+# change to ICON_BLEED alone, this scales the *entire rendered image* by 30%.
+# Coordinates may extend beyond the canvas: Pillow will crop at the final
+# output edge, rather than squeeze the icon to fit the canvas.
+ICON_RENDER_SCALE = 1.3
+
+
+def scaled_icon_box(box, role, style, factor, canvas_size):
+    cell = icon_display_box(box, role, style, factor, canvas_size)
+    if role not in ("ideology", "alliance", "focus"):
+        return cell
+    x0, y0, x1, y1 = cell
+    width = round((x1 - x0) * ICON_RENDER_SCALE)
+    height = round((y1 - y0) * ICON_RENDER_SCALE)
+    left = round((x0 + x1 - width) / 2)
+    top = round((y0 + y1 - height) / 2)
+    return (left, top, left + width, top + height)
 
 
 def crop_settings(data, role):
@@ -425,7 +444,7 @@ def state_card(data, root, style):
         ("alliance", "alliance_icon"),
         ("focus", "focus_icon"),
     ):
-        display_box = icon_display_box(boxes[key], role, style, factor, canvas.size)
+        display_box = scaled_icon_box(boxes[key], role, style, factor, canvas.size)
         photo(canvas, data, root, role, display_box, trim_alpha=True)
     if style == "tno":
         # Native base below the sectors, clipped PSD shadows above them.
