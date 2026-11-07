@@ -388,6 +388,43 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(canvas.getpixel((50, 50))[:3], expected)
 
+    def test_large_focus_icons_receive_priority_bleed(self):
+        from hoi4_renderer import ICON_BLEED, LAYOUT_VERSION, icon_display_box
+
+        self.assertGreaterEqual(LAYOUT_VERSION, 17)
+        expected = {
+            "tno": {
+                "ideology": (12, 12, 12, 12),
+                "alliance": (10, 11, 10, 11),
+                "focus": (24, 16, 24, 16),
+            },
+            "tfr": {
+                "ideology": (9, 9, 9, 9),
+                "alliance": (7, 8, 7, 8),
+                "focus": (16, 12, 16, 12),
+            },
+        }
+        self.assertEqual(ICON_BLEED, expected)
+        # Focus must extend more than ideology and alliance in both styles.
+        for style in ("tno", "tfr"):
+            self.assertGreater(
+                ICON_BLEED[style]["focus"][0],
+                ICON_BLEED[style]["ideology"][0],
+            )
+            self.assertGreater(
+                ICON_BLEED[style]["focus"][0],
+                ICON_BLEED[style]["alliance"][0],
+            )
+
+        self.assertEqual(
+            icon_display_box((228, 270, 359, 374), "focus", "tno", 1, (960, 512)),
+            (204, 254, 383, 390),
+        )
+        self.assertEqual(
+            icon_display_box((256, 370, 400, 480), "focus", "tfr", 2, (1000, 600)),
+            (224, 346, 432, 504),
+        )
+
     def test_tno_icons_bleed_beyond_original_cells(self):
         from PIL import ImageDraw
         from hoi4_renderer import icon_display_box, state_card

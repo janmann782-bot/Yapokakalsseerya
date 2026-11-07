@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 16
+LAYOUT_VERSION = 17
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -169,14 +169,14 @@ def scaled(box, scale):
 # TFR artwork is exported at 2x, so its margins are scaled by factor.
 ICON_BLEED = {
     "tno": {
-        "ideology": (9, 10, 9, 10),
-        "alliance": (8, 9, 8, 9),
-        "focus": (12, 9, 12, 9),
+        "ideology": (12, 12, 12, 12),
+        "alliance": (10, 11, 10, 11),
+        "focus": (24, 16, 24, 16),
     },
     "tfr": {
-        "ideology": (6, 7, 6, 7),
-        "alliance": (4, 6, 4, 6),
-        "focus": (7, 6, 7, 6),
+        "ideology": (9, 9, 9, 9),
+        "alliance": (7, 8, 7, 8),
+        "focus": (16, 12, 16, 12),
     },
 }
 
