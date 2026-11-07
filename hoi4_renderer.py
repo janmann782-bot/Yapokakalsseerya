@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 17
+LAYOUT_VERSION = 18
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -181,19 +181,26 @@ ICON_BLEED = {
 }
 
 
+ICON_SIZE_MULTIPLIER = 1.30
+
+
 def icon_display_box(box, role, style, factor, canvas_size):
-    """Project ideology, alliance and focus emblems beyond both HOI4 frames."""
+    """Scale all TNO/TFR emblems uniformly to 130% of their current size."""
     offsets = ICON_BLEED.get(style, {}).get(role)
     if offsets is None:
         return box
     left, top, right, bottom = (value * factor for value in offsets)
-    width, height = canvas_size
-    return (
-        max(0, box[0] - left),
-        max(0, box[1] - top),
-        min(width, box[2] + right),
-        min(height, box[3] + bottom),
-    )
+    canvas_width, canvas_height = canvas_size
+    # Retain the exact base viewport used in version 1.12.3.
+    x0, y0 = max(0, box[0] - left), max(0, box[1] - top)
+    x1, y1 = min(canvas_width, box[2] + right), min(canvas_height, box[3] + bottom)
+    width = max(1, round((x1 - x0) * ICON_SIZE_MULTIPLIER))
+    height = max(1, round((y1 - y0) * ICON_SIZE_MULTIPLIER))
+    # Do not clamp the scaled viewport: rendering crops AFTER resizing so
+    # icons near the canvas edge also receive their full 30% enlargement.
+    scaled_x0 = (x0 + x1 - width) // 2
+    scaled_y0 = (y0 + y1 - height) // 2
+    return (scaled_x0, scaled_y0, scaled_x0 + width, scaled_y0 + height)
 
 
 def crop_settings(data, role):
