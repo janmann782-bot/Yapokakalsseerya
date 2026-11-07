@@ -1,0 +1,36 @@
+name: Real HOI4 TNO/TFR before-after 1.12.3
+
+on:
+  push:
+    paths:
+      - ".github/workflows/preview-kefirstan-v123.yml"
+      - "render_kefirstan_preview.py"
+      - "preview_kefirstan_assets.b64"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Capture exact INFOBOX 1.12.2 renderer
+        run: git show 73bfdca17c27d04309fbfca2f0a247f73eeda95d:hoi4_renderer.py > preview_renderer_before.py
+      - name: Render real INFOBOX 1.12.2 versus 1.12.3
+        run: python render_kefirstan_preview.py
+      - name: Commit PNG previews
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add previews/kefirstan_1_12_3/*.png
+          git commit -m "Add real Kefirstan/Ralizm 1.12.2 vs 1.12.3 previews" || exit 0
+          git push origin HEAD:${{ github.ref_name }}
