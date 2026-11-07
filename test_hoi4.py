@@ -422,9 +422,9 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
 
             # Points in the new bleed zone, OUTSIDE each old PSD cell.
             points = {
-                "ideology": (219, 55),
-                "alliance": (741, 58),
-                "focus": (221, 320),
+                "ideology": (275, 8),   # above the old ideology top edge
+                "alliance": (741, 58), # left of old alliance edge
+                "focus": (290, 265),  # above the old focus top edge
             }
             for role, point in points.items():
                 self.assertEqual(result.getpixel(point)[:3], colors[role], role)
@@ -442,10 +442,10 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(crop_settings({}, "focus")["fit"], "contain")
 
-        # The TNO layout remains unchanged.
+        # Non-icon windows do not change: only focus/ideology/alliance bleed.
         original = (100, 10, 200, 110)
         self.assertEqual(
-            icon_display_box(original, "focus", "tno", 1, (960, 512)),
+            icon_display_box(original, "flag", "tno", 1, (960, 512)),
             original,
         )
 
