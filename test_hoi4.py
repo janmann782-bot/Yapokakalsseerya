@@ -388,6 +388,48 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(canvas.getpixel((50, 50))[:3], expected)
 
+    def test_tno_icons_bleed_beyond_original_cells(self):
+        from PIL import ImageDraw
+        from hoi4_renderer import icon_display_box, state_card
+
+        canvas_size = (960, 512)
+        old = {
+            "ideology": (225, 15, 331, 106),
+            "alliance": (746, 15, 837, 105),
+            "focus": (228, 270, 359, 374),
+        }
+        for role, rect in old.items():
+            expanded = icon_display_box(rect, role, "tno", 1, canvas_size)
+            self.assertLess(expanded[0], rect[0], role)
+            self.assertLess(expanded[1], rect[1], role)
+            self.assertGreater(expanded[2], rect[2], role)
+            self.assertGreater(expanded[3], rect[3], role)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            colors = {
+                "ideology": (0, 255, 0),
+                "alliance": (255, 0, 0),
+                "focus": (0, 0, 255),
+            }
+            for role, color in colors.items():
+                img = Image.new("RGBA", (90, 90))
+                ImageDraw.Draw(img).rectangle((16, 16, 74, 74), fill=color)
+                img.save(root / f"media_{role}.png")
+            data = {"hoi4_media": {role: f"media_{role}.png" for role in colors}}
+            result = state_card(data, root, "tno")
+            baseline = state_card({}, root, "tno")
+
+            # Points in the new bleed zone, OUTSIDE each old PSD cell.
+            points = {
+                "ideology": (275, 8),   # above the old ideology top edge
+                "alliance": (741, 58), # left of old alliance edge
+                "focus": (290, 265),  # above the old focus top edge
+            }
+            for role, point in points.items():
+                self.assertEqual(result.getpixel(point)[:3], colors[role], role)
+                self.assertNotEqual(result.getpixel(point), baseline.getpixel(point), role)
+
     def test_tfr_icons_bleed_beyond_original_cells(self):
         from hoi4_renderer import crop_settings, icon_display_box, state_card
 
@@ -400,10 +442,10 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(crop_settings({}, "focus")["fit"], "contain")
 
-        # The TNO layout remains unchanged.
+        # Non-icon windows do not change: only focus/ideology/alliance bleed.
         original = (100, 10, 200, 110)
         self.assertEqual(
-            icon_display_box(original, "focus", "tno", 1, (960, 512)),
+            icon_display_box(original, "flag", "tno", 1, (960, 512)),
             original,
         )
 
