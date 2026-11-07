@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 15
+LAYOUT_VERSION = 16
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -165,20 +165,28 @@ def scaled(box, scale):
     return tuple(round(x * scale) for x in box)
 
 
-# Extra pixels around TFR's icon cells, measured in the original PSD size.
-# The extension is applied AFTER the PSD bezel so the emblem can overlap it.
-TFR_ICON_BLEED = {
-    "ideology": (6, 7, 6, 7),
-    "alliance": (4, 6, 4, 6),
-    "focus": (7, 6, 7, 6),
+# Per-style bleed in original PSD pixels, applied above native PSD bezels.
+# TFR artwork is exported at 2x, so its margins are scaled by factor.
+ICON_BLEED = {
+    "tno": {
+        "ideology": (9, 10, 9, 10),
+        "alliance": (8, 9, 8, 9),
+        "focus": (12, 9, 12, 9),
+    },
+    "tfr": {
+        "ideology": (6, 7, 6, 7),
+        "alliance": (4, 6, 4, 6),
+        "focus": (7, 6, 7, 6),
+    },
 }
 
 
 def icon_display_box(box, role, style, factor, canvas_size):
-    """Let TFR emblems project beyond their PSD apertures without clipping."""
-    if style != "tfr" or role not in TFR_ICON_BLEED:
+    """Project ideology, alliance and focus emblems beyond both HOI4 frames."""
+    offsets = ICON_BLEED.get(style, {}).get(role)
+    if offsets is None:
         return box
-    left, top, right, bottom = (value * factor for value in TFR_ICON_BLEED[role])
+    left, top, right, bottom = (value * factor for value in offsets)
     width, height = canvas_size
     return (
         max(0, box[0] - left),
@@ -418,7 +426,7 @@ def state_card(data, root, style):
         ("focus", "focus_icon"),
     ):
         display_box = icon_display_box(boxes[key], role, style, factor, canvas.size)
-        photo(canvas, data, root, role, display_box, trim_alpha=style == "tfr")
+        photo(canvas, data, root, role, display_box, trim_alpha=True)
     if style == "tno":
         # Native base below the sectors, clipped PSD shadows above them.
         canvas.alpha_composite(asset("tno_chart_front"))
