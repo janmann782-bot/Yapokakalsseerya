@@ -25,7 +25,7 @@ jobs:
       - name: HOI4 render smoke and crop tests
         run: |
           python -m unittest -v \
-            test_hoi4.Hoi4Tests.test_all_hoi4_icons_are_scaled_by_1_3 \
+            test_hoi4.Hoi4Tests.test_hoi4_focus_is_1_2_and_other_icons_are_1_3 \
             test_hoi4.Hoi4Tests.test_large_focus_icons_receive_priority_bleed \
             test_hoi4.Hoi4Tests.test_tno_icons_bleed_beyond_original_cells \
             test_hoi4.Hoi4Tests.test_tfr_icons_bleed_beyond_original_cells \
