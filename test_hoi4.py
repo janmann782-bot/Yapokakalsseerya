@@ -388,12 +388,14 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(canvas.getpixel((50, 50))[:3], expected)
 
-    def test_all_hoi4_icons_are_scaled_by_1_3(self):
+    def test_hoi4_focus_is_1_2_and_other_icons_are_1_3(self):
         from hoi4_renderer import (
-            ICON_RENDER_SCALE, icon_display_box, scaled_icon_box
+            ICON_RENDER_SCALE, FOCUS_RENDER_SCALE, LAYOUT_VERSION, icon_display_box, scaled_icon_box
         )
 
         self.assertEqual(ICON_RENDER_SCALE, 1.3)
+        self.assertEqual(FOCUS_RENDER_SCALE, 1.2)
+        self.assertEqual(LAYOUT_VERSION, 19)
         sample_boxes = {
             "tno": {
                 "ideology": (225, 15, 331, 106),
@@ -416,14 +418,15 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                 scaled = scaled_icon_box(
                     cell, role, style, factor, canvas_size
                 )
+                expected_scale = 1.2 if role == "focus" else 1.3
                 self.assertEqual(
                     scaled[2] - scaled[0],
-                    round((previous[2] - previous[0]) * 1.3),
+                    round((previous[2] - previous[0]) * expected_scale),
                     (style, role, "width"),
                 )
                 self.assertEqual(
                     scaled[3] - scaled[1],
-                    round((previous[3] - previous[1]) * 1.3),
+                    round((previous[3] - previous[1]) * expected_scale),
                     (style, role, "height"),
                 )
                 self.assertLessEqual(
