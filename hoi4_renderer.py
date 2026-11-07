@@ -12,7 +12,7 @@ from media import page_images
 from templates import hoi4_mode
 
 ASSETS = Path(__file__).resolve().parent / "assets" / "hoi4"
-LAYOUT_VERSION = 18
+LAYOUT_VERSION = 19
 INK = "#dbe4e5"
 
 # Font sizes in rendered pixels. Larger fields get more room; text_box
@@ -196,11 +196,11 @@ def icon_display_box(box, role, style, factor, canvas_size):
     )
 
 
-# Scale visual icons relative to the current 1.12.3 layout. Unlike a
-# change to ICON_BLEED alone, this scales the *entire rendered image* by 30%.
-# Coordinates may extend beyond the canvas: Pillow will crop at the final
-# output edge, rather than squeeze the icon to fit the canvas.
+# Keep ideology/alliance at 130%; make focus slightly smaller at 120%.
+# Image size is scaled, not just the overflow padding. Off-canvas rectangles
+# are cropped only when compositing onto the full card.
 ICON_RENDER_SCALE = 1.3
+FOCUS_RENDER_SCALE = 1.2
 
 
 def scaled_icon_box(box, role, style, factor, canvas_size):
@@ -208,8 +208,9 @@ def scaled_icon_box(box, role, style, factor, canvas_size):
     if role not in ("ideology", "alliance", "focus"):
         return cell
     x0, y0, x1, y1 = cell
-    width = round((x1 - x0) * ICON_RENDER_SCALE)
-    height = round((y1 - y0) * ICON_RENDER_SCALE)
+    scale = FOCUS_RENDER_SCALE if role == "focus" else ICON_RENDER_SCALE
+    width = round((x1 - x0) * scale)
+    height = round((y1 - y0) * scale)
     left = round((x0 + x1 - width) / 2)
     top = round((y0 + y1 - height) / 2)
     return (left, top, left + width, top + height)
