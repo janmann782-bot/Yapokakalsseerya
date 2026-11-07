@@ -389,9 +389,10 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(canvas.getpixel((50, 50))[:3], expected)
 
     def test_large_focus_icons_receive_priority_bleed(self):
-        from hoi4_renderer import ICON_BLEED, LAYOUT_VERSION, icon_display_box
+        from hoi4_renderer import ICON_BLEED, ICON_SIZE_MULTIPLIER, LAYOUT_VERSION, icon_display_box
 
-        self.assertGreaterEqual(LAYOUT_VERSION, 17)
+        self.assertGreaterEqual(LAYOUT_VERSION, 18)
+        self.assertEqual(ICON_SIZE_MULTIPLIER, 1.30)
         expected = {
             "tno": {
                 "ideology": (12, 12, 12, 12),
@@ -405,6 +406,16 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
             },
         }
         self.assertEqual(ICON_BLEED, expected)
+        # Every icon type must be exactly 1.3x the previous viewport size.
+        test_box = (100, 100, 200, 200)
+        for style in ("tno", "tfr"):
+            for role, padding in expected[style].items():
+                left, top, right, bottom = padding
+                old_width = 100 + left + right
+                old_height = 100 + top + bottom
+                new_box = icon_display_box(test_box, role, style, 1, (500, 500))
+                self.assertEqual(new_box[2] - new_box[0], round(old_width * 1.30))
+                self.assertEqual(new_box[3] - new_box[1], round(old_height * 1.30))
         # Focus must extend more than ideology and alliance in both styles.
         for style in ("tno", "tfr"):
             self.assertGreater(
@@ -418,11 +429,11 @@ class Hoi4Tests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             icon_display_box((228, 270, 359, 374), "focus", "tno", 1, (960, 512)),
-            (204, 254, 383, 390),
+            (177, 233, 410, 410),
         )
         self.assertEqual(
             icon_display_box((256, 370, 400, 480), "focus", "tfr", 2, (1000, 600)),
-            (224, 346, 432, 504),
+            (193, 322, 463, 527),
         )
 
     def test_tno_icons_bleed_beyond_original_cells(self):
